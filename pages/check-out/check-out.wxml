@@ -1,0 +1,39 @@
+<view class="screen pad">
+  <view class="title">退租结算</view>
+  <view class="muted">清空租客信息并结束租约</view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">当前房间</view>
+    <view class="row between center mt-14">
+      <view class="muted">房号</view>
+      <view class="pick">{{roomNo}}</view>
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">租客</view>
+      <view class="pick">{{tenant || '-'}}</view>
+    </view>
+  </view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">待处理事项</view>
+    <view class="row between center mt-14">
+      <view class="muted">未核销租金期数</view>
+      <view class="money red">{{pendingTerms}} 期</view>
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">杂费挂账</view>
+      <view class="money red">¥{{utilsAmount}}</view>
+    </view>
+    <view class="muted mt-14">建议先在“账单”页完成核销后再退租。</view>
+  </view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">退租备注</view>
+    <textarea class="ta mt-14" value="{{note}}" bindinput="onNote" placeholder="如：墙面修补扣款、钥匙交接等" />
+  </view>
+
+  <view class="footer mt-16">
+    <button class="btn btn-danger full" bindtap="submit">确认退租</button>
+  </view>
+</view>
+

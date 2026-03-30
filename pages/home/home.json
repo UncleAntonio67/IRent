@@ -1,0 +1,7 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "room-detail": "/components/room-detail/room-detail",
+    "add-modal": "/components/add-modal/add-modal"
+  }
+}

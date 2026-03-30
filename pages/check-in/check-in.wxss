@@ -1,0 +1,41 @@
+.mt-16 {
+  margin-top: 16rpx;
+}
+.mt-14 {
+  margin-top: 14rpx;
+}
+
+.pick {
+  padding: 10rpx 14rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid var(--border);
+  background: #fff;
+  font-weight: 900;
+}
+
+.inp {
+  width: 380rpx;
+  text-align: right;
+  padding: 10rpx 0;
+  font-weight: 900;
+}
+
+.money {
+  font-size: 30rpx;
+  font-weight: 1000;
+  color: var(--primary);
+}
+
+.btn-sm {
+  padding: 10rpx 14rpx;
+  font-size: 24rpx;
+}
+
+.footer {
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.full {
+  width: 100%;
+}
+

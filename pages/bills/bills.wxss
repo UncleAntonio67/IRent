@@ -1,0 +1,205 @@
+.pad {
+  padding: 20rpx 18rpx 22rpx;
+}
+
+.mt-10 {
+  margin-top: 10rpx;
+}
+.mt-14 {
+  margin-top: 14rpx;
+}
+.mt-16 {
+  margin-top: 16rpx;
+}
+
+.gap-16 {
+  gap: 16rpx;
+}
+
+.year-pill {
+  padding: 10rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(148, 163, 184, 0.28);
+  background: #fff;
+  font-size: 22rpx;
+  font-weight: 1000;
+  color: rgba(100, 116, 139, 0.9);
+}
+
+.dash {
+  border-radius: 22rpx;
+  background: linear-gradient(145deg, #2563eb, #1d4ed8);
+  color: #fff;
+  padding: 26rpx 24rpx 20rpx;
+  box-shadow: 0 18rpx 70rpx rgba(37, 99, 235, 0.20);
+  position: relative;
+  overflow: hidden;
+}
+
+.dash:after {
+  content: "";
+  position: absolute;
+  right: -80rpx;
+  bottom: -80rpx;
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.dash-kicker {
+  font-size: 22rpx;
+  font-weight: 900;
+  color: rgba(219, 234, 254, 0.9);
+}
+
+.dash-total {
+  margin-top: 10rpx;
+  font-size: 66rpx;
+  font-weight: 1100;
+  letter-spacing: -0.03em;
+}
+
+.dash-grid {
+  margin-top: 26rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.22);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.dash-mini {
+  font-size: 18rpx;
+  font-weight: 900;
+  color: rgba(219, 234, 254, 0.75);
+}
+
+.dash-mini.warn {
+  color: rgba(254, 226, 226, 0.85);
+}
+
+.dash-mini-val {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  font-weight: 1000;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.dash-pending {
+  margin-top: 8rpx;
+  font-size: 30rpx;
+  font-weight: 1100;
+  color: rgba(254, 226, 226, 0.95);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.right {
+  text-align: right;
+}
+
+.seg {
+  display: flex;
+  flex-direction: row;
+  gap: 8rpx;
+  padding: 6rpx;
+  border-radius: 16rpx;
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.seg-btn {
+  padding: 10rpx 14rpx;
+  border-radius: 12rpx;
+  font-size: 22rpx;
+  font-weight: 1000;
+  color: rgba(100, 116, 139, 0.9);
+}
+
+.seg-on {
+  background: #fff;
+  box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.08);
+}
+
+.seg-on.pending {
+  color: #e11d48;
+}
+.seg-on.paid {
+  color: #059669;
+}
+
+.item {
+  padding: 18rpx 18rpx 16rpx;
+  border-radius: 22rpx;
+}
+
+.item-top {
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid rgba(148, 163, 184, 0.14);
+}
+
+.item-room {
+  font-size: 30rpx;
+  font-weight: 1100;
+}
+
+.item-tenant {
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.item-title {
+  font-size: 26rpx;
+  font-weight: 1000;
+}
+
+.item-date {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.item-amt {
+  font-size: 34rpx;
+  font-weight: 1100;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  color: rgba(15, 23, 42, 0.9);
+}
+
+.item-amt.plus {
+  color: #059669;
+}
+
+.btn-sm {
+  padding: 10rpx 14rpx;
+  font-size: 24rpx;
+}
+
+.item.overdue {
+  border-left: 8rpx solid rgba(244, 63, 94, 0.85);
+}
+
+.item.due {
+  border-left: 8rpx solid rgba(251, 191, 36, 0.95);
+}
+
+.empty-ok {
+  padding: 34rpx 22rpx;
+  text-align: center;
+  border-style: dashed;
+}
+
+.ok-big {
+  font-size: 28rpx;
+  font-weight: 1100;
+  color: rgba(15, 23, 42, 0.82);
+}
+.ok-sub {
+  margin-top: 10rpx;
+}
+

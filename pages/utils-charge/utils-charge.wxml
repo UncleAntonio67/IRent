@@ -1,0 +1,58 @@
+<view class="screen pad">
+  <view class="title">抄表算账</view>
+  <view class="muted">生成一笔杂费挂账账单</view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">上期底数</view>
+    <view class="row between center mt-14">
+      <view class="muted">水表</view>
+      <view class="pick">{{lastWater}}</view>
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">电表</view>
+      <view class="pick">{{lastElectric}}</view>
+    </view>
+  </view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">本期读数</view>
+    <view class="row between center mt-14">
+      <view class="muted">水表读数</view>
+      <input class="inp" type="number" value="{{currentWater}}" bindinput="onWater" />
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">电表读数</view>
+      <input class="inp" type="number" value="{{currentElectric}}" bindinput="onElectric" />
+    </view>
+
+    <view class="row between center mt-14">
+      <view class="muted">拍照留底</view>
+      <button class="btn btn-ghost btn-sm" bindtap="pickPhoto">照片({{photoCount}})</button>
+    </view>
+  </view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">计算结果</view>
+    <view class="row between center mt-14">
+      <view class="muted">水费 ({{waterDelta}} × {{waterPrice}})</view>
+      <view class="money">¥{{waterAmount}}</view>
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">电费 ({{electricDelta}} × {{electricPrice}})</view>
+      <view class="money">¥{{electricAmount}}</view>
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">合计</view>
+      <view class="money red">¥{{total}}</view>
+    </view>
+    <view class="mt-14">
+      <view class="muted">账单文本(可复制发送租客)</view>
+      <view class="tpl mt-10">{{templateText}}</view>
+      <button class="btn btn-ghost btn-sm mt-14" bindtap="copyTemplate">复制账单文本</button>
+    </view>
+  </view>
+
+  <view class="footer mt-16">
+    <button class="btn btn-primary full" bindtap="submit">确认生成杂费单</button>
+  </view>
+</view>

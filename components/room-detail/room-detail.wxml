@@ -1,0 +1,409 @@
+<view wx:if="{{visible}}" class="overlay anim-fade-in" bindtap="emitClose">
+  <view class="sheet anim-slide-up" catchtap="noop">
+    <view class="handle"></view>
+
+    <view class="head">
+      <view class="row between center">
+        <view class="row center gap-12">
+          <view class="roomNo">{{room.roomNo}}</view>
+          <view class="tag {{roomTagClass}}">{{roomTagText}}</view>
+        </view>
+        <view class="close" bindtap="emitClose">×</view>
+      </view>
+
+      <view wx:if="{{room.tenant}}" class="tabs">
+        <view class="tab {{roomTab==='current' ? 'tab-on' : ''}}" data-tab="current" bindtap="setRoomTab">交租与合同</view>
+        <view class="tab {{roomTab==='history' ? 'tab-on' : ''}}" data-tab="history" bindtap="setRoomTab">历史记录</view>
+      </view>
+    </view>
+
+    <scroll-view scroll-y class="body safe-bottom">
+      <block wx:if="{{roomTagStatus==='empty'}}">
+        <view class="emptyWrap anim-slide-in-bottom">
+          <view class="emptyIcon">空</view>
+          <view class="muted emptyTxt">房间已打扫完毕，随时可租</view>
+          <button class="btn btn-primary emptyBtn" bindtap="openCheckIn">开始办理入住登记</button>
+        </view>
+      </block>
+
+      <block wx:if="{{roomTagStatus!=='empty' && roomTab==='current'}}">
+        <view class="col gap-16 anim-slide-in-left">
+          <view class="card pad">
+            <view class="row between start">
+              <view class="row center gap-12">
+                <view class="avatar">{{avatar}}</view>
+                <view class="col">
+                  <view class="subtitle">{{room.tenant}}</view>
+                  <view class="muted mono">{{room.phone}}</view>
+                </view>
+              </view>
+              <view class="row gap-12">
+                <button class="btn btn-ghost btn-sm" bindtap="openContract">
+                  {{room.hasContract ? '查看合同' : '上传合同'}}
+                </button>
+                <button class="btn btn-ghost btn-sm" bindtap="callTenant">拨打</button>
+              </view>
+            </view>
+            <view class="hr mt-16"></view>
+            <view class="row between center mt-14">
+              <view class="muted">押金总额</view>
+              <view class="val">¥{{room.deposit}}</view>
+            </view>
+            <view class="row between center mt-14">
+              <view class="muted">租期合约</view>
+              <view class="val mono">{{room.lease}}</view>
+            </view>
+          </view>
+
+          <view class="card pad rentCard">
+            <view class="row between end">
+              <view class="col">
+                <view class="rentTitle">房租管理</view>
+                <view class="muted rentSub">{{cycleText}} · 租金基准 ¥{{room.rent}}/月</view>
+              </view>
+              <view class="col right">
+                <view class="muted rentSub">收款进度 {{progressPct}}%</view>
+                <view class="mono rentPaid">已收 ¥{{paidSum}}</view>
+              </view>
+            </view>
+            <view class="bar mt-14">
+              <view class="barIn" style="width: {{progressPct}}%;"></view>
+            </view>
+
+            <view class="col gap-12 mt-16">
+              <block wx:for="{{termsVM}}" wx:key="id">
+                <view class="term {{item._boxClass}}">
+                  <view class="row between center">
+                    <view class="row center gap-12">
+                      <view class="termName">第{{item.term}}期房租</view>
+                      <view class="tag {{item._tagClass}}">{{item._tagText}}</view>
+                    </view>
+                    <view class="muted mono termRange">{{item.startDate}}-{{item.endDate}}</view>
+                  </view>
+                  <view class="row between end mt-12">
+                    <view class="mono termAmt">¥{{item.expectedAmount}}</view>
+                    <block wx:if="{{item._tagText==='已结清'}}">
+                      <view class="okText">实收 ¥{{item.paidAmount}}</view>
+                    </block>
+                    <block wx:else>
+                      <button class="btn btn-primary btn-sm" data-termid="{{item.id}}" data-amount="{{item._verifyAmount}}" bindtap="openVerifyTerm">
+                        确认收款
+                      </button>
+                    </block>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </view>
+
+          <view class="card pad">
+            <view class="row between center">
+              <view class="rentTitle">水电与杂费</view>
+              <view class="tag">{{room.utilsInc ? '全包模式' : '按表计费'}}</view>
+            </view>
+
+            <view wx:if="{{!room.utilsInc}}">
+              <view class="row gap-20 mt-14">
+                <view class="col">
+                  <view class="muted tiny">上期水表底数</view>
+                  <view class="mono val">{{room.lastWater}}</view>
+                </view>
+                <view class="col">
+                  <view class="muted tiny">上期电表底数</view>
+                  <view class="mono val">{{room.lastElectric}}</view>
+                </view>
+              </view>
+
+              <view wx:if="{{room.utilsAmount>0}}" class="warnBox mt-16">
+                <view class="row between center">
+                  <view class="warnTitle">杂费挂账待收</view>
+                  <view class="mono warnAmt">累计 ¥{{room.utilsAmount}}</view>
+                </view>
+                <view class="muted tiny mt-10">有未结清的水电杂费单，请前往“全局待收”核销。</view>
+              </view>
+
+              <button class="btn btn-ghost mt-16" bindtap="openBillModal">抄水电并生成本期杂费单</button>
+            </view>
+
+            <view wx:else class="muted tiny mt-16">该房间租金已包含水电物业，无需抄表。</view>
+          </view>
+
+          <view class="pt-8 pb-10" style="text-align:center;">
+            <view class="linkDanger" bindtap="openCheckOut">办理退租结算</view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:if="{{roomTagStatus!=='empty' && roomTab==='history'}}">
+        <view class="col gap-16 anim-slide-in-right">
+          <view class="card">
+            <view class="secHead">历史已收流水</view>
+            <view class="col gap-12 pad">
+              <block wx:for="{{paidBills}}" wx:key="id">
+                <view class="row between center li">
+                  <view class="col">
+                    <view class="liTitle">{{item.month}}</view>
+                    <view class="muted tiny">{{item.payDate}}</view>
+                  </view>
+                  <view class="mono liAmt">¥{{item.total}}</view>
+                </view>
+              </block>
+              <view wx:if="{{paidBills.length===0}}" class="muted tiny">暂无历史账单</view>
+            </view>
+          </view>
+
+          <view class="card">
+            <view class="secHead">房屋流转轴</view>
+            <view class="pad">
+              <block wx:for="{{historyVM}}" wx:key="id">
+                <view class="tlRow">
+                  <view class="tlDot {{item._dotClass}}"></view>
+                  <view class="tlBox">
+                    <view class="row between center">
+                      <view class="liTitle">{{item.title}}</view>
+                      <view class="muted tiny mono">{{item.at}}</view>
+                    </view>
+                    <view wx:if="{{item.note}}" class="muted tiny mt-10">{{item.note}}</view>
+                  </view>
+                </view>
+              </block>
+              <view wx:if="{{historyVM.length===0}}" class="muted tiny">暂无流转记录</view>
+            </view>
+          </view>
+        </view>
+      </block>
+    </scroll-view>
+  </view>
+</view>
+
+<!-- 合同附件预览 -->
+<view wx:if="{{showContractModal}}" class="fullOverlay anim-fade-in">
+  <view class="fullHead">
+    <view class="fullTitle">{{room.tenant}} 合同归档</view>
+    <view class="fullClose" bindtap="closeContract">×</view>
+  </view>
+  <view class="fullBody safe-bottom">
+    <view wx:if="{{!room.hasContract}}" class="contractEmpty">
+      <view class="contractIcon">合</view>
+      <view class="muted">暂无电子合同档案</view>
+      <button class="btn btn-primary mt-16" bindtap="uploadContract">上传扫描件</button>
+    </view>
+    <view wx:else class="contractCard">
+      <view class="watermark">仅供管理平台查阅</view>
+      <view class="contractMock">租赁合同_P1.jpg</view>
+    </view>
+  </view>
+</view>
+
+<!-- 抄表生成杂费单 -->
+<view wx:if="{{showBillModal}}" class="fullOverlay anim-fade-in" style="background:#f8fafc;">
+  <view class="fullHead light">
+    <view class="fullTitle">杂费单核对 · {{room.roomNo}}</view>
+    <view class="fullClose gray" bindtap="closeBillModal">×</view>
+  </view>
+  <scroll-view scroll-y class="fullBody pad safe-bottom">
+    <view wx:if="{{room.utilsInc}}" class="card pad">
+      <view class="subtitle">全包模式</view>
+      <view class="muted mt-14">该房间无需生成杂费单。</view>
+    </view>
+
+    <view wx:if="{{!room.utilsInc}}" class="card pad">
+      <view class="stepTitle">1 录入本月读数</view>
+      <view class="row between center mt-14">
+        <view class="muted">水表度数 (上月 {{room.lastWater}})</view>
+        <input class="inp mono" type="number" value="{{currentWater}}" bindinput="onWaterInput" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">电表度数 (上月 {{room.lastElectric}})</view>
+        <input class="inp mono" type="number" value="{{currentElectric}}" bindinput="onElectricInput" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">拍照留底</view>
+        <view class="row gap-12">
+          <button class="btn btn-ghost btn-sm" bindtap="pickWaterPhoto">水(×{{waterPhotoCount}})</button>
+          <button class="btn btn-ghost btn-sm" bindtap="pickElectricPhoto">电(×{{electricPhotoCount}})</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{billCalcReady}}" class="card pad mt-16">
+      <view class="stepTitle">{{room.utilsInc ? '1' : '2'}} 核对账单文本</view>
+      <view class="tpl mt-14 mono">{{billTemplate}}</view>
+      <button class="btn btn-ghost btn-sm mt-14" bindtap="copyBillTemplate">复制账单文本</button>
+      <view class="row between end mt-16">
+        <view class="muted">本期应收杂费</view>
+        <view class="mono bigAmt">¥{{billTotal}}</view>
+      </view>
+    </view>
+  </scroll-view>
+  <view class="fullFoot">
+    <button class="btn btn-primary full" disabled="{{!billCalcReady || room.utilsInc}}" bindtap="saveBill">
+      保存记录并发送
+    </button>
+  </view>
+</view>
+
+<!-- 办理入住 -->
+<view wx:if="{{showCheckInModal}}" class="fullOverlay anim-fade-in" style="background:#f8fafc;">
+  <view class="fullHead light">
+    <view class="fullTitle">办理入住 · {{room.roomNo}}</view>
+    <view class="fullClose gray" bindtap="closeCheckIn">×</view>
+  </view>
+
+  <scroll-view scroll-y class="fullBody pad safe-bottom">
+    <view class="card pad">
+      <view class="stepTitle">租期与交租规则</view>
+      <view class="row between center mt-14">
+        <view class="muted">起租日</view>
+        <picker mode="date" value="{{checkInForm.leaseStart}}" bindchange="onPickLeaseStart">
+          <view class="pick mono">{{checkInForm.leaseStart}}</view>
+        </picker>
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">到期日</view>
+        <picker mode="date" value="{{checkInForm.leaseEnd}}" bindchange="onPickLeaseEnd">
+          <view class="pick mono">{{checkInForm.leaseEnd}}</view>
+        </picker>
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">月租金基准(¥)</view>
+        <input class="inp mono" type="number" value="{{checkInForm.rentAmount}}" bindinput="onCheckInRent" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">押金金额(¥)</view>
+        <input class="inp mono" type="number" value="{{checkInForm.depositAmount}}" bindinput="onCheckInDeposit" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">交租周期</view>
+        <view class="seg">
+          <view class="seg-btn {{checkInForm.paymentCycle===3 ? 'seg-on' : ''}}" data-cycle="3" bindtap="setCheckInCycle">季付</view>
+          <view class="seg-btn {{checkInForm.paymentCycle===6 ? 'seg-on' : ''}}" data-cycle="6" bindtap="setCheckInCycle">半年付</view>
+          <view class="seg-btn {{checkInForm.paymentCycle===12 ? 'seg-on' : ''}}" data-cycle="12" bindtap="setCheckInCycle">年付</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card pad mt-16">
+      <view class="stepTitle">租客身份信息</view>
+      <view class="row between center mt-14">
+        <view class="muted">租客姓名/称呼 *</view>
+        <input class="inp" value="{{checkInForm.tenantName}}" bindinput="onCheckInTenant" placeholder="例如：张先生" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">联系电话</view>
+        <input class="inp mono" type="number" value="{{checkInForm.tenantPhone}}" bindinput="onCheckInPhone" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">身份证号</view>
+        <input class="inp mono" value="{{checkInForm.idCard}}" bindinput="onCheckInIdCard" />
+      </view>
+    </view>
+
+    <view class="card pad mt-16">
+      <view class="row between center">
+        <view class="stepTitle">水电暖物业费</view>
+        <view class="row center gap-12">
+          <view class="muted tiny">全包在租金内</view>
+          <switch checked="{{checkInForm.utilsInc}}" bindchange="toggleUtilsInc" />
+        </view>
+      </view>
+      <view wx:if="{{!checkInForm.utilsInc}}" class="mt-14">
+        <view class="row between center mt-14">
+          <view class="muted">初始水表度数</view>
+          <input class="inp mono" type="number" value="{{checkInForm.initWater}}" bindinput="onCheckInInitWater" />
+        </view>
+        <view class="row between center mt-14">
+          <view class="muted">初始电表度数</view>
+          <input class="inp mono" type="number" value="{{checkInForm.initElectric}}" bindinput="onCheckInInitElectric" />
+        </view>
+      </view>
+    </view>
+
+    <view class="card pad mt-16">
+      <view class="stepTitle">租赁合同附件 *</view>
+      <view class="upload {{checkInForm.contractUploaded ? 'upload-on' : ''}}" bindtap="toggleCheckInContract">
+        <view class="uploadIcon">{{checkInForm.contractUploaded ? '已' : '拍'}}</view>
+        <view class="uploadTxt">{{checkInForm.contractUploaded ? '已上传租赁合同(点击可取消)' : '点击拍照/上传合同扫描件'}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{previewSchedule.length>0 && checkInForm.rentAmount}}" class="card pad mt-16 payBox">
+      <view class="stepTitle blue">首期付款确认</view>
+      <view class="row between center mt-14">
+        <view class="muted">押金收取</view>
+        <view class="mono val">¥{{initialPayment.deposit}}</view>
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">第1期租金</view>
+        <view class="mono val">¥{{initialPayment.firstRent}}</view>
+      </view>
+      <view class="dashHr mt-16"></view>
+      <view class="row between center mt-14">
+        <view class="blueTiny">实际收取(可修改)</view>
+        <view class="actual">
+          <view class="mono actualSign">¥</view>
+          <input class="actualInp mono" type="number" value="{{checkInForm.customInitialPayment}}" placeholder="{{initialPayment.calculatedTotal}}" bindinput="onCheckInCustomPay" />
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="fullFoot">
+    <button class="btn btn-primary full" disabled="{{checkInSubmitDisabled}}" bindtap="submitCheckIn">
+      {{checkInSubmitText}}
+    </button>
+  </view>
+</view>
+
+<!-- 退租结算 -->
+<view wx:if="{{showCheckOutModal}}" class="fullOverlay anim-fade-in" style="background:#f8fafc;">
+  <view class="fullHead light">
+    <view class="fullTitle">办理退租 · {{room.roomNo}}</view>
+    <view class="fullClose gray" bindtap="closeCheckOut">×</view>
+  </view>
+  <scroll-view scroll-y class="fullBody pad safe-bottom">
+    <view class="card pad">
+      <view class="stepTitle danger">退房结算清单</view>
+
+      <view wx:if="{{!room.utilsInc}}">
+        <view class="muted tiny mt-14">最终水电抄表</view>
+        <view class="row between center mt-14">
+          <view class="muted">水表 (底数 {{room.lastWater}})</view>
+          <input class="inp mono" type="number" value="{{checkOutForm.endWater}}" bindinput="onOutWater" />
+        </view>
+        <view class="row between center mt-14">
+          <view class="muted">电表 (底数 {{room.lastElectric}})</view>
+          <input class="inp mono" type="number" value="{{checkOutForm.endElectric}}" bindinput="onOutElectric" />
+        </view>
+        <view class="tipDanger mt-14">估算：水费 ¥{{outEstWater}}，电费 ¥{{outEstElectric}}</view>
+      </view>
+
+      <view class="hr mt-16"></view>
+      <view class="muted tiny mt-14">结余款项处理(押金 ¥{{room.deposit}})</view>
+      <view class="seg mt-14">
+        <view class="seg-btn seg-on">退还给租客</view>
+        <view class="seg-btn" bindtap="outToggle">需租客补交</view>
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">金额(¥)</view>
+        <input class="inp mono dangerText" type="number" value="{{checkOutForm.refundAmount}}" bindinput="onOutRefund" />
+      </view>
+      <view class="muted tiny mt-10">请手动减去尾期水电费或房屋损耗扣款，填入最终退给租客的金额。</view>
+
+      <view class="muted tiny mt-16">退租备注</view>
+      <textarea class="ta mt-14" value="{{checkOutForm.remark}}" bindinput="onOutRemark" placeholder="例如：正常到期退租" />
+    </view>
+  </scroll-view>
+  <view class="fullFoot">
+    <button class="btn btn-danger full" bindtap="submitCheckOut">确认结算并清退房间</button>
+  </view>
+</view>
+
+<verify-modal
+  visible="{{verifyVisible}}"
+  title="{{verifyTitle}}"
+  amount="{{verifyAmount}}"
+  confirm-text="确认核销"
+  bind:cancel="closeVerify"
+  bind:confirm="confirmVerify"
+/>

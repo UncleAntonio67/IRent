@@ -1,0 +1,75 @@
+<view class="screen pad safe-bottom">
+  <view class="hero">
+    <view class="hero-row">
+      <view class="avatar">{{avatarText}}</view>
+      <view class="col">
+        <view class="hero-name">{{landlordName}}</view>
+        <view class="row gap-12 mt-10">
+          <view class="badge badge-pro">高级专业版</view>
+          <view class="badge badge-verified">已实名</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="hero-grid">
+      <view class="hero-cell">
+        <view class="hero-num">{{stats.propertyCount}}</view>
+        <view class="hero-lab">管理院落</view>
+      </view>
+      <view class="hero-cell">
+        <view class="hero-num">{{stats.totalRooms}}</view>
+        <view class="hero-lab">总房间数</view>
+      </view>
+      <view class="hero-cell">
+        <view class="hero-num blue">{{stats.rented}}</view>
+        <view class="hero-lab">在住租客</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card list mt-16">
+    <view class="li" bindtap="onFeature" data-title="收款账户与二维码配置">
+      <view class="row center gap-12">
+        <view class="ico ico-blue">收</view>
+        <view class="li-title">收款账户与二维码配置</view>
+      </view>
+      <view class="chev">›</view>
+    </view>
+    <view class="li" bindtap="onFeature" data-title="默认水电单价模板">
+      <view class="row center gap-12">
+        <view class="ico ico-ora">水</view>
+        <view class="li-title">默认水电单价模板</view>
+      </view>
+      <view class="chev">›</view>
+    </view>
+    <view class="li" bindtap="onFeature" data-title="电子租赁合同库">
+      <view class="row center gap-12">
+        <view class="ico ico-ind">合</view>
+        <view class="li-title">电子租赁合同库</view>
+      </view>
+      <view class="chev">›</view>
+    </view>
+  </view>
+
+  <view class="card list mt-16">
+    <view class="li" bindtap="onFeature" data-title="自动催缴推送机制">
+      <view class="row center gap-12">
+        <view class="ico ico-amb">催</view>
+        <view class="li-title">自动催缴推送机制</view>
+      </view>
+      <view class="chev">›</view>
+    </view>
+    <view class="li" bindtap="onFeature" data-title="数据报表导出(Excel)">
+      <view class="row center gap-12">
+        <view class="ico ico-grn">导</view>
+        <view class="li-title">数据报表导出(Excel)</view>
+      </view>
+      <view class="chev">›</view>
+    </view>
+  </view>
+
+  <view class="mt-16">
+    <button class="btn btn-ghost logout" bindtap="logout">安全退出登录</button>
+  </view>
+</view>
+

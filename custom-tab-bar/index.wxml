@@ -1,0 +1,34 @@
+<cover-view class="tab">
+  <cover-view class="tab-inner">
+    <cover-view
+      class="item {{selected===0 ? 'on' : ''}}"
+      data-index="0"
+      data-path="/pages/home/home"
+      bindtap="onTap"
+    >
+      <cover-view class="icon {{selected===0 ? 'icon-on' : ''}}">工</cover-view>
+      <cover-view class="label">工作台</cover-view>
+    </cover-view>
+
+    <cover-view
+      class="item {{selected===1 ? 'on' : ''}}"
+      data-index="1"
+      data-path="/pages/bills/bills"
+      bindtap="onTap"
+    >
+      <cover-view class="icon {{selected===1 ? 'icon-on' : ''}}">账</cover-view>
+      <cover-view class="label">账单</cover-view>
+    </cover-view>
+
+    <cover-view
+      class="item {{selected===2 ? 'on' : ''}}"
+      data-index="2"
+      data-path="/pages/profile/profile"
+      bindtap="onTap"
+    >
+      <cover-view class="icon {{selected===2 ? 'icon-on' : ''}}">我</cover-view>
+      <cover-view class="label">我的</cover-view>
+    </cover-view>
+  </cover-view>
+</cover-view>
+

@@ -1,0 +1,189 @@
+.pad {
+  padding: 20rpx 18rpx 22rpx;
+}
+
+.mt-10 {
+  margin-top: 10rpx;
+}
+.mt-16 {
+  margin-top: 16rpx;
+}
+
+.hero {
+  border-radius: 26rpx;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
+  padding: 24rpx 22rpx 18rpx;
+  color: #fff;
+  border: 1rpx solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 18rpx 70rpx rgba(15, 23, 42, 0.22);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero:after {
+  content: "";
+  position: absolute;
+  right: -70rpx;
+  top: -70rpx;
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hero-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 18rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1rpx solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 54rpx;
+  font-weight: 1100;
+}
+
+.hero-name {
+  font-size: 40rpx;
+  font-weight: 1100;
+  letter-spacing: -0.02em;
+}
+
+.badge {
+  padding: 6rpx 10rpx;
+  border-radius: 10rpx;
+  font-size: 18rpx;
+  font-weight: 1000;
+  border: 1rpx solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.badge-pro {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.18);
+  color: rgba(219, 234, 254, 0.95);
+}
+
+.badge-verified {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.18);
+  color: rgba(209, 250, 229, 0.95);
+}
+
+.hero-grid {
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.10);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-cell {
+  text-align: center;
+  border-left: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+.hero-cell:first-child {
+  border-left: none;
+}
+
+.hero-num {
+  font-size: 46rpx;
+  font-weight: 1100;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+.hero-num.blue {
+  color: rgba(96, 165, 250, 0.95);
+}
+
+.hero-lab {
+  margin-top: 6rpx;
+  font-size: 18rpx;
+  font-weight: 900;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.list {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 22rpx;
+}
+
+.li {
+  padding: 18rpx 18rpx;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1rpx solid rgba(148, 163, 184, 0.14);
+  background: #fff;
+}
+.li:last-child {
+  border-bottom: none;
+}
+
+.ico {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 1100;
+  font-size: 26rpx;
+}
+
+.ico-blue {
+  background: rgba(37, 99, 235, 0.10);
+  color: rgba(37, 99, 235, 1);
+}
+.ico-ora {
+  background: rgba(234, 88, 12, 0.10);
+  color: rgba(234, 88, 12, 1);
+}
+.ico-ind {
+  background: rgba(99, 102, 241, 0.12);
+  color: rgba(99, 102, 241, 1);
+}
+.ico-amb {
+  background: rgba(251, 191, 36, 0.14);
+  color: rgba(161, 98, 7, 1);
+}
+.ico-grn {
+  background: rgba(16, 185, 129, 0.12);
+  color: rgba(16, 185, 129, 1);
+}
+
+.li-title {
+  font-size: 26rpx;
+  font-weight: 1100;
+  color: rgba(51, 65, 85, 0.92);
+}
+
+.chev {
+  font-size: 48rpx;
+  color: rgba(148, 163, 184, 0.7);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.logout {
+  width: 100%;
+  border: 1rpx solid rgba(244, 63, 94, 0.22);
+  color: rgba(244, 63, 94, 1);
+  background: #fff;
+}
+

@@ -1,0 +1,26 @@
+<view wx:if="{{visible}}" class="overlay" bindtap="onCancel">
+  <view class="modal anim-fade-in" catchtap="noop">
+    <view class="head">
+      <view class="head-icon">收</view>
+      <view class="head-kicker">确认收到款项</view>
+      <view class="head-amt">¥{{amount}}</view>
+    </view>
+
+    <view class="body">
+      <view class="row between center line">
+        <view class="muted">缴费项目</view>
+        <view class="val">{{title}}</view>
+      </view>
+      <view class="row between center line">
+        <view class="muted">核销时间</view>
+        <view class="val mono">{{nowText}}</view>
+      </view>
+
+      <view class="row gap-12 mt-18">
+        <button class="btn btn-ghost flex1" bindtap="onCancel">取消</button>
+        <button class="btn btn-primary flex1" bindtap="onConfirm">{{confirmText}}</button>
+      </view>
+    </view>
+  </view>
+</view>
+

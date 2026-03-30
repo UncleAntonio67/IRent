@@ -1,0 +1,6 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "verify-modal": "/components/verify-modal/verify-modal"
+  }
+}

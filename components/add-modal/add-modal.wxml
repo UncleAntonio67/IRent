@@ -1,0 +1,22 @@
+<page-container show="{{visible}}" position="center" round overlay="{{true}}" bind:beforeleave="onCancel">
+  <view class="box">
+    <view class="subtitle">{{title}}</view>
+    <view wx:if="{{hint}}" class="muted hint">{{hint}}</view>
+
+    <view class="form mt-16">
+      <block wx:if="{{mode==='text'}}">
+        <input class="inp" value="{{value}}" placeholder="{{placeholder}}" bindinput="onInput" />
+      </block>
+
+      <block wx:if="{{mode==='number'}}">
+        <input class="inp" type="number" value="{{value}}" placeholder="{{placeholder}}" bindinput="onInput" />
+      </block>
+    </view>
+
+    <view class="row gap-12 mt-18">
+      <button class="btn btn-ghost flex1" bindtap="onCancel">取消</button>
+      <button class="btn btn-primary flex1" bindtap="onConfirm">{{confirmText}}</button>
+    </view>
+  </view>
+</page-container>
+

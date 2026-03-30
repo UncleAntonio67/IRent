@@ -1,0 +1,177 @@
+<view class="screen">
+  <view class="wrap">
+    <!-- App Bar (glass) -->
+    <view class="appbar glass">
+      <view wx:if="{{editMode}}" class="edit-banner">结构建设模式开启中</view>
+
+      <view class="appbar-inner {{editMode ? 'appbar-edit' : ''}}">
+        <view class="row between center">
+          <view class="row center gap-12">
+            <view class="building">楼</view>
+            <view class="brand">租管家</view>
+          </view>
+          <button class="mode-btn {{editMode ? 'mode-on' : ''}}" bindtap="toggleEditMode">
+            {{editMode ? '完成建设' : '结构管理'}}
+          </button>
+        </view>
+
+        <view wx:if="{{!editMode}}" class="filters">
+          <scroll-view scroll-x class="row gap-12">
+            <view class="f-pill {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
+            <view class="f-pill {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
+              <view class="f-dot f-dot-rose"></view> 欠费 {{stats.overdue}}
+            </view>
+            <view class="f-pill {{filterStatus==='due_soon' ? 'f-on due' : ''}}" data-key="due_soon" bindtap="setFilter">
+              <view class="f-dot f-dot-amber"></view> 待收 {{stats.dueSoon}}
+            </view>
+            <view class="f-pill {{filterStatus==='rented' ? 'f-on rented' : ''}}" data-key="rented" bindtap="setFilter">
+              <view class="f-dot f-dot-grn"></view> 已租
+            </view>
+            <view class="f-pill {{filterStatus==='empty' ? 'f-on empty' : ''}}" data-key="empty" bindtap="setFilter">
+              <view class="f-dot f-dot-slt"></view> 空置
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+    </view>
+
+  <!-- Breadcrumb when in block detail -->
+  <view wx:if="{{!editMode && activeBlockId}}" class="crumb row center gap-12">
+    <view class="link" bindtap="backToOverview">全局概览</view>
+    <view class="muted">/</view>
+    <view class="subtitle">{{activeBlockName}}</view>
+  </view>
+
+  <!-- Main area (page scroll; sticky works on page scroll) -->
+  <view class="main pad safe-bottom">
+    <!-- Property selector -->
+    <view wx:if="{{!activeBlockId || editMode}}" class="row gap-12">
+      <scroll-view scroll-x class="row gap-12">
+        <block wx:for="{{properties}}" wx:key="id">
+          <view
+            class="prop {{activePropertyId===item.id ? 'prop-on' : ''}} press"
+            data-id="{{item.id}}"
+            bindtap="setActiveProperty"
+          >
+            {{item.name}}
+          </view>
+        </block>
+
+        <view wx:if="{{editMode}}" class="prop prop-add" bindtap="openAddProperty">+ 新建院落</view>
+      </scroll-view>
+    </view>
+
+    <!-- View 1: blocks overview -->
+    <view wx:if="{{activeProperty && !activeBlockId && !editMode}}" class="col gap-16 mt-16 anim-fade-in">
+      <block wx:for="{{activeProperty.blocks}}" wx:key="id">
+        <view class="card pad block-card press" data-id="{{item.id}}" bindtap="enterBlock">
+          <view class="row between center block-head">
+            <view class="row center gap-12">
+              <view class="blk-ico">楼</view>
+              <view class="col">
+                <view class="subtitle">{{item.name}}</view>
+                <view class="muted">共 {{item._rooms}} 间 <text class="sep">|</text> 空置 {{item._empty}}</view>
+              </view>
+            </view>
+            <view class="chev">›</view>
+          </view>
+
+          <view class="mini">
+            <block wx:for="{{item.floors}}" wx:key="floor">
+              <view class="mini-row">
+                <view class="mini-floor">F{{item.floor}}</view>
+                <view class="mini-cells">
+                  <block wx:for="{{item.rooms}}" wx:key="id">
+                    <view class="mini-cell {{item._miniClass}} {{item._miniDim ? 'mini-dim' : ''}}"></view>
+                  </block>
+                </view>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <!-- View 2: block detail matrix (or all blocks in edit mode) -->
+    <view wx:if="{{activeProperty && (activeBlockId || editMode)}}" class="col gap-20 mt-16 anim-fade-in">
+      <block wx:for="{{detailBlocks}}" wx:key="id">
+        <view class="card block-wrap">
+          <view wx:if="{{editMode}}" class="block-title">{{item.name}}</view>
+
+          <view wx:if="{{item.floors.length===0}}" class="empty">暂无楼层</view>
+          <view wx:if="{{editMode}}" class="add-line" data-blockid="{{item.id}}" bindtap="openAddFloor">
+            + 加盖新楼层
+          </view>
+
+          <view class="floors">
+            <block wx:for="{{item.floors}}" wx:key="floor">
+              <view class="floor-row">
+                <view class="floor-label">F {{item.floor}}</view>
+
+                <view class="rooms-grid">
+                  <block wx:for="{{item.rooms}}" wx:key="id">
+                    <view
+                      class="room {{item._cardClass}} {{item._dim ? 'fade-dim' : ''}} press"
+                      data-roomid="{{item.id}}"
+                      bindtap="onRoomTap"
+                    >
+                      <view class="row between center">
+                        <view class="room-no">{{item.roomNo}}</view>
+                        <view wx:if="{{!editMode}}" class="r-dot {{item._dotClass}}"></view>
+                        <view wx:if="{{editMode}}" class="trash">✕</view>
+                      </view>
+
+                      <view wx:if="{{!editMode}}">
+                        <view wx:if="{{item._status==='empty'}}" class="muted tiny mt-10">空置待租</view>
+                        <view wx:else class="col">
+                          <view class="tiny tenant">{{item.tenant}}</view>
+                          <view wx:if="{{item._status==='overdue'}}" class="tiny danger-text mt-6">欠费待收</view>
+                          <view wx:else class="muted tiny mt-6">¥{{item.rent}}/期</view>
+                        </view>
+                      </view>
+                    </view>
+                  </block>
+
+                  <view
+                    wx:if="{{editMode}}"
+                    class="room room-add press"
+                    data-blockid="{{item._blockId}}"
+                    data-floor="{{item.floor}}"
+                    bindtap="openAddRoom"
+                  >
+                    +
+                  </view>
+                </view>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
+
+      <view wx:if="{{editMode}}" class="card pad block-add" bindtap="openAddBlock">
+        <view class="subtitle" style="text-align:center;color:#2563eb;">+ 建造新楼栋</view>
+      </view>
+    </view>
+  </view>
+  </view>
+</view>
+
+<room-detail
+  visible="{{detailVisible}}"
+  room-id="{{selectedRoomId}}"
+  bind:close="closeDetail"
+  bind:changed="refresh"
+/>
+
+<add-modal
+  visible="{{addVisible}}"
+  title="{{addTitle}}"
+  hint="{{addHint}}"
+  placeholder="{{addPlaceholder}}"
+  confirm-text="确认"
+  mode="{{addMode}}"
+  value="{{addValue}}"
+  bind:input="onAddInput"
+  bind:cancel="closeAdd"
+  bind:confirm="confirmAdd"
+/>

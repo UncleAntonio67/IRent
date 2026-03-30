@@ -1,0 +1,7 @@
+{
+  "component": true,
+  "usingComponents": {
+    "verify-modal": "/components/verify-modal/verify-modal"
+  }
+}
+

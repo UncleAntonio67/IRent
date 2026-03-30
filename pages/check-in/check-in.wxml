@@ -1,0 +1,116 @@
+<view class="screen pad">
+  <view class="title">办理入住</view>
+  <view class="muted">填写租客信息并生成交租计划</view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">租期与费用</view>
+
+    <view class="row between center mt-14">
+      <view class="muted">起租日</view>
+      <picker mode="date" value="{{startDate}}" bindchange="onPickStart">
+        <view class="pick">{{startDate}}</view>
+      </picker>
+    </view>
+
+    <view class="row between center mt-14">
+      <view class="muted">到期日</view>
+      <picker mode="date" value="{{endDate}}" bindchange="onPickEnd">
+        <view class="pick">{{endDate}}</view>
+      </picker>
+    </view>
+
+    <view class="row between center mt-14">
+      <view class="muted">月租金</view>
+      <input class="inp" type="number" value="{{monthlyRent}}" bindinput="onRent" placeholder="如 3000" />
+    </view>
+
+    <view class="row between center mt-14">
+      <view class="muted">押金</view>
+      <input class="inp" type="number" value="{{deposit}}" bindinput="onDeposit" placeholder="如 3000" />
+    </view>
+
+    <view class="row between center mt-14">
+      <view class="muted">交租周期</view>
+      <view class="row gap-12">
+        <view class="pill {{paymentCycle===3 ? 'pill-active' : ''}}" data-cycle="3" bindtap="setCycle">季付</view>
+        <view class="pill {{paymentCycle===6 ? 'pill-active' : ''}}" data-cycle="6" bindtap="setCycle">半年付</view>
+        <view class="pill {{paymentCycle===12 ? 'pill-active' : ''}}" data-cycle="12" bindtap="setCycle">年付</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">租客信息</view>
+
+    <view class="row between center mt-14">
+      <view class="muted">姓名</view>
+      <input class="inp" value="{{tenant}}" bindinput="onTenant" placeholder="必填" />
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">手机号</view>
+      <input class="inp" type="number" value="{{phone}}" bindinput="onPhone" placeholder="选填" />
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">身份证</view>
+      <input class="inp" value="{{idCard}}" bindinput="onIdCard" placeholder="选填" />
+    </view>
+
+    <view class="row between center mt-14">
+      <view class="muted">合同附件</view>
+      <button class="btn btn-ghost btn-sm" bindtap="pickContract">
+        {{hasContract ? ('已上传(' + contractCount + ')') : '上传合同'}}
+      </button>
+    </view>
+  </view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">水电规则</view>
+    <view class="row between center mt-14">
+      <view class="muted">是否全包</view>
+      <switch checked="{{utilsInc}}" bindchange="onUtilsInc" />
+    </view>
+
+    <view wx:if="{{!utilsInc}}">
+      <view class="row between center mt-14">
+        <view class="muted">水单价</view>
+        <input class="inp" type="number" value="{{waterPrice}}" bindinput="onWaterPrice" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">电单价</view>
+        <input class="inp" type="number" value="{{electricPrice}}" bindinput="onElectricPrice" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">初始水表</view>
+        <input class="inp" type="number" value="{{initWater}}" bindinput="onInitWater" />
+      </view>
+      <view class="row between center mt-14">
+        <view class="muted">初始电表</view>
+        <input class="inp" type="number" value="{{initElectric}}" bindinput="onInitElectric" />
+      </view>
+    </view>
+  </view>
+
+  <view class="card pad mt-16">
+    <view class="subtitle">实时核算</view>
+    <view class="row between center mt-14">
+      <view class="muted">首期应收租金估算</view>
+      <view class="money">¥{{firstExpected}}</view>
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">实际收取首期租金</view>
+      <input class="inp" type="number" value="{{firstPaidRent}}" bindinput="onFirstPaidRent" />
+    </view>
+    <view class="row between center mt-14">
+      <view class="muted">首期合计(含押金)</view>
+      <view class="money">¥{{firstTotal}}</view>
+    </view>
+    <view class="muted mt-14">交租计划共 {{scheduleCount}} 期，将在提交后写入房间。</view>
+  </view>
+
+  <view class="footer mt-16">
+    <button class="btn btn-primary full" disabled="{{submitDisabled}}" bindtap="submit">
+      {{submitText}}
+    </button>
+  </view>
+</view>
+

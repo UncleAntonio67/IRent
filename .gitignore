@@ -1,0 +1,18 @@
+# WeChat Mini Program
+miniprogram_npm/
+node_modules/
+dist/
+.cache/
+
+# IDE
+.idea/
+.vscode/
+
+# OS / logs
+.DS_Store
+Thumbs.db
+*.log
+
+# Local-only config
+project.private.config.json
+

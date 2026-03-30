@@ -1,0 +1,40 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/bills/bills",
+    "pages/profile/profile",
+    "pages/check-in/check-in",
+    "pages/utils-charge/utils-charge",
+    "pages/check-out/check-out"
+  ],
+  "window": {
+    "navigationBarTitleText": "租管家",
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#f1f5f9",
+    "backgroundTextStyle": "light",
+    "backgroundColor": "#f1f5f9"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#94a3b8",
+    "selectedColor": "#2563eb",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/bills/bills",
+        "text": "账单"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
