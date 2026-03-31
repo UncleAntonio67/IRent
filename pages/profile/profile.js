@@ -53,11 +53,11 @@ Page({
   },
   onFeature(e) {
     const title = e.currentTarget.dataset.title || "该功能";
-    wx.showToast({ title: "即将上线", icon: "none" });
+    wx.showToast({ title: "该功能即将上线", icon: "none" });
     // Keep success toasts for successful operations only; feature entry is informational.
     console.log("feature_click:", title);
   },
   logout() {
-    wx.showToast({ title: "已安全退出", icon: "none" });
+    wx.showToast({ title: "已安全退出登录", icon: "none" });
   }
 });

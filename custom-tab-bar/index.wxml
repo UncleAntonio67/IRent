@@ -17,7 +17,7 @@
       bindtap="onTap"
     >
       <cover-view class="icon {{selected===1 ? 'icon-on' : ''}}">账</cover-view>
-      <cover-view class="label">账单</cover-view>
+      <cover-view class="label">对账流水</cover-view>
     </cover-view>
 
     <cover-view
@@ -31,4 +31,3 @@
     </cover-view>
   </cover-view>
 </cover-view>
-

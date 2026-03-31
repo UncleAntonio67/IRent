@@ -1,104 +1,149 @@
-<view class="screen pad safe-bottom">
-  <view class="row between center">
-    <view class="subtitle">年度报表追踪</view>
-    <view class="year-pill">全年</view>
-  </view>
-
-  <view class="dash mt-16">
-    <view class="dash-kicker">总实收金额(元)</view>
-    <view class="dash-total">¥{{billStats.currentYearTotal}}</view>
-
-    <view class="dash-grid">
-      <view class="dash-cell">
-        <view class="dash-mini">已收租金/押金/水电</view>
-        <view class="dash-mini-val">¥{{billStats.rentTotal}} / ¥{{billStats.utilsTotal}}</view>
-      </view>
-      <view class="dash-cell right">
-        <view class="dash-mini warn">当前待收欠款总计</view>
-        <view class="dash-pending">¥{{billStats.currentYearPending}}</view>
-      </view>
-    </view>
-  </view>
-
-  <view class="row between center mt-16">
-    <view class="subtitle">账单与杂费流水</view>
-    <view class="seg">
-      <view class="seg-btn {{billFilter==='pending' ? 'seg-on pending' : ''}}" data-tab="pending" bindtap="setBillFilter">待收账单</view>
-      <view class="seg-btn {{billFilter==='paid' ? 'seg-on paid' : ''}}" data-tab="paid" bindtap="setBillFilter">已收流水</view>
-    </view>
-  </view>
-
-  <view class="mt-16">
-    <block wx:if="{{billFilter==='pending'}}">
-      <view class="col gap-16">
-        <block wx:for="{{pendingItems}}" wx:key="id">
-          <view class="card item {{item._leftClass}}">
-            <view class="row between center item-top">
-              <view class="row center gap-12">
-                <view class="item-room">{{item.roomNo}}</view>
-                <view class="muted item-tenant">{{item.tenant || ''}}</view>
-              </view>
-              <view class="tag {{item._tagClass}}">{{item._tagText}}</view>
-            </view>
-
-            <view class="row between end mt-14">
-              <view class="col">
-                <view class="item-title">{{item.title}}</view>
-                <view class="muted item-date">{{item.date}}</view>
-              </view>
-              <view class="col right">
-                <view class="item-amt">¥{{item.amount}}</view>
-                <button
-                  class="btn btn-primary btn-sm mt-10"
-                  data-kind="{{item.kind}}"
-                  data-roomid="{{item.roomId}}"
-                  data-termid="{{item.termId}}"
-                  data-billid="{{item.billId}}"
-                  data-amount="{{item.amount}}"
-                  data-title="{{item.title}}"
-                  bindtap="openVerify"
-                >
-                  核销收款
-                </button>
+<view class="screen">
+  <view class="wrap">
+    <!-- App Bar (glass) -->
+    <view class="appbar glass">
+      <view class="appbar-inner">
+        <view class="row between center">
+          <view class="row center gap-12">
+            <view class="building">
+              <view class="bldg">
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
               </view>
             </view>
+            <view class="brand">租管家</view>
           </view>
-        </block>
-
-        <view wx:if="{{pendingItems.length===0}}" class="empty-ok card">
-          <view class="ok-big">当前没有任何拖欠账款</view>
-          <view class="muted ok-sub">太棒了，继续保持</view>
         </view>
       </view>
-    </block>
+    </view>
 
-    <block wx:if="{{billFilter==='paid'}}">
-      <view class="col gap-16">
-        <block wx:for="{{paidFlows}}" wx:key="id">
-          <view class="card item">
-            <view class="row between center item-top">
-              <view class="row center gap-12">
-                <view class="item-room">{{item.roomNo}}</view>
-                <view class="muted item-tenant">{{item.tenant || ''}}</view>
-              </view>
-              <view class="tag tag-success">已入账</view>
+    <view class="main pad safe-bottom">
+      <view class="row between center">
+        <view class="page-h2">年度报表追踪</view>
+        <view class="year-pill row center gap-8">
+          <view class="cal-ico">📅</view>
+          <view>全年</view>
+        </view>
+      </view>
+
+      <view class="dash mt-16">
+        <view class="dash-wm">◔</view>
+        <view class="dash-kicker">总实收金额 (元)</view>
+        <view class="dash-total mono">¥{{billStats.currentYearTotal}}</view>
+
+        <view class="dash-grid">
+          <view class="dash-cell">
+            <view class="dash-mini">已收租金/押金/水电</view>
+            <view class="dash-mini-val mono">
+              ¥{{billStats.rentTotal}}
+              <text class="dash-sep">/</text>
+              ¥{{billStats.utilsTotal}}
             </view>
+          </view>
+          <view class="dash-cell right">
+            <view class="dash-mini warn">当前待收欠款总额</view>
+            <view class="dash-pending mono">¥{{billStats.currentYearPending}}</view>
+          </view>
+        </view>
+      </view>
 
-            <view class="row between end mt-14">
-              <view class="col">
-                <view class="item-title">{{item.month}}</view>
-                <view class="muted item-date">{{item.payDate}} 支付</view>
+      <view class="row between center mt-16">
+        <view class="row center gap-10">
+          <view class="receipt-ico">账</view>
+          <view class="subtitle">账单与杂费流水</view>
+        </view>
+        <view class="seg">
+          <view
+            class="seg-btn {{billFilter==='pending' ? 'seg-on pending' : ''}}"
+            data-tab="pending"
+            bindtap="setBillFilter"
+          >
+            🔴 待收账单
+          </view>
+          <view class="seg-btn {{billFilter==='paid' ? 'seg-on paid' : ''}}" data-tab="paid" bindtap="setBillFilter">
+            🟢 已收流水
+          </view>
+        </view>
+      </view>
+
+      <view class="mt-16">
+        <block wx:if="{{billFilter==='pending'}}">
+          <view class="col gap-16">
+            <block wx:for="{{pendingItems}}" wx:key="id">
+              <view class="card item press {{item._leftClass}}">
+                <view class="row between center item-top">
+                  <view class="row center gap-12">
+                    <view class="item-room">{{item.roomNo}}</view>
+                    <view class="item-tenant">{{item.tenant || ''}}</view>
+                  </view>
+                  <view class="item-tag tag {{item._tagClass}}">{{item._tagText}}</view>
+                </view>
+
+                <view class="row between end mt-14">
+                  <view class="col">
+                    <view class="item-title">{{item.title}}</view>
+                    <view class="item-date muted mono">{{item.date}}</view>
+                  </view>
+                  <view class="col right">
+                    <view class="item-amt mono">¥{{item.amount}}</view>
+                    <button
+                      class="item-act mt-10"
+                      data-kind="{{item.kind}}"
+                      data-roomid="{{item.roomId}}"
+                      data-termid="{{item.termId}}"
+                      data-billid="{{item.billId}}"
+                      data-amount="{{item.amount}}"
+                      data-title="{{item.title}}"
+                      bindtap="openVerify"
+                    >
+                      核销收款
+                    </button>
+                  </view>
+                </view>
               </view>
-              <view class="col right">
-                <view class="item-amt plus">+ ¥{{item.total}}</view>
-              </view>
+            </block>
+
+            <view wx:if="{{pendingItems.length===0}}" class="empty-ok card">
+              <view class="ok-ico">✓</view>
+              <view class="ok-big">太棒了 当前没有任何拖欠账款</view>
+              <view class="muted ok-sub">继续保持</view>
             </view>
           </view>
         </block>
 
-        <view wx:if="{{paidFlows.length===0}}" class="muted">暂无已收流水</view>
+        <block wx:if="{{billFilter==='paid'}}">
+          <view class="col gap-16">
+            <block wx:for="{{paidFlows}}" wx:key="id">
+              <view class="card item press">
+                <view class="row between center item-top">
+                  <view class="row center gap-12">
+                    <view class="item-room">{{item.roomNo}}</view>
+                    <view class="item-tenant muted">{{item.tenant || ''}}</view>
+                  </view>
+                  <view class="item-tag tag tag-success">已入账</view>
+                </view>
+
+                <view class="row between end mt-14">
+                  <view class="col">
+                    <view class="item-title">{{item.month}}</view>
+                    <view class="item-date muted mono">{{item.payDate}} 支付</view>
+                  </view>
+                  <view class="col right">
+                    <view class="item-amt plus mono">+ ¥{{item.total}}</view>
+                  </view>
+                </view>
+              </view>
+            </block>
+
+            <view wx:if="{{paidFlows.length===0}}" class="empty-muted">暂无已收流水</view>
+          </view>
+        </block>
       </view>
-    </block>
+    </view>
   </view>
 </view>
 
