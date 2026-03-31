@@ -137,7 +137,7 @@
             <block wx:for="{{item.floors}}" wx:key="floor">
               <view class="floor-row">
                 <view class="floor-label">
-                  <view class="floor-f">F {{item.floor}}</view>
+                  <view class="floor-f">F{{item.floor}}</view>
                   <view wx:if="{{editMode}}" class="floor-add">+房</view>
                   <view wx:if="{{editMode}}" class="floor-count">{{item._roomsCount}}间</view>
                 </view>

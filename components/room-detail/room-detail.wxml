@@ -63,11 +63,14 @@
           <view class="card pad rentCard">
             <view class="row between end">
               <view class="col">
-                <view class="rentTitle">房租管理</view>
-                <view class="muted rentSub">{{cycleText}} · 租金基准 ¥{{room.rent}}/月</view>
+                <view class="row center gap-12">
+                  <view class="secIco secIcoBlue">¥</view>
+                  <view class="rentTitle rentTitleBlue">房租管理</view>
+                </view>
+                <view class="muted rentSub">{{cycleText}} | 租金基准 ¥{{room.rent}}/月</view>
               </view>
               <view class="col right">
-                <view class="muted rentSub">收款进度 {{progressPct}}%</view>
+                <view class="muted rentSub">收款总进度 ({{progressPct}}%)</view>
                 <view class="mono rentPaid">已收 ¥{{paidSum}}</view>
               </view>
             </view>
@@ -83,12 +86,16 @@
                       <view class="termName">第{{item.term}}期房租</view>
                       <view class="tag {{item._tagClass}}">{{item._tagText}}</view>
                     </view>
-                    <view class="muted mono termRange">{{item.startDate}}-{{item.endDate}}</view>
+                    <view class="muted mono termRange">{{item.startDate}} - {{item.endDate}}</view>
                   </view>
+
                   <view class="row between end mt-12">
-                    <view class="mono termAmt">¥{{item.expectedAmount}}</view>
+                    <view class="col">
+                      <view class="termLab muted">应交:</view>
+                      <view class="mono termAmt">¥{{item.expectedAmount}}</view>
+                    </view>
                     <block wx:if="{{item._tagText==='已结清'}}">
-                      <view class="okText">实收 ¥{{item.paidAmount}}</view>
+                      <view class="okText">☑ 实收: ¥{{item.paidAmount}}</view>
                     </block>
                     <block wx:else>
                       <button class="btn btn-primary btn-sm" data-termid="{{item.id}}" data-amount="{{item._verifyAmount}}" bindtap="openVerifyTerm">
@@ -103,18 +110,21 @@
 
           <view class="card pad">
             <view class="row between center">
-              <view class="rentTitle">水电与杂费</view>
+              <view class="row center gap-12">
+                <view class="secIco secIcoOra">⚡</view>
+                <view class="rentTitle">水电与杂费</view>
+              </view>
               <view class="tag">{{room.utilsInc ? '全包模式' : '按表计费'}}</view>
             </view>
 
             <view wx:if="{{!room.utilsInc}}">
               <view class="row gap-20 mt-14">
                 <view class="col">
-                  <view class="muted tiny">上期水表底数</view>
+                  <view class="muted tiny"><text class="uIco">💧</text>上期水表底数</view>
                   <view class="mono val">{{room.lastWater}}</view>
                 </view>
                 <view class="col">
-                  <view class="muted tiny">上期电表底数</view>
+                  <view class="muted tiny"><text class="uIco">⚡</text>上期电表底数</view>
                   <view class="mono val">{{room.lastElectric}}</view>
                 </view>
               </view>
@@ -127,7 +137,7 @@
                 <view class="muted tiny mt-10">有未结清的水电杂费单，请前往“全局待收”核销。</view>
               </view>
 
-              <button class="btn btn-ghost mt-16" bindtap="openBillModal">抄水电并生成本期杂费单</button>
+              <button class="btn btn-ghost mt-16 utilsBtn" bindtap="openBillModal">+ 抄水电并生成本期杂费单</button>
             </view>
 
             <view wx:else class="muted tiny mt-16">该房间租金已包含水电物业，无需抄表。</view>

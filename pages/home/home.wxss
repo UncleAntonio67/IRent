@@ -353,7 +353,7 @@
 .mini-row {
   display: flex;
   flex-direction: row;
-  gap: 12rpx;
+  gap: 10rpx;
   align-items: center;
 }
 .mini-floor {
@@ -368,11 +368,11 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 10rpx;
+  gap: 8rpx;
 }
 .mini-cell {
-  width: 24rpx;
-  height: 32rpx;
+  width: 16rpx;
+  height: 24rpx;
   border-radius: 4rpx;
   border: 1rpx solid rgba(148, 163, 184, 0.18);
   transition: opacity 280ms ease, transform 280ms ease, filter 280ms ease;
@@ -455,19 +455,25 @@
 .floor-row {
   display: flex;
   flex-direction: row;
-  border-top: 1rpx solid rgba(148, 163, 184, 0.14);
+  border-top: 1rpx solid rgba(148, 163, 184, 0.10);
 }
 .floor-label {
-  width: 92rpx;
-  background: rgba(241, 245, 249, 0.7);
+  width: 104rpx;
+  background: rgba(248, 250, 252, 1);
   padding: 18rpx 14rpx;
   font-weight: 1000;
   color: rgba(100, 116, 139, 0.9);
+  border-right: 1rpx solid rgba(241, 245, 249, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .floor-f {
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 1200;
+  color: rgba(100, 116, 139, 0.92);
 }
 
 .floor-add {
@@ -486,10 +492,10 @@
 
 .rooms-grid {
   flex: 1;
-  padding: 18rpx;
+  padding: 18rpx 18rpx 20rpx;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14rpx;
+  gap: 16rpx;
   background: #fff;
 }
 
@@ -497,11 +503,15 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+.rooms-grid-edit .room {
+  min-height: 156rpx;
+}
+
 .room {
   border-radius: 18rpx;
   border: 1rpx solid rgba(148, 163, 184, 0.30);
-  padding: 14rpx 14rpx 12rpx;
-  min-height: 168rpx;
+  padding: 16rpx 16rpx 14rpx;
+  min-height: 142rpx;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -520,7 +530,7 @@
 }
 
 .room-no {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 1000;
   letter-spacing: -0.02em;
 }
@@ -544,8 +554,8 @@
 }
 
 .rent-line {
-  font-size: 22rpx;
-  font-weight: 800;
+  font-size: 20rpx;
+  font-weight: 900;
   color: rgba(100, 116, 139, 0.75);
 }
 
@@ -566,9 +576,10 @@
 }
 
 .r-dot {
-  width: 14rpx;
-  height: 14rpx;
+  width: 12rpx;
+  height: 12rpx;
   border-radius: 999rpx;
+  margin-top: 6rpx;
 }
 .r-dot-empty {
   background: rgba(148, 163, 184, 0.55);
@@ -623,7 +634,7 @@
 
 .status-empty {
   background: #fff;
-  border-color: rgba(148, 163, 184, 0.28);
+  border-color: rgba(148, 163, 184, 0.30);
   border-style: dashed;
 }
 .status-rented {
@@ -631,12 +642,12 @@
   border-color: rgba(241, 245, 249, 1);
 }
 .status-due_soon {
-  background: rgba(255, 251, 235, 0.35);
-  border-color: rgba(251, 191, 36, 0.45);
+  background: #fff;
+  border-color: rgba(251, 191, 36, 0.60);
 }
 .status-overdue {
-  background: rgba(255, 241, 242, 0.40);
-  border-color: rgba(244, 63, 94, 0.38);
+  background: #fff;
+  border-color: rgba(244, 63, 94, 0.50);
 }
 
 .status-edit {
