@@ -3,6 +3,14 @@
   margin: 0 auto;
 }
 
+.gap-8 {
+  gap: 8rpx;
+}
+
+.gap-10 {
+  gap: 10rpx;
+}
+
 .pad {
   padding: 20rpx 18rpx 22rpx;
 }
@@ -25,10 +33,10 @@
 .edit-banner {
   position: absolute;
   top: env(safe-area-inset-top);
-  left: 18rpx;
-  right: 18rpx;
+  left: 0;
+  right: 0;
   height: 64rpx;
-  border-radius: 16rpx;
+  border-radius: 0;
   background: rgba(251, 191, 36, 0.96);
   color: rgba(255, 255, 255, 0.98);
   font-weight: 1100;
@@ -37,6 +45,13 @@
   align-items: center;
   justify-content: center;
   letter-spacing: 0.02em;
+  gap: 10rpx;
+}
+
+.edit-gear {
+  font-size: 26rpx;
+  line-height: 1;
+  opacity: 0.95;
 }
 
 .building {
@@ -45,12 +60,39 @@
   border-radius: 18rpx;
   background: rgba(37, 99, 235, 0.10);
   border: 1rpx solid rgba(37, 99, 235, 0.16);
-  color: rgba(37, 99, 235, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 1200;
-  font-size: 26rpx;
+}
+
+.bldg {
+  width: 30rpx;
+  height: 30rpx;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 6rpx;
+}
+
+.bldg-win {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 2rpx;
+  background: rgba(37, 99, 235, 0.92);
+  box-shadow: inset 0 1rpx 1rpx rgba(255, 255, 255, 0.35);
+}
+
+.bldg-sm {
+  width: 42rpx;
+  height: 42rpx;
+  gap: 7rpx;
+}
+
+.bldg-sm .bldg-win {
+  width: 11rpx;
+  height: 11rpx;
+  border-radius: 3rpx;
 }
 
 .brand {
@@ -67,6 +109,16 @@
   font-weight: 1100;
   background: rgba(148, 163, 184, 0.16);
   color: rgba(100, 116, 139, 0.95);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.mode-gear {
+  font-size: 22rpx;
+  line-height: 1;
+  opacity: 0.7;
 }
 
 .mode-on {
@@ -195,13 +247,26 @@
 }
 
 .crumb {
-  padding: 12rpx 18rpx;
+  padding: 16rpx 18rpx;
   border-bottom: 1rpx solid rgba(148, 163, 184, 0.18);
   background: rgba(248, 250, 252, 0.92);
   backdrop-filter: blur(16rpx);
   position: sticky;
   top: calc(160rpx + env(safe-area-inset-top));
   z-index: 28;
+}
+
+.crumb-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.crumb-arrow {
+  font-size: 28rpx;
+  font-weight: 1200;
+  color: var(--primary);
+  line-height: 1;
 }
 
 .link {
@@ -212,6 +277,18 @@
 
 .main {
   min-height: 100vh;
+}
+
+.prop-scroll {
+  width: 100%;
+}
+
+.prop-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12rpx;
+  align-items: center;
+  padding-bottom: 2rpx;
 }
 
 .prop {
@@ -235,6 +312,8 @@
 
 .block-card {
   border-radius: 22rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+  border-color: rgba(148, 163, 184, 0.22);
 }
 
 .block-head {
@@ -249,11 +328,9 @@
   border-radius: 18rpx;
   background: rgba(37, 99, 235, 0.08);
   border: 1rpx solid rgba(37, 99, 235, 0.14);
-  color: rgba(37, 99, 235, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 1200;
 }
 
 .sep {
@@ -262,7 +339,7 @@
 }
 
 .chev {
-  font-size: 50rpx;
+  font-size: 44rpx;
   color: rgba(148, 163, 184, 0.7);
   font-weight: 900;
   line-height: 1;
@@ -280,8 +357,8 @@
   align-items: center;
 }
 .mini-floor {
-  width: 56rpx;
-  text-align: right;
+  width: 52rpx;
+  text-align: left;
   font-size: 20rpx;
   font-weight: 1000;
   color: rgba(100, 116, 139, 0.8);
@@ -294,8 +371,8 @@
   gap: 10rpx;
 }
 .mini-cell {
-  width: 24rpx;
-  height: 32rpx;
+  width: 22rpx;
+  height: 22rpx;
   border-radius: 4rpx;
   border: 1rpx solid rgba(148, 163, 184, 0.18);
   transition: opacity 280ms ease, transform 280ms ease, filter 280ms ease;
@@ -324,6 +401,8 @@
 .block-wrap {
   overflow: hidden;
   border-radius: 22rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+  border-color: rgba(148, 163, 184, 0.18);
 }
 
 .block-add {
@@ -332,21 +411,40 @@
 }
 
 .block-title {
-  background: rgba(241, 245, 249, 0.7);
-  padding: 16rpx 18rpx;
-  font-weight: 1000;
-  border-bottom: 1rpx solid rgba(148, 163, 184, 0.18);
+  background: transparent;
+  padding: 28rpx 18rpx 10rpx;
+  font-weight: 1200;
+  font-size: 34rpx;
+  text-align: center;
+  letter-spacing: -0.01em;
 }
 
 .add-line {
   margin: 18rpx;
-  padding: 18rpx;
+  padding: 22rpx 18rpx;
   border-radius: 18rpx;
   border: 2rpx dashed rgba(37, 99, 235, 0.35);
   color: var(--primary);
   font-weight: 1000;
-  text-align: center;
   background: rgba(37, 99, 235, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+}
+
+.add-plus {
+  font-size: 44rpx;
+  font-weight: 1200;
+  line-height: 1;
+  color: rgba(37, 99, 235, 0.95);
+}
+
+.add-text {
+  font-size: 26rpx;
+  font-weight: 1000;
+  color: rgba(37, 99, 235, 0.95);
 }
 
 .floors {
@@ -390,16 +488,20 @@
   flex: 1;
   padding: 18rpx;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 14rpx;
   background: #fff;
+}
+
+.rooms-grid-edit {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .room {
   border-radius: 18rpx;
   border: 1rpx solid rgba(148, 163, 184, 0.30);
   padding: 14rpx 14rpx 12rpx;
-  min-height: 188rpx;
+  min-height: 168rpx;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -421,8 +523,6 @@
   font-size: 30rpx;
   font-weight: 1000;
   letter-spacing: -0.02em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
 }
 
 .t-slate {
@@ -443,12 +543,22 @@
   font-weight: 900;
 }
 
+.rent-line {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: rgba(100, 116, 139, 0.75);
+}
+
 .tenant {
   opacity: 0.92;
 }
 
 .mt-6 {
   margin-top: 6rpx;
+}
+
+.mt-10 {
+  margin-top: 10rpx;
 }
 
 .danger-text {
@@ -512,8 +622,8 @@
 }
 
 .status-empty {
-  background: rgba(241, 245, 249, 0.55);
-  border-color: rgba(226, 232, 240, 1);
+  background: #fff;
+  border-color: rgba(148, 163, 184, 0.28);
   border-style: dashed;
 }
 .status-rented {
@@ -521,12 +631,12 @@
   border-color: rgba(241, 245, 249, 1);
 }
 .status-due_soon {
-  background: rgba(255, 251, 235, 0.55);
-  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(255, 251, 235, 0.35);
+  border-color: rgba(251, 191, 36, 0.45);
 }
 .status-overdue {
-  background: rgba(255, 241, 242, 0.55);
-  border-color: rgba(244, 63, 94, 0.30);
+  background: rgba(255, 241, 242, 0.40);
+  border-color: rgba(244, 63, 94, 0.38);
 }
 
 .status-edit {

@@ -2,16 +2,29 @@
   <view class="wrap">
     <!-- App Bar (glass) -->
     <view class="appbar glass">
-      <view wx:if="{{editMode}}" class="edit-banner">结构建设模式开启中</view>
+      <view wx:if="{{editMode}}" class="edit-banner">
+        <text class="edit-gear">⚙</text>
+        结构建设模式开启中
+      </view>
 
       <view class="appbar-inner {{editMode ? 'appbar-edit' : ''}}">
         <view class="row between center">
           <view class="row center gap-12">
-            <view class="building">楼</view>
+            <view class="building">
+              <view class="bldg">
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+                <view class="bldg-win"></view>
+              </view>
+            </view>
             <view class="brand">租管家</view>
           </view>
           <button class="mode-btn {{editMode ? 'mode-on' : ''}}" bindtap="toggleEditMode">
-            {{editMode ? '完成建设' : '结构管理'}}
+            <block wx:if="{{editMode}}">完成建设</block>
+            <block wx:else><text class="mode-gear">⚙</text> 结构管理</block>
           </button>
         </view>
 
@@ -38,8 +51,11 @@
     </view>
 
   <!-- Breadcrumb when in block detail -->
-  <view wx:if="{{!editMode && activeBlockId}}" class="crumb row center gap-12">
-    <view class="link" bindtap="backToOverview">全局概览</view>
+  <view wx:if="{{!editMode && activeBlockId}}" class="crumb row center gap-10">
+    <view class="crumb-link row center gap-8" bindtap="backToOverview">
+      <view class="crumb-arrow">←</view>
+      <view class="link">全局概览</view>
+    </view>
     <view class="muted">/</view>
     <view class="subtitle">{{activeBlockName}}</view>
   </view>
@@ -48,18 +64,20 @@
   <view class="main pad safe-bottom">
     <!-- Property selector -->
     <view wx:if="{{!activeBlockId || editMode}}" class="row gap-12">
-      <scroll-view scroll-x class="row gap-12">
-        <block wx:for="{{properties}}" wx:key="id">
-          <view
-            class="prop {{activePropertyId===item.id ? 'prop-on' : ''}} press"
-            data-id="{{item.id}}"
-            bindtap="setActiveProperty"
-          >
-            {{item.name}}
-          </view>
-        </block>
+      <scroll-view scroll-x enhanced class="prop-scroll" show-scrollbar="{{false}}">
+        <view class="prop-row">
+          <block wx:for="{{properties}}" wx:key="id">
+            <view
+              class="prop {{activePropertyId===item.id ? 'prop-on' : ''}} press"
+              data-id="{{item.id}}"
+              bindtap="setActiveProperty"
+            >
+              {{item.name}}
+            </view>
+          </block>
 
-        <view wx:if="{{editMode}}" class="prop prop-add" bindtap="openAddProperty">+ 新建院落</view>
+          <view wx:if="{{editMode}}" class="prop prop-add" bindtap="openAddProperty">+ 新建院落</view>
+        </view>
       </scroll-view>
     </view>
 
@@ -69,10 +87,19 @@
         <view class="card pad block-card press" data-id="{{item.id}}" bindtap="enterBlock">
           <view class="row between center block-head">
             <view class="row center gap-12">
-              <view class="blk-ico">楼</view>
+              <view class="blk-ico">
+                <view class="bldg bldg-sm">
+                  <view class="bldg-win"></view>
+                  <view class="bldg-win"></view>
+                  <view class="bldg-win"></view>
+                  <view class="bldg-win"></view>
+                  <view class="bldg-win"></view>
+                  <view class="bldg-win"></view>
+                </view>
+              </view>
               <view class="col">
                 <view class="subtitle">{{item.name}}</view>
-                <view class="muted">共 {{item._rooms}} 间 <text class="sep">|</text> 空置 {{item._empty}}</view>
+                <view class="muted">共{{item._rooms}}间 <text class="sep">|</text> 空置{{item._empty}}</view>
               </view>
             </view>
             <view class="chev">›</view>
@@ -102,7 +129,8 @@
 
           <view wx:if="{{item.floors.length===0}}" class="empty">暂无楼层</view>
           <view wx:if="{{editMode}}" class="add-line" data-blockid="{{item.id}}" bindtap="openAddFloor">
-            + 加盖新楼层
+            <view class="add-plus">+</view>
+            <view class="add-text">加盖新楼层</view>
           </view>
 
           <view class="floors">
@@ -114,7 +142,7 @@
                   <view wx:if="{{editMode}}" class="floor-count">{{item._roomsCount}}间</view>
                 </view>
 
-                <view class="rooms-grid">
+                <view class="rooms-grid {{editMode ? 'rooms-grid-edit' : ''}}">
                   <block wx:for="{{item.rooms}}" wx:key="id">
                     <view
                       class="room {{item._cardClass}} {{item._dim ? 'fade-dim' : ''}} press"
@@ -132,7 +160,7 @@
                         <view wx:else class="col">
                           <view class="tiny tenant {{item._titleClass}}">{{item.tenant}}</view>
                           <view wx:if="{{item._status==='overdue'}}" class="tiny danger-text mt-6">逾期未付</view>
-                          <view wx:else class="muted tiny mt-6 mono">¥{{item.rent}}/期</view>
+                          <view wx:else class="rent-line mt-6 mono">¥{{item.rent}}/月</view>
                         </view>
                       </view>
                     </view>
