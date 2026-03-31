@@ -107,6 +107,31 @@
   flex: 0 0 auto;
 }
 
+.type-overdue {
+  background: rgba(254, 226, 226, 0.70);
+  color: rgba(225, 29, 72, 1);
+}
+
+.type-due {
+  background: rgba(254, 243, 199, 0.72);
+  color: rgba(217, 119, 6, 1);
+}
+
+.type-rented {
+  background: rgba(209, 250, 229, 0.72);
+  color: rgba(5, 150, 105, 1);
+}
+
+.type-empty {
+  background: rgba(226, 232, 240, 0.75);
+  color: rgba(100, 116, 139, 1);
+}
+
+.type-all {
+  background: rgba(148, 163, 184, 0.16);
+  color: rgba(100, 116, 139, 0.95);
+}
+
 .f-dot {
   width: 12rpx;
   height: 12rpx;
@@ -154,6 +179,19 @@
   background: rgba(100, 116, 139, 0.92);
   color: #fff;
   border-color: rgba(100, 116, 139, 0.12);
+}
+
+.f-on.overdue .f-dot-rose {
+  background: #fff;
+}
+.f-on.due .f-dot-amber {
+  background: #fff;
+}
+.f-on.rented .f-dot-grn {
+  background: #fff;
+}
+.f-on.empty .f-dot-slt {
+  background: #fff;
 }
 
 .crumb {
@@ -329,6 +367,25 @@
   color: rgba(100, 116, 139, 0.9);
 }
 
+.floor-f {
+  font-size: 24rpx;
+  font-weight: 1200;
+}
+
+.floor-add {
+  margin-top: 6rpx;
+  font-size: 18rpx;
+  font-weight: 1100;
+  color: rgba(37, 99, 235, 0.95);
+}
+
+.floor-count {
+  margin-top: 4rpx;
+  font-size: 18rpx;
+  font-weight: 1100;
+  color: rgba(37, 99, 235, 0.65);
+}
+
 .rooms-grid {
   flex: 1;
   padding: 18rpx;
@@ -366,6 +423,19 @@
   letter-spacing: -0.02em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
+}
+
+.t-slate {
+  color: rgba(100, 116, 139, 1);
+}
+.t-rose {
+  color: rgba(225, 29, 72, 1);
+}
+.t-amber {
+  color: rgba(217, 119, 6, 1);
+}
+.t-emerald {
+  color: rgba(5, 150, 105, 1);
 }
 
 .tiny {

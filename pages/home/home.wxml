@@ -18,17 +18,17 @@
         <view wx:if="{{!editMode}}" class="filters">
           <scroll-view scroll-x enhanced class="filters-scroll" show-scrollbar="{{false}}">
             <view class="filters-row">
-              <view class="f-pill {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
-              <view class="f-pill {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
+              <view class="f-pill type-all {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
+              <view class="f-pill type-overdue {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
                 <view class="f-dot f-dot-rose"></view> 欠费 {{stats.overdue}}
               </view>
-              <view class="f-pill {{filterStatus==='due_soon' ? 'f-on due' : ''}}" data-key="due_soon" bindtap="setFilter">
+              <view class="f-pill type-due {{filterStatus==='due_soon' ? 'f-on due' : ''}}" data-key="due_soon" bindtap="setFilter">
                 <view class="f-dot f-dot-amber"></view> 待收 {{stats.dueSoon}}
               </view>
-              <view class="f-pill {{filterStatus==='rented' ? 'f-on rented' : ''}}" data-key="rented" bindtap="setFilter">
+              <view class="f-pill type-rented {{filterStatus==='rented' ? 'f-on rented' : ''}}" data-key="rented" bindtap="setFilter">
                 <view class="f-dot f-dot-grn"></view> 已租
               </view>
-              <view class="f-pill {{filterStatus==='empty' ? 'f-on empty' : ''}}" data-key="empty" bindtap="setFilter">
+              <view class="f-pill type-empty {{filterStatus==='empty' ? 'f-on empty' : ''}}" data-key="empty" bindtap="setFilter">
                 <view class="f-dot f-dot-slt"></view> 空置
               </view>
             </view>
@@ -108,7 +108,11 @@
           <view class="floors">
             <block wx:for="{{item.floors}}" wx:key="floor">
               <view class="floor-row">
-                <view class="floor-label">F {{item.floor}}</view>
+                <view class="floor-label">
+                  <view class="floor-f">F {{item.floor}}</view>
+                  <view wx:if="{{editMode}}" class="floor-add">+房</view>
+                  <view wx:if="{{editMode}}" class="floor-count">{{item._roomsCount}}间</view>
+                </view>
 
                 <view class="rooms-grid">
                   <block wx:for="{{item.rooms}}" wx:key="id">
@@ -118,7 +122,7 @@
                       bindtap="onRoomTap"
                     >
                       <view class="row between center">
-                        <view class="room-no">{{item.roomNo}}</view>
+                        <view class="room-no {{item._titleClass}}">{{item.roomNo}}</view>
                         <view wx:if="{{!editMode}}" class="r-dot {{item._dotClass}}"></view>
                         <view wx:if="{{editMode}}" class="trash">✕</view>
                       </view>
@@ -126,9 +130,9 @@
                       <view wx:if="{{!editMode}}">
                         <view wx:if="{{item._status==='empty'}}" class="muted tiny mt-10">空置待租</view>
                         <view wx:else class="col">
-                          <view class="tiny tenant">{{item.tenant}}</view>
-                          <view wx:if="{{item._status==='overdue'}}" class="tiny danger-text mt-6">欠费待收</view>
-                          <view wx:else class="muted tiny mt-6">¥{{item.rent}}/期</view>
+                          <view class="tiny tenant {{item._titleClass}}">{{item.tenant}}</view>
+                          <view wx:if="{{item._status==='overdue'}}" class="tiny danger-text mt-6">逾期未付</view>
+                          <view wx:else class="muted tiny mt-6 mono">¥{{item.rent}}/期</view>
                         </view>
                       </view>
                     </view>

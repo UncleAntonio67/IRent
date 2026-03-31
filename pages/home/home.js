@@ -23,6 +23,13 @@ function dotClass(s) {
   return `r-dot-${s}`;
 }
 
+function titleClass(s) {
+  if (s === "overdue") return "t-rose";
+  if (s === "due_soon") return "t-amber";
+  if (s === "rented") return "t-emerald";
+  return "t-slate";
+}
+
 function buildVM(state, { filterStatus, activePropertyId, activeBlockId, editMode }) {
   const now = new Date();
   const properties = (state.properties || []).map((p) => ({
@@ -31,6 +38,7 @@ function buildVM(state, { filterStatus, activePropertyId, activeBlockId, editMod
       ...b,
       floors: (b.floors || []).slice().sort((a, c) => Number(c.floor) - Number(a.floor)).map((f) => ({
         ...f,
+        _roomsCount: (f.rooms || []).length,
         rooms: (f.rooms || []).map((r) => {
           const s = computeRoomStatus(r, now);
           const ok = matchesFilter(filterStatus, s);
@@ -42,6 +50,8 @@ function buildVM(state, { filterStatus, activePropertyId, activeBlockId, editMod
             _miniDim: !ok,
             _cardClass: editMode ? "status-edit" : `status-${s}`,
             _dotClass: dotClass(s)
+            ,
+            _titleClass: titleClass(s)
           };
         })
       }))
