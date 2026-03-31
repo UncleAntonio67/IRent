@@ -38,10 +38,10 @@
                 </view>
               </view>
               <view class="row gap-12">
-                <button class="iconBtn" bindtap="noop">
+                <button class="iconBtn press" bindtap="noop">
                   <view class="iconBtnIn">⚙</view>
                 </button>
-                <button class="iconBtn iconBtnBlue" bindtap="callTenant">
+                <button class="iconBtn iconBtnBlue press" bindtap="callTenant">
                   <view class="iconBtnIn">☎</view>
                 </button>
               </view>
@@ -55,7 +55,7 @@
               <view class="muted">租期合约</view>
               <view class="val mono">{{room.lease}}</view>
             </view>
-            <button class="btn btn-ghost contractBtn mt-16" bindtap="openContract">
+            <button class="contractBtn press mt-16" bindtap="openContract">
               {{room.hasContract ? '查看合同附件' : '上传合同照片'}}
             </button>
           </view>
@@ -90,8 +90,8 @@
                   </view>
 
                   <view class="row between end mt-12">
-                    <view class="col">
-                      <view class="termLab muted">应交:</view>
+                    <view class="termExpect">
+                      <view class="termExpectLab muted">应交:</view>
                       <view class="mono termAmt">¥{{item.expectedAmount}}</view>
                     </view>
                     <block wx:if="{{item._tagText==='已结清'}}">
@@ -109,9 +109,9 @@
           </view>
 
           <view class="card pad">
-            <view class="row between center">
+              <view class="row between center">
               <view class="row center gap-12">
-                <view class="secIco secIcoOra">⚡</view>
+                <view class="secIco secIcoOra">℃</view>
                 <view class="rentTitle">水电与杂费</view>
               </view>
               <view class="tag">{{room.utilsInc ? '全包模式' : '按表计费'}}</view>

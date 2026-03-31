@@ -559,6 +559,15 @@
   color: rgba(100, 116, 139, 0.75);
 }
 
+.note {
+  font-size: 20rpx;
+  font-weight: 1000;
+}
+
+.note-danger {
+  font-weight: 1100;
+}
+
 .tenant {
   opacity: 0.92;
 }
@@ -579,7 +588,7 @@
   width: 12rpx;
   height: 12rpx;
   border-radius: 999rpx;
-  margin-top: 6rpx;
+  margin-top: 0;
 }
 .r-dot-empty {
   background: rgba(148, 163, 184, 0.55);
@@ -639,14 +648,14 @@
 }
 .status-rented {
   background: #fff;
-  border-color: rgba(241, 245, 249, 1);
+  border-color: rgba(226, 232, 240, 1);
 }
 .status-due_soon {
-  background: #fff;
+  background: rgba(255, 251, 235, 0.42);
   border-color: rgba(251, 191, 36, 0.60);
 }
 .status-overdue {
-  background: #fff;
+  background: rgba(255, 241, 242, 0.40);
   border-color: rgba(244, 63, 94, 0.50);
 }
 
