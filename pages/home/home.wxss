@@ -357,8 +357,8 @@
   align-items: center;
 }
 .mini-floor {
-  width: 52rpx;
-  text-align: left;
+  width: 56rpx;
+  text-align: right;
   font-size: 20rpx;
   font-weight: 1000;
   color: rgba(100, 116, 139, 0.8);
@@ -371,8 +371,8 @@
   gap: 10rpx;
 }
 .mini-cell {
-  width: 22rpx;
-  height: 22rpx;
+  width: 24rpx;
+  height: 32rpx;
   border-radius: 4rpx;
   border: 1rpx solid rgba(148, 163, 184, 0.18);
   transition: opacity 280ms ease, transform 280ms ease, filter 280ms ease;

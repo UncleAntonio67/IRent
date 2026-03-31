@@ -160,7 +160,7 @@
                         <view wx:else class="col">
                           <view class="tiny tenant {{item._titleClass}}">{{item.tenant}}</view>
                           <view wx:if="{{item._status==='overdue'}}" class="tiny danger-text mt-6">逾期未付</view>
-                          <view wx:else class="rent-line mt-6 mono">¥{{item.rent}}/月</view>
+                          <view wx:else class="rent-line mt-6 mono">¥{{item.rent}}/期</view>
                         </view>
                       </view>
                     </view>

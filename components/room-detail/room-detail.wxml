@@ -38,10 +38,12 @@
                 </view>
               </view>
               <view class="row gap-12">
-                <button class="btn btn-ghost btn-sm" bindtap="openContract">
-                  {{room.hasContract ? '查看合同' : '上传合同'}}
+                <button class="iconBtn" bindtap="noop">
+                  <view class="iconBtnIn">⚙</view>
                 </button>
-                <button class="btn btn-ghost btn-sm" bindtap="callTenant">拨打</button>
+                <button class="iconBtn iconBtnBlue" bindtap="callTenant">
+                  <view class="iconBtnIn">☎</view>
+                </button>
               </view>
             </view>
             <view class="hr mt-16"></view>
@@ -53,6 +55,9 @@
               <view class="muted">租期合约</view>
               <view class="val mono">{{room.lease}}</view>
             </view>
+            <button class="btn btn-ghost contractBtn mt-16" bindtap="openContract">
+              {{room.hasContract ? '查看合同附件' : '上传合同照片'}}
+            </button>
           </view>
 
           <view class="card pad rentCard">

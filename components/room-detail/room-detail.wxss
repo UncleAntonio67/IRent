@@ -56,6 +56,45 @@
   color: rgba(100, 116, 139, 0.95);
 }
 
+.iconBtn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 999rpx;
+  background: rgba(148, 163, 184, 0.14);
+  border: 1rpx solid rgba(148, 163, 184, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.iconBtnBlue {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.14);
+}
+
+.iconBtnIn {
+  font-size: 28rpx;
+  font-weight: 1100;
+  color: rgba(100, 116, 139, 0.95);
+  line-height: 1;
+}
+
+.iconBtnBlue .iconBtnIn {
+  color: rgba(37, 99, 235, 1);
+}
+
+.contractBtn {
+  width: 100%;
+  padding: 16rpx 18rpx;
+  border-radius: 16rpx;
+  font-size: 22rpx;
+  font-weight: 1100;
+  background: rgba(148, 163, 184, 0.10);
+  border: 1rpx solid rgba(148, 163, 184, 0.18);
+  color: rgba(51, 65, 85, 0.92);
+}
+
 .tabs {
   margin-top: 14rpx;
   background: rgba(148, 163, 184, 0.16);
@@ -646,4 +685,3 @@
   font-weight: 1200;
   color: rgba(37, 99, 235, 1);
 }
-
