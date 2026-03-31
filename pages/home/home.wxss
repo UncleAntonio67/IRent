@@ -79,6 +79,19 @@
   margin-top: 16rpx;
 }
 
+.filters-scroll {
+  width: 100%;
+}
+
+.filters-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12rpx;
+  align-items: center;
+  /* ensure horizontal layout inside scroll-view */
+  padding-bottom: 2rpx;
+}
+
 .f-pill {
   display: flex;
   flex-direction: row;
@@ -91,6 +104,7 @@
   background: rgba(148, 163, 184, 0.16);
   color: rgba(100, 116, 139, 0.95);
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .f-dot {

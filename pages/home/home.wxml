@@ -16,19 +16,21 @@
         </view>
 
         <view wx:if="{{!editMode}}" class="filters">
-          <scroll-view scroll-x class="row gap-12">
-            <view class="f-pill {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
-            <view class="f-pill {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
-              <view class="f-dot f-dot-rose"></view> 欠费 {{stats.overdue}}
-            </view>
-            <view class="f-pill {{filterStatus==='due_soon' ? 'f-on due' : ''}}" data-key="due_soon" bindtap="setFilter">
-              <view class="f-dot f-dot-amber"></view> 待收 {{stats.dueSoon}}
-            </view>
-            <view class="f-pill {{filterStatus==='rented' ? 'f-on rented' : ''}}" data-key="rented" bindtap="setFilter">
-              <view class="f-dot f-dot-grn"></view> 已租
-            </view>
-            <view class="f-pill {{filterStatus==='empty' ? 'f-on empty' : ''}}" data-key="empty" bindtap="setFilter">
-              <view class="f-dot f-dot-slt"></view> 空置
+          <scroll-view scroll-x enhanced class="filters-scroll" show-scrollbar="{{false}}">
+            <view class="filters-row">
+              <view class="f-pill {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
+              <view class="f-pill {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
+                <view class="f-dot f-dot-rose"></view> 欠费 {{stats.overdue}}
+              </view>
+              <view class="f-pill {{filterStatus==='due_soon' ? 'f-on due' : ''}}" data-key="due_soon" bindtap="setFilter">
+                <view class="f-dot f-dot-amber"></view> 待收 {{stats.dueSoon}}
+              </view>
+              <view class="f-pill {{filterStatus==='rented' ? 'f-on rented' : ''}}" data-key="rented" bindtap="setFilter">
+                <view class="f-dot f-dot-grn"></view> 已租
+              </view>
+              <view class="f-pill {{filterStatus==='empty' ? 'f-on empty' : ''}}" data-key="empty" bindtap="setFilter">
+                <view class="f-dot f-dot-slt"></view> 空置
+              </view>
             </view>
           </scroll-view>
         </view>
