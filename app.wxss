@@ -1,27 +1,32 @@
 page {
-  background: #f8fafc;
-  color: #1e293b;
+  background: #f3f6ff;
+  color: #0f172a;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
     "Helvetica Neue", Arial, "Noto Sans CJK SC", sans-serif;
 
   /* Brand + status colors */
   --primary: #2563eb;
+  --primary-ink: #1d4ed8;
+  --ink: rgba(15, 23, 42, 0.92);
+  --muted-ink: rgba(100, 116, 139, 0.92);
   --success: #10b981;
   --success-bg: #ecfdf5;
   --danger: #f43f5e;
   --danger-bg: #fff1f2;
   --warn: #fbbf24;
   --warn-bg: #fffbeb;
-  --text: #1e293b;
+  --text: #0f172a;
   --muted: #94a3b8;
-  --panel: #ffffff;
+  --panel: rgba(255, 255, 255, 0.94);
+  --panel-2: rgba(255, 255, 255, 0.78);
   /* Match prototype: subtle border + very soft shadow */
-  --border: rgba(241, 245, 249, 1);
-  --shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+  --border: rgba(226, 232, 240, 1);
+  --shadow: 0 18rpx 60rpx rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 8rpx 26rpx rgba(15, 23, 42, 0.06);
 
-  --r-xl: 18rpx;
-  --r-lg: 14rpx;
-  --r-md: 12rpx;
+  --r-xl: 26rpx;
+  --r-lg: 18rpx;
+  --r-md: 14rpx;
 }
 
 .safe-bottom {
@@ -40,12 +45,13 @@ page {
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.82);
-  border: 1rpx solid rgba(226, 232, 240, 0.65);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1rpx solid rgba(226, 232, 240, 0.75);
+  backdrop-filter: blur(18rpx);
 }
 
 .shadow-soft {
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
 }
 
 .anim-fade-in {
@@ -103,13 +109,18 @@ page {
 
 .screen {
   min-height: 100vh;
+  /* New look: subtle brand glow + clean paper base */
+  background:
+    radial-gradient(1100rpx 700rpx at 10% -10%, rgba(37, 99, 235, 0.18), rgba(37, 99, 235, 0) 62%),
+    radial-gradient(900rpx 600rpx at 110% 0%, rgba(16, 185, 129, 0.10), rgba(16, 185, 129, 0) 55%),
+    linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(241, 245, 249, 1));
 }
 
 .card {
   background: var(--panel);
-  border: 1rpx solid var(--border);
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
 }
 
 .pad {
@@ -189,12 +200,14 @@ page {
 .btn-primary {
   background: var(--primary);
   color: #fff;
+  box-shadow: 0 16rpx 40rpx rgba(37, 99, 235, 0.22);
 }
 
 .btn-ghost {
-  background: rgba(37, 99, 235, 0.08);
-  color: var(--primary);
-  border: 1rpx solid rgba(37, 99, 235, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--primary-ink);
+  border: 1rpx solid rgba(226, 232, 240, 1);
+  box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.06);
 }
 
 .btn-danger {
