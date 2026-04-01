@@ -95,7 +95,8 @@
       <view class="mt-16">
         <button class="btn btn-ghost logout press" bindtap="logout">安全退出登录</button>
       </view>
+
+      <view wx:if="{{buildStamp}}" class="buildStamp">{{buildStamp}}</view>
     </view>
   </view>
 </view>
-

@@ -6,6 +6,7 @@ Page({
     landlord: { name: "", phone: "" },
     landlordName: "",
     avatarText: "李",
+    buildStamp: "",
     stats: {
       totalRooms: 0,
       rented: 0,
@@ -44,10 +45,15 @@ Page({
     const landlordName = (state.landlord && state.landlord.name) || "李房东";
     const avatarText = landlordName ? landlordName.slice(0, 1) : "李";
 
+    const app = getApp();
+    const b = (app && app.globalData && app.globalData.build) || null;
+    const buildStamp = b && b.id ? `v${b.id} ${b.at || ""}`.trim() : "";
+
     this.setData({
       landlord: state.landlord || { name: "", phone: "" },
       landlordName,
       avatarText,
+      buildStamp,
       stats: { totalRooms, rented, empty, overdue, pendingAmount, yearTotal, propertyCount }
     });
   },

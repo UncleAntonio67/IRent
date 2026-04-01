@@ -1,10 +1,18 @@
 const storage = require("./utils/storage");
 const mock = require("./utils/mock");
 
+// Used to confirm the running code matches the latest git push.
+// Keep subtle in UI (e.g. Profile footer) and remove once rollout is stable.
+const BUILD_INFO = {
+  id: "76fbf17",
+  at: "2026-04-01 14:37"
+};
+
 App({
   globalData: {
     // Single source of truth; pages derive view models on demand.
-    state: null
+    state: null,
+    build: BUILD_INFO
   },
 
   onLaunch() {
@@ -22,4 +30,3 @@ App({
     storage.safeSet("rent_manager_state_v1", this.globalData.state);
   }
 });
-
