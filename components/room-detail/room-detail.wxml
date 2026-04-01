@@ -114,18 +114,25 @@
                 <view class="secIco secIcoOra">℃</view>
                 <view class="rentTitle">水电与杂费</view>
               </view>
-              <view class="tag">{{room.utilsInc ? '全包模式' : '按表计费'}}</view>
+              <view class="modePill">{{room.utilsInc ? '全包模式' : '按表计费'}}</view>
             </view>
 
             <view wx:if="{{!room.utilsInc}}">
-              <view class="row gap-20 mt-14">
-                <view class="col">
-                  <view class="muted tiny"><text class="uIco">💧</text>上期水表底数</view>
-                  <view class="mono val">{{room.lastWater}}</view>
+              <view class="uStats mt-14">
+                <view class="uCol">
+                  <view class="uLab muted">
+                    <text class="uIcon uIconWater">💧</text>
+                    上期水表底数
+                  </view>
+                  <view class="mono uVal">{{room.lastWater}}</view>
                 </view>
-                <view class="col">
-                  <view class="muted tiny"><text class="uIco">⚡</text>上期电表底数</view>
-                  <view class="mono val">{{room.lastElectric}}</view>
+                <view class="uDiv"></view>
+                <view class="uCol">
+                  <view class="uLab muted">
+                    <text class="uIcon uIconElec">⚡</text>
+                    上期电表底数
+                  </view>
+                  <view class="mono uVal">{{room.lastElectric}}</view>
                 </view>
               </view>
 

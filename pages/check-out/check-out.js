@@ -16,6 +16,10 @@ Page({
     this.setData({ roomId }, () => this.refresh());
   },
 
+  goBack() {
+    wx.navigateBack({ delta: 1 });
+  },
+
   refresh() {
     const state = store.getAppState();
     const hit = store.findRoomById(state, this.data.roomId);
@@ -53,4 +57,3 @@ Page({
     });
   }
 });
-

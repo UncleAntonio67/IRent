@@ -58,6 +58,10 @@ Page({
     );
   },
 
+  goBack() {
+    wx.navigateBack({ delta: 1 });
+  },
+
   recalc() {
     const state = store.getAppState();
     const hit = store.findRoomById(state, this.data.roomId);

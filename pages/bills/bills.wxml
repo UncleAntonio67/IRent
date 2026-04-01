@@ -25,7 +25,15 @@
       <view class="row between center">
         <view class="page-h2">年度报表追踪</view>
         <view class="year-pill row center gap-8">
-          <view class="cal-ico">📅</view>
+          <view class="calIco">
+            <view class="calTop"></view>
+            <view class="calGrid">
+              <view class="calCell"></view>
+              <view class="calCell"></view>
+              <view class="calCell"></view>
+              <view class="calCell"></view>
+            </view>
+          </view>
           <view>全年</view>
         </view>
       </view>
@@ -62,10 +70,12 @@
             data-tab="pending"
             bindtap="setBillFilter"
           >
-            🔴 待收账单
+            <view class="segDot segDotRose"></view>
+            待收账单
           </view>
           <view class="seg-btn {{billFilter==='paid' ? 'seg-on paid' : ''}}" data-tab="paid" bindtap="setBillFilter">
-            🟢 已收流水
+            <view class="segDot segDotGrn"></view>
+            已收流水
           </view>
         </view>
       </view>
@@ -155,4 +165,3 @@
   bind:cancel="closeVerify"
   bind:confirm="confirmVerify"
 />
-

@@ -81,6 +81,10 @@ Page({
     );
   },
 
+  goBack() {
+    wx.navigateBack({ delta: 1 });
+  },
+
   recalc() {
     const schedule = generateSchedule({
       startDate: ymdToDots(this.data.startDate),

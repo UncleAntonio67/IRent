@@ -1,39 +1,61 @@
-<view class="screen pad">
-  <view class="title">退租结算</view>
-  <view class="muted">清空租客信息并结束租约</view>
-
-  <view class="card pad mt-16">
-    <view class="subtitle">当前房间</view>
-    <view class="row between center mt-14">
-      <view class="muted">房号</view>
-      <view class="pick">{{roomNo}}</view>
+<view class="screen">
+  <view class="wrap">
+    <view class="appbar glass">
+      <view class="appbar-inner">
+        <view class="row between center">
+          <button class="navX press" bindtap="goBack">×</button>
+          <view class="navTitle">退租结算</view>
+          <view class="navPh"></view>
+        </view>
+      </view>
     </view>
-    <view class="row between center mt-14">
-      <view class="muted">租客</view>
-      <view class="pick">{{tenant || '-'}}</view>
-    </view>
-  </view>
 
-  <view class="card pad mt-16">
-    <view class="subtitle">待处理事项</view>
-    <view class="row between center mt-14">
-      <view class="muted">未核销租金期数</view>
-      <view class="money red">{{pendingTerms}} 期</view>
-    </view>
-    <view class="row between center mt-14">
-      <view class="muted">杂费挂账</view>
-      <view class="money red">¥{{utilsAmount}}</view>
-    </view>
-    <view class="muted mt-14">建议先在“账单”页完成核销后再退租。</view>
-  </view>
+    <scroll-view scroll-y class="main pad safe-b">
+      <view class="muted pageSub">清空租客信息并结算房屋相关款项</view>
 
-  <view class="card pad mt-16">
-    <view class="subtitle">退租备注</view>
-    <textarea class="ta mt-14" value="{{note}}" bindinput="onNote" placeholder="如：墙面修补扣款、钥匙交接等" />
-  </view>
+      <view class="card pad mt-16">
+        <view class="secHead">
+          <view class="secIco secIcoSlt">房</view>
+          <view class="subtitle">当前房间</view>
+        </view>
+        <view class="formRow mt-16">
+          <view class="formLab">房号</view>
+          <view class="pickBox mono">{{roomNo}}</view>
+        </view>
+        <view class="formRow mt-14">
+          <view class="formLab">租客</view>
+          <view class="pickBox mono">{{tenant || '-'}}</view>
+        </view>
+      </view>
 
-  <view class="footer mt-16">
-    <button class="btn btn-danger full" bindtap="submit">确认退租</button>
+      <view class="card pad mt-16">
+        <view class="secHead">
+          <view class="secIco secIcoRose">!</view>
+          <view class="subtitle">待处理事项</view>
+        </view>
+        <view class="formRow mt-16">
+          <view class="formLab">未结清租金期数</view>
+          <view class="mono bigDanger">{{pendingTerms}} 期</view>
+        </view>
+        <view class="formRow mt-14">
+          <view class="formLab">杂费挂账</view>
+          <view class="mono bigDanger">¥{{utilsAmount}}</view>
+        </view>
+        <view class="muted tiny mt-14">建议先在“对账流水”完成核销后再退租。</view>
+      </view>
+
+      <view class="card pad mt-16">
+        <view class="secHead">
+          <view class="secIco secIcoInd">备</view>
+          <view class="subtitle">退租备注</view>
+        </view>
+        <textarea class="ta mt-16" value="{{note}}" bindinput="onNote" placeholder="例如：墙面修补扣款、钥匙交接等" />
+      </view>
+    </scroll-view>
+
+    <view class="foot glass">
+      <button class="btn btn-danger full press" bindtap="submit">确认退租</button>
+    </view>
   </view>
 </view>
 

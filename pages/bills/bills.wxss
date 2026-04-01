@@ -97,10 +97,33 @@
   color: rgba(100, 116, 139, 0.9);
 }
 
-.cal-ico {
-  font-size: 22rpx;
-  opacity: 0.8;
-  line-height: 1;
+.calIco {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid rgba(148, 163, 184, 0.28);
+  background: rgba(241, 245, 249, 0.7);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.calTop {
+  height: 8rpx;
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.calGrid {
+  flex: 1;
+  padding: 5rpx;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rpx;
+}
+
+.calCell {
+  border-radius: 2rpx;
+  background: rgba(148, 163, 184, 0.35);
 }
 
 .dash {
@@ -209,6 +232,11 @@
   font-size: 22rpx;
   font-weight: 1000;
   color: rgba(100, 116, 139, 0.9);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  white-space: nowrap;
 }
 
 .seg-on {
@@ -221,6 +249,28 @@
 }
 .seg-on.paid {
   color: #059669;
+}
+
+.segDot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+}
+
+.segDotRose {
+  background: rgba(244, 63, 94, 1);
+}
+
+.segDotGrn {
+  background: rgba(16, 185, 129, 1);
+}
+
+.seg-on.pending .segDotRose {
+  background: rgba(225, 29, 72, 1);
+}
+
+.seg-on.paid .segDotGrn {
+  background: rgba(5, 150, 105, 1);
 }
 
 .receipt-ico {

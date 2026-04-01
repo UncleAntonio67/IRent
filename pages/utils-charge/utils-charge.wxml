@@ -1,58 +1,83 @@
-<view class="screen pad">
-  <view class="title">抄表算账</view>
-  <view class="muted">生成一笔杂费挂账账单</view>
-
-  <view class="card pad mt-16">
-    <view class="subtitle">上期底数</view>
-    <view class="row between center mt-14">
-      <view class="muted">水表</view>
-      <view class="pick">{{lastWater}}</view>
-    </view>
-    <view class="row between center mt-14">
-      <view class="muted">电表</view>
-      <view class="pick">{{lastElectric}}</view>
-    </view>
-  </view>
-
-  <view class="card pad mt-16">
-    <view class="subtitle">本期读数</view>
-    <view class="row between center mt-14">
-      <view class="muted">水表读数</view>
-      <input class="inp" type="number" value="{{currentWater}}" bindinput="onWater" />
-    </view>
-    <view class="row between center mt-14">
-      <view class="muted">电表读数</view>
-      <input class="inp" type="number" value="{{currentElectric}}" bindinput="onElectric" />
+<view class="screen">
+  <view class="wrap">
+    <view class="appbar glass">
+      <view class="appbar-inner">
+        <view class="row between center">
+          <button class="navX press" bindtap="goBack">×</button>
+          <view class="navTitle">抄表算账</view>
+          <view class="navPh"></view>
+        </view>
+      </view>
     </view>
 
-    <view class="row between center mt-14">
-      <view class="muted">拍照留底</view>
-      <button class="btn btn-ghost btn-sm" bindtap="pickPhoto">照片({{photoCount}})</button>
-    </view>
-  </view>
+    <scroll-view scroll-y class="main pad safe-b">
+      <view class="muted pageSub">录入本期读数并生成杂费挂账账单</view>
 
-  <view class="card pad mt-16">
-    <view class="subtitle">计算结果</view>
-    <view class="row between center mt-14">
-      <view class="muted">水费 ({{waterDelta}} × {{waterPrice}})</view>
-      <view class="money">¥{{waterAmount}}</view>
-    </view>
-    <view class="row between center mt-14">
-      <view class="muted">电费 ({{electricDelta}} × {{electricPrice}})</view>
-      <view class="money">¥{{electricAmount}}</view>
-    </view>
-    <view class="row between center mt-14">
-      <view class="muted">合计</view>
-      <view class="money red">¥{{total}}</view>
-    </view>
-    <view class="mt-14">
-      <view class="muted">账单文本(可复制发送租客)</view>
-      <view class="tpl mt-10">{{templateText}}</view>
-      <button class="btn btn-ghost btn-sm mt-14" bindtap="copyTemplate">复制账单文本</button>
-    </view>
-  </view>
+      <view class="card pad mt-16">
+        <view class="secHead">
+          <view class="secIco secIcoSlt">表</view>
+          <view class="subtitle">上期底数</view>
+        </view>
+        <view class="formRow mt-16">
+          <view class="formLab">水表</view>
+          <view class="pickBox mono">{{lastWater}}</view>
+        </view>
+        <view class="formRow mt-14">
+          <view class="formLab">电表</view>
+          <view class="pickBox mono">{{lastElectric}}</view>
+        </view>
+      </view>
 
-  <view class="footer mt-16">
-    <button class="btn btn-primary full" bindtap="submit">确认生成杂费单</button>
+      <view class="card pad mt-16">
+        <view class="secHead">
+          <view class="secIco secIcoBlue">入</view>
+          <view class="subtitle">本期读数</view>
+        </view>
+        <view class="formRow mt-16">
+          <view class="formLab">水表读数</view>
+          <input class="input mono" type="number" value="{{currentWater}}" bindinput="onWater" />
+        </view>
+        <view class="formRow mt-14">
+          <view class="formLab">电表读数</view>
+          <input class="input mono" type="number" value="{{currentElectric}}" bindinput="onElectric" />
+        </view>
+
+        <view class="formRow mt-14">
+          <view class="formLab">拍照留底</view>
+          <button class="btn btn-ghost btn-sm press" bindtap="pickPhoto">照片 ({{photoCount}})</button>
+        </view>
+      </view>
+
+      <view class="card pad mt-16">
+        <view class="secHead">
+          <view class="secIco secIcoOra">¥</view>
+          <view class="subtitle">计算结果</view>
+        </view>
+
+        <view class="calcRow mt-16">
+          <view class="muted calcLab">水费 ({{waterDelta}}度 × {{waterPrice}})</view>
+          <view class="mono calcVal">¥{{waterAmount}}</view>
+        </view>
+        <view class="calcRow mt-14">
+          <view class="muted calcLab">电费 ({{electricDelta}}度 × {{electricPrice}})</view>
+          <view class="mono calcVal">¥{{electricAmount}}</view>
+        </view>
+        <view class="calcRow mt-14">
+          <view class="muted calcLab">合计</view>
+          <view class="mono calcVal calcTotal">¥{{total}}</view>
+        </view>
+
+        <view class="mt-16">
+          <view class="muted tiny">账单文本 (可复制发给租客)</view>
+          <view class="tpl mt-14 mono">{{templateText}}</view>
+          <button class="btn btn-ghost btn-sm press mt-14" bindtap="copyTemplate">复制账单文本</button>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="foot glass">
+      <button class="btn btn-primary full press" bindtap="submit">确认生成杂费单</button>
+    </view>
   </view>
 </view>
+
