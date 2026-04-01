@@ -24,7 +24,8 @@
 }
 
 .appbar-inner {
-  padding: calc(96rpx + env(safe-area-inset-top)) 18rpx 12rpx;
+  /* Reduce top whitespace to match prototype screenshots. */
+  padding: calc(72rpx + env(safe-area-inset-top)) 18rpx 12rpx;
 }
 
 .building {

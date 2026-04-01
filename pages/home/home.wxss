@@ -23,11 +23,12 @@
 }
 
 .appbar-inner {
-  padding: calc(96rpx + env(safe-area-inset-top)) 18rpx 12rpx;
+  /* Reduce top whitespace to match prototype screenshots. */
+  padding: calc(72rpx + env(safe-area-inset-top)) 18rpx 12rpx;
 }
 
 .appbar-edit {
-  padding-top: calc(96rpx + env(safe-area-inset-top) + 64rpx);
+  padding-top: calc(72rpx + env(safe-area-inset-top) + 64rpx);
 }
 
 .edit-banner {
@@ -253,7 +254,7 @@
   background: rgba(248, 250, 252, 0.92);
   backdrop-filter: blur(16rpx);
   position: sticky;
-  top: calc(160rpx + env(safe-area-inset-top));
+  top: calc(136rpx + env(safe-area-inset-top));
   z-index: 28;
 }
 
