@@ -15,7 +15,8 @@
 }
 
 .safe-b {
-  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
+  /* Fixed footer already exists on this page; keep scroll padding just above it. */
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
 }
 
 .appbar {
@@ -184,4 +185,3 @@
 .press:active {
   transform: scale(0.98);
 }
-

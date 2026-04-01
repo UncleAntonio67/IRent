@@ -25,7 +25,18 @@ page {
 }
 
 .safe-bottom {
-  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
+  /* Custom tabbar height is ~180rpx; keep a small extra buffer. */
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+}
+
+/* For pages/modals that have their own fixed bottom action bar. */
+.safe-foot {
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
+
+/* Minimal safe inset only (no tabbar/footer). */
+.safe-inset {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .glass {

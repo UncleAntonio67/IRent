@@ -17,7 +17,7 @@
       </view>
     </view>
 
-    <scroll-view scroll-y class="body safe-bottom">
+    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="body safe-inset">
       <block wx:if="{{roomTagStatus==='empty'}}">
         <view class="emptyWrap anim-slide-in-bottom">
           <view class="emptyIcon">空</view>
@@ -204,7 +204,7 @@
     <view class="fullTitle">{{room.tenant}} 合同归档</view>
     <view class="fullClose" bindtap="closeContract">×</view>
   </view>
-  <view class="fullBody safe-bottom">
+  <view class="fullBody safe-inset">
     <view wx:if="{{!room.hasContract}}" class="contractEmpty">
       <view class="contractIcon">合</view>
       <view class="muted">暂无电子合同档案</view>
@@ -223,7 +223,7 @@
     <view class="fullTitle">杂费单核对 · {{room.roomNo}}</view>
     <view class="fullClose gray" bindtap="closeBillModal">×</view>
   </view>
-  <scroll-view scroll-y class="fullBody pad safe-bottom">
+  <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="fullBody pad safe-foot">
     <view wx:if="{{room.utilsInc}}" class="card pad">
       <view class="subtitle">全包模式</view>
       <view class="muted mt-14">该房间无需生成杂费单。</view>
@@ -272,7 +272,7 @@
     <view class="fullClose gray" bindtap="closeCheckIn">×</view>
   </view>
 
-  <scroll-view scroll-y class="fullBody pad safe-bottom">
+  <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="fullBody pad safe-foot">
     <view class="card pad">
       <view class="stepTitle">租期与交租规则</view>
       <view class="row between center mt-14">
@@ -383,7 +383,7 @@
     <view class="fullTitle">办理退租 · {{room.roomNo}}</view>
     <view class="fullClose gray" bindtap="closeCheckOut">×</view>
   </view>
-  <scroll-view scroll-y class="fullBody pad safe-bottom">
+  <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="fullBody pad safe-foot">
     <view class="card pad">
       <view class="stepTitle danger">退房结算清单</view>
 

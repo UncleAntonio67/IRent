@@ -10,7 +10,7 @@
       </view>
     </view>
 
-    <scroll-view scroll-y class="main pad safe-b">
+    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="main pad safe-b">
       <view class="muted pageSub">填写租客信息并自动生成交租计划</view>
 
       <view class="card pad mt-16">
@@ -165,4 +165,3 @@
     </view>
   </view>
 </view>
-
