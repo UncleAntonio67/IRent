@@ -525,13 +525,14 @@
   flex: 1;
   padding: 16rpx 16rpx 18rpx;
   display: grid;
-  /* Prototype matrix is 3 columns; some floors may have only 2 rooms leaving a blank column. */
-  grid-template-columns: repeat(3, 1fr);
+  /* Prototype screenshot: normal view is 2 columns (cards are larger). */
+  grid-template-columns: repeat(2, 1fr);
   gap: 14rpx;
   background: #fff;
 }
 
 .rooms-grid-edit {
+  /* Build mode has + card, so 3 columns is more natural. */
   grid-template-columns: repeat(3, 1fr);
 }
 
@@ -542,7 +543,8 @@
 .room {
   position: relative;
   border-radius: 18rpx;
-  border: 1rpx solid rgba(148, 163, 184, 0.30);
+  border: 1rpx solid rgba(226, 232, 240, 1);
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.02);
   padding: 16rpx 16rpx 14rpx;
   min-height: 156rpx;
   display: flex;
@@ -669,7 +671,8 @@
 
 .status-empty {
   background: #fff;
-  border-color: rgba(148, 163, 184, 0.30);
+  /* Prototype: dashed blue outline for empty rooms */
+  border-color: rgba(147, 197, 253, 0.75);
   border-style: dashed;
 }
 .status-rented {
@@ -677,12 +680,12 @@
   border-color: rgba(226, 232, 240, 1);
 }
 .status-due_soon {
-  background: rgba(255, 251, 235, 0.42);
-  border-color: rgba(251, 191, 36, 0.60);
+  background: #fff;
+  border-color: rgba(251, 191, 36, 0.70);
 }
 .status-overdue {
-  background: rgba(255, 241, 242, 0.40);
-  border-color: rgba(244, 63, 94, 0.50);
+  background: #fff;
+  border-color: rgba(244, 63, 94, 0.55);
 }
 
 .status-edit {
