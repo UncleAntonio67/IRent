@@ -4,7 +4,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.40);
+  background: rgba(15, 23, 42, 0.55);
   display: flex;
   align-items: flex-end;
   z-index: 500;
@@ -32,8 +32,8 @@
 
 .head {
   background: #fff;
-  padding: 14rpx 18rpx 10rpx;
-  border-bottom: 1rpx solid rgba(148, 163, 184, 0.18);
+  padding: 16rpx 18rpx 12rpx;
+  border-bottom: 1rpx solid rgba(241, 245, 249, 1);
 }
 
 .roomNo {
@@ -105,7 +105,7 @@
   display: flex;
   flex-direction: row;
   gap: 8rpx;
-  width: 480rpx;
+  width: 360rpx;
 }
 
 .tab {
