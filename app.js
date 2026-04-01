@@ -4,8 +4,8 @@ const mock = require("./utils/mock");
 // Used to confirm the running code matches the latest git push.
 // Keep subtle in UI (e.g. Profile footer) and remove once rollout is stable.
 const BUILD_INFO = {
-  id: "76fbf17",
-  at: "2026-04-01 14:37"
+  id: "79b126f",
+  at: "2026-04-01 14:40"
 };
 
 App({
