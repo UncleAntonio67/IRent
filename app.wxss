@@ -15,8 +15,9 @@ page {
   --text: #1e293b;
   --muted: #94a3b8;
   --panel: #ffffff;
-  --border: rgba(148, 163, 184, 0.35);
-  --shadow: 0 8rpx 30rpx rgba(15, 23, 42, 0.08);
+  /* Match prototype: subtle border + very soft shadow */
+  --border: rgba(241, 245, 249, 1);
+  --shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
 
   --r-xl: 18rpx;
   --r-lg: 14rpx;
@@ -29,7 +30,7 @@ page {
 
 .glass {
   background: rgba(255, 255, 255, 0.82);
-  border: 1rpx solid rgba(148, 163, 184, 0.25);
+  border: 1rpx solid rgba(226, 232, 240, 0.65);
 }
 
 .shadow-soft {

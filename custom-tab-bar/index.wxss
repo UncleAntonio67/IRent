@@ -41,19 +41,23 @@
 .icon {
   width: 44rpx;
   height: 44rpx;
-  border-radius: 14rpx;
-  background: rgba(148, 163, 184, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 1000;
-  font-size: 24rpx;
-  color: rgba(148, 163, 184, 1);
+  position: relative;
 }
 
-.icon-on {
-  background: rgba(37, 99, 235, 0.12);
-  color: rgba(37, 99, 235, 1);
+.strokeBg {
+  background: rgba(148, 163, 184, 1);
+}
+.on .strokeBg {
+  background: rgba(37, 99, 235, 1);
+}
+.strokeBorder {
+  border-color: rgba(148, 163, 184, 1);
+}
+.on .strokeBorder {
+  border-color: rgba(37, 99, 235, 1);
 }
 
 .label {
@@ -61,3 +65,128 @@
   font-weight: 1000;
 }
 
+/* Icons (cover-view safe) */
+.icoHome,
+.icoBill,
+.icoUser {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.icoHome {
+  width: 34rpx;
+  height: 34rpx;
+}
+.homeLine {
+  position: absolute;
+  width: 3rpx;
+  height: 18rpx;
+  border-radius: 2rpx;
+  top: 5rpx;
+}
+.homeLineL {
+  left: 12rpx;
+  transform: rotate(-45deg);
+  transform-origin: top left;
+}
+.homeLineR {
+  left: 20rpx;
+  transform: rotate(45deg);
+  transform-origin: top left;
+}
+.homeBody {
+  position: absolute;
+  left: 6rpx;
+  top: 15rpx;
+  width: 22rpx;
+  height: 16rpx;
+  border-width: 3rpx;
+  border-style: solid;
+  border-top-width: 0;
+  border-radius: 5rpx;
+  box-sizing: border-box;
+}
+.homeDoor {
+  position: absolute;
+  left: 14rpx;
+  top: 20rpx;
+  width: 8rpx;
+  height: 11rpx;
+  border-width: 3rpx;
+  border-style: solid;
+  border-bottom-width: 0;
+  border-radius: 4rpx;
+  box-sizing: border-box;
+}
+
+.icoBill {
+  width: 28rpx;
+  height: 34rpx;
+  border-width: 3rpx;
+  border-style: solid;
+  border-radius: 7rpx;
+  box-sizing: border-box;
+}
+.billTab {
+  position: absolute;
+  left: 6rpx;
+  top: -5rpx;
+  width: 16rpx;
+  height: 10rpx;
+  border-width: 3rpx;
+  border-style: solid;
+  border-radius: 6rpx;
+  background: rgba(255, 255, 255, 0.86);
+  box-sizing: border-box;
+}
+.billLine {
+  position: absolute;
+  left: 6rpx;
+  right: 6rpx;
+  height: 3rpx;
+  border-radius: 2rpx;
+  opacity: 0.95;
+}
+.billLine1 {
+  top: 12rpx;
+}
+.billLine2 {
+  top: 18rpx;
+}
+.billLine3 {
+  top: 24rpx;
+  width: 14rpx;
+}
+
+.icoUser {
+  width: 34rpx;
+  height: 34rpx;
+}
+.userHead {
+  position: absolute;
+  left: 50%;
+  top: 6rpx;
+  transform: translateX(-50%);
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 999rpx;
+  border-width: 3rpx;
+  border-style: solid;
+  box-sizing: border-box;
+}
+.userBody {
+  position: absolute;
+  left: 50%;
+  top: 18rpx;
+  transform: translateX(-50%);
+  width: 24rpx;
+  height: 14rpx;
+  border-top-left-radius: 999rpx;
+  border-top-right-radius: 999rpx;
+  border-width: 3rpx;
+  border-style: solid;
+  border-bottom-width: 0;
+  box-sizing: border-box;
+}

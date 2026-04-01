@@ -29,7 +29,7 @@
         </view>
 
         <view wx:if="{{!editMode}}" class="filters">
-          <scroll-view scroll-x enhanced class="filters-scroll" show-scrollbar="{{false}}">
+          <scroll-view scroll-x="true" enhanced class="filters-scroll" show-scrollbar="{{false}}">
             <view class="filters-row">
               <view class="f-pill type-all {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
               <view class="f-pill type-overdue {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
@@ -64,7 +64,7 @@
   <view class="main pad safe-bottom">
     <!-- Property selector -->
     <view wx:if="{{!activeBlockId || editMode}}" class="row gap-12">
-      <scroll-view scroll-x enhanced class="prop-scroll" show-scrollbar="{{false}}">
+      <scroll-view scroll-x="true" enhanced class="prop-scroll" show-scrollbar="{{false}}">
         <view class="prop-row">
           <block wx:for="{{properties}}" wx:key="id">
             <view
@@ -152,15 +152,15 @@
                       <view class="row between center">
                         <view class="room-no {{item._titleClass}}">{{item.roomNo}}</view>
                         <view wx:if="{{!editMode}}" class="r-dot {{item._dotClass}}"></view>
-                        <view wx:if="{{editMode}}" class="trash">✕</view>
+                        <view wx:if="{{editMode}}" class="trash">🗑</view>
                       </view>
 
                       <view wx:if="{{!editMode}}">
                         <view wx:if="{{item._status==='empty'}}" class="muted tiny mt-10 note">空置待租</view>
                         <view wx:else class="col">
-                          <view class="tiny tenant {{item._titleClass}}">{{item.tenant}}</view>
+                          <view class="tiny tenant">{{item.tenant}}</view>
                           <view wx:if="{{item._status==='overdue'}}" class="danger-text mt-6 note note-danger">逾期未付</view>
-                          <view wx:else class="rent-line mt-6 mono">¥{{item.rent}}/期</view>
+                          <view wx:else class="rent-line mt-6 mono">¥{{item.rent}}/月</view>
                         </view>
                       </view>
                     </view>

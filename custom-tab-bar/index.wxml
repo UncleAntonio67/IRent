@@ -6,7 +6,14 @@
       data-path="/pages/home/home"
       bindtap="onTap"
     >
-      <cover-view class="icon {{selected===0 ? 'icon-on' : ''}}">工</cover-view>
+      <cover-view class="icon">
+        <cover-view class="icoHome">
+          <cover-view class="homeLine homeLineL strokeBg"></cover-view>
+          <cover-view class="homeLine homeLineR strokeBg"></cover-view>
+          <cover-view class="homeBody strokeBorder"></cover-view>
+          <cover-view class="homeDoor strokeBorder"></cover-view>
+        </cover-view>
+      </cover-view>
       <cover-view class="label">工作台</cover-view>
     </cover-view>
 
@@ -16,7 +23,14 @@
       data-path="/pages/bills/bills"
       bindtap="onTap"
     >
-      <cover-view class="icon {{selected===1 ? 'icon-on' : ''}}">账</cover-view>
+      <cover-view class="icon">
+        <cover-view class="icoBill strokeBorder">
+          <cover-view class="billTab strokeBorder"></cover-view>
+          <cover-view class="billLine billLine1 strokeBg"></cover-view>
+          <cover-view class="billLine billLine2 strokeBg"></cover-view>
+          <cover-view class="billLine billLine3 strokeBg"></cover-view>
+        </cover-view>
+      </cover-view>
       <cover-view class="label">对账流水</cover-view>
     </cover-view>
 
@@ -26,7 +40,12 @@
       data-path="/pages/profile/profile"
       bindtap="onTap"
     >
-      <cover-view class="icon {{selected===2 ? 'icon-on' : ''}}">我</cover-view>
+      <cover-view class="icon">
+        <cover-view class="icoUser">
+          <cover-view class="userHead strokeBorder"></cover-view>
+          <cover-view class="userBody strokeBorder"></cover-view>
+        </cover-view>
+      </cover-view>
       <cover-view class="label">我的</cover-view>
     </cover-view>
   </cover-view>

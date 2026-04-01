@@ -263,10 +263,23 @@
 }
 
 .crumb-arrow {
-  font-size: 28rpx;
-  font-weight: 1200;
-  color: var(--primary);
-  line-height: 1;
+  width: 30rpx;
+  height: 30rpx;
+  position: relative;
+  font-size: 0;
+  line-height: 0;
+}
+.crumb-arrow::before {
+  content: "";
+  position: absolute;
+  left: 6rpx;
+  top: 8rpx;
+  width: 14rpx;
+  height: 14rpx;
+  border-left: 4rpx solid rgba(37, 99, 235, 1);
+  border-bottom: 4rpx solid rgba(37, 99, 235, 1);
+  transform: rotate(45deg);
+  box-sizing: border-box;
 }
 
 .link {
@@ -304,6 +317,7 @@
   background: rgba(15, 23, 42, 0.92);
   color: #fff;
   border-color: rgba(15, 23, 42, 0.2);
+  box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.10);
 }
 .prop-add {
   border-style: dashed;
@@ -339,10 +353,23 @@
 }
 
 .chev {
-  font-size: 44rpx;
-  color: rgba(148, 163, 184, 0.7);
-  font-weight: 900;
-  line-height: 1;
+  width: 30rpx;
+  height: 30rpx;
+  position: relative;
+  font-size: 0;
+  line-height: 0;
+}
+.chev::before {
+  content: "";
+  position: absolute;
+  left: 10rpx;
+  top: 9rpx;
+  width: 12rpx;
+  height: 12rpx;
+  border-right: 4rpx solid rgba(148, 163, 184, 0.72);
+  border-top: 4rpx solid rgba(148, 163, 184, 0.72);
+  transform: rotate(45deg);
+  box-sizing: border-box;
 }
 
 .mini {
@@ -368,13 +395,13 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 8rpx;
+  gap: 12rpx;
 }
 .mini-cell {
-  width: 16rpx;
-  height: 24rpx;
-  border-radius: 4rpx;
-  border: 1rpx solid rgba(148, 163, 184, 0.18);
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 6rpx;
+  border: 0;
   transition: opacity 280ms ease, transform 280ms ease, filter 280ms ease;
 }
 .mini-empty {
@@ -457,6 +484,9 @@
   flex-direction: row;
   border-top: 1rpx solid rgba(148, 163, 184, 0.10);
 }
+.floor-row:first-child {
+  border-top: 0;
+}
 .floor-label {
   width: 104rpx;
   background: rgba(248, 250, 252, 1);
@@ -508,6 +538,7 @@
 }
 
 .room {
+  position: relative;
   border-radius: 18rpx;
   border: 1rpx solid rgba(148, 163, 184, 0.30);
   padding: 16rpx 16rpx 14rpx;
@@ -569,7 +600,8 @@
 }
 
 .tenant {
-  opacity: 0.92;
+  opacity: 0.96;
+  color: rgba(100, 116, 139, 0.92);
 }
 
 .mt-6 {
@@ -585,6 +617,9 @@
 }
 
 .r-dot {
+  position: absolute;
+  top: 18rpx;
+  right: 18rpx;
   width: 12rpx;
   height: 12rpx;
   border-radius: 999rpx;
@@ -622,9 +657,12 @@
 /* Prototype: static dots (no pulsing animation) */
 
 .trash {
-  font-size: 22rpx;
-  font-weight: 1000;
-  color: rgba(244, 63, 94, 0.85);
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  font-size: 26rpx;
+  font-weight: 900;
+  color: rgba(148, 163, 184, 0.92);
 }
 
 .status-empty {
