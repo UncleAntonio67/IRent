@@ -81,6 +81,39 @@
       </scroll-view>
     </view>
 
+    <!-- New: dashboard summary (redesigned UI, logic unchanged) -->
+    <view wx:if="{{!editMode && !activeBlockId}}" class="dash card mt-16">
+      <view class="dashTop row between center">
+        <view class="dashTitle">工作台概览</view>
+        <view class="dashPill">当前：{{activeProperty.name}}</view>
+      </view>
+
+      <view class="dashGrid">
+        <view class="dashCell">
+          <view class="dashLab muted">总房间</view>
+          <view class="dashNum mono">{{stats.totalRooms}}</view>
+        </view>
+        <view class="dashCell">
+          <view class="dashLab muted">空置</view>
+          <view class="dashNum mono">{{stats.empty}}</view>
+        </view>
+        <view class="dashCell">
+          <view class="dashLab muted">欠费</view>
+          <view class="dashNum mono dashNumDanger">{{stats.overdue}}</view>
+        </view>
+        <view class="dashCell">
+          <view class="dashLab muted">待收</view>
+          <view class="dashNum mono dashNumWarn">{{stats.dueSoon}}</view>
+        </view>
+      </view>
+
+      <view class="dashActs row gap-12 mt-16">
+        <button class="dashBtn press" bindtap="toggleEditMode">结构管理</button>
+        <button class="dashBtn dashBtnDanger press" data-key="overdue" bindtap="setFilter">只看欠费</button>
+        <button class="dashBtn dashBtnWarn press" data-key="due_soon" bindtap="setFilter">只看待收</button>
+      </view>
+    </view>
+
     <!-- View 1: blocks overview -->
     <view wx:if="{{activeProperty && !activeBlockId && !editMode}}" class="col gap-16 mt-16 anim-fade-in">
       <block wx:for="{{activeProperty.blocks}}" wx:key="id">

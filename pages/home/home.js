@@ -61,12 +61,16 @@ function buildVM(state, { filterStatus, activePropertyId, activeBlockId, editMod
   // Stats across all rooms (prototype behavior)
   let overdue = 0;
   let dueSoon = 0;
+  let empty = 0;
+  let totalRooms = 0;
   for (const p of properties) {
     for (const b of p.blocks || []) {
       for (const f of b.floors || []) {
         for (const r of f.rooms || []) {
+          totalRooms += 1;
           if (r._status === "overdue") overdue += 1;
           if (r._status === "due_soon") dueSoon += 1;
+          if (r._status === "empty") empty += 1;
         }
       }
     }
@@ -102,7 +106,7 @@ function buildVM(state, { filterStatus, activePropertyId, activeBlockId, editMod
 
   return {
     properties,
-    stats: { overdue, dueSoon },
+    stats: { overdue, dueSoon, empty, totalRooms },
     activeProperty,
     activeBlockName: activeBlock ? activeBlock.name : "",
     detailBlocks
@@ -117,7 +121,7 @@ Page({
     activeBlockName: "",
     activeProperty: null,
     detailBlocks: [],
-    stats: { overdue: 0, dueSoon: 0 },
+    stats: { overdue: 0, dueSoon: 0, empty: 0, totalRooms: 0 },
 
     editMode: false,
     filterStatus: "all",
