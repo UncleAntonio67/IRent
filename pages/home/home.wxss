@@ -249,7 +249,7 @@
 
 .crumb {
   padding: 16rpx 18rpx;
-  border-bottom: 1rpx solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1rpx solid rgba(241, 245, 249, 1);
   background: rgba(248, 250, 252, 0.92);
   backdrop-filter: blur(16rpx);
   position: sticky;
@@ -308,7 +308,7 @@
 .prop {
   padding: 16rpx 18rpx;
   border-radius: 18rpx;
-  border: 1rpx solid rgba(148, 163, 184, 0.28);
+  border: 1rpx solid rgba(226, 232, 240, 1);
   background: #fff;
   font-weight: 1000;
   font-size: 26rpx;
@@ -327,12 +327,13 @@
 
 .block-card {
   border-radius: 22rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
-  border-color: rgba(148, 163, 184, 0.22);
+  /* Keep consistent with global .card (prototype shadow is very soft). */
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+  border-color: rgba(241, 245, 249, 1);
 }
 
 .block-head {
-  border-bottom: 1rpx solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1rpx solid rgba(241, 245, 249, 1);
   padding-bottom: 14rpx;
   margin-bottom: 14rpx;
 }
