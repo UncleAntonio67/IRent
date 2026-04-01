@@ -338,11 +338,11 @@
 }
 
 .blk-ico {
-  width: 80rpx;
-  height: 80rpx;
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 18rpx;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1rpx solid rgba(37, 99, 235, 0.14);
+  background: rgba(37, 99, 235, 0.07);
+  border: 1rpx solid rgba(37, 99, 235, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -376,19 +376,19 @@
 .mini {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 .mini-row {
   display: flex;
   flex-direction: row;
-  gap: 10rpx;
+  gap: 12rpx;
   align-items: center;
 }
 .mini-floor {
-  width: 56rpx;
+  width: 42rpx;
   text-align: right;
-  font-size: 20rpx;
-  font-weight: 1000;
+  font-size: 18rpx;
+  font-weight: 1100;
   color: rgba(100, 116, 139, 0.8);
 }
 .mini-cells {
@@ -396,12 +396,12 @@
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 .mini-cell {
-  width: 22rpx;
-  height: 22rpx;
-  border-radius: 6rpx;
+  width: 14rpx;
+  height: 18rpx;
+  border-radius: 4rpx;
   border: 0;
   transition: opacity 280ms ease, transform 280ms ease, filter 280ms ease;
 }
@@ -525,7 +525,8 @@
   flex: 1;
   padding: 16rpx 16rpx 18rpx;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* Prototype matrix is 3 columns; some floors may have only 2 rooms leaving a blank column. */
+  grid-template-columns: repeat(3, 1fr);
   gap: 14rpx;
   background: #fff;
 }
