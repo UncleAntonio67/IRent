@@ -109,7 +109,7 @@
     </view>
 
     <!-- Scroll Area: only property/building content scrolls -->
-    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="content safe-bottom">
+    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="content">
       <view class="contentPad">
         <!-- View 1: blocks overview -->
         <view wx:if="{{activeProperty && !activeBlockId && !editMode}}" class="col gap-16 anim-fade-in">

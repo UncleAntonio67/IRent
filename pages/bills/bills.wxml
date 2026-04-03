@@ -83,7 +83,7 @@
     </view>
     </view>
 
-    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="content safe-bottom">
+    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="content">
       <view class="contentPad">
       <view class="mt-16">
         <block wx:if="{{billFilter==='pending'}}">

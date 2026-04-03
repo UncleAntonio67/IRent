@@ -9,6 +9,9 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Avoid content being covered by the custom tab bar without creating extra scroll. */
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
 .top {
