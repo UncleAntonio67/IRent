@@ -1,5 +1,6 @@
 <view class="screen">
   <view class="wrap">
+    <view class="top">
     <!-- App Bar (glass) -->
     <view class="appbar glass">
       <view class="appbar-inner">
@@ -21,7 +22,7 @@
       </view>
     </view>
 
-    <view class="main pad safe-bottom">
+    <view class="topSub pad">
       <view class="profile card">
         <view class="profileTop row between center">
           <view class="row center gap-12">
@@ -52,6 +53,11 @@
           </view>
         </view>
       </view>
+    </view>
+    </view>
+
+    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="content safe-bottom">
+      <view class="contentPad">
 
       <view class="card list mt-16">
         <view class="li press" bindtap="onFeature" data-title="收款账户与二维码配置">
@@ -99,6 +105,7 @@
       </view>
 
       <view wx:if="{{buildStamp}}" class="buildStamp">{{buildStamp}}</view>
-    </view>
+      </view>
+    </scroll-view>
   </view>
 </view>

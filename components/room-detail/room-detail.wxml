@@ -8,7 +8,7 @@
           <view class="roomNo">{{room.roomNo}}</view>
           <view class="tag {{roomTagClass}}">{{roomTagText}}</view>
         </view>
-        <view class="close" bindtap="emitClose">×</view>
+        <view class="close" bindtap="emitClose">X</view>
       </view>
 
       <view wx:if="{{room.tenant}}" class="tabs">
@@ -39,10 +39,10 @@
               </view>
               <view class="row gap-12">
                 <button class="iconBtn press" bindtap="noop">
-                  <view class="iconBtnIn">⚙</view>
+                  <view class="iconBtnIn">改</view>
                 </button>
                 <button class="iconBtn iconBtnBlue press" bindtap="callTenant">
-                  <view class="iconBtnIn">☎</view>
+                  <view class="iconBtnIn">拨</view>
                 </button>
               </view>
             </view>
@@ -95,7 +95,7 @@
                       <view class="mono termAmt">¥{{item.expectedAmount}}</view>
                     </view>
                     <block wx:if="{{item._tagText==='已结清'}}">
-                      <view class="okText">☑ 实收: ¥{{item.paidAmount}}</view>
+                      <view class="okText">已收: ¥{{item.paidAmount}}</view>
                     </block>
                     <block wx:else>
                       <button class="btn btn-primary btn-sm" data-termid="{{item.id}}" data-amount="{{item._verifyAmount}}" bindtap="openVerifyTerm">
@@ -111,7 +111,7 @@
           <view class="card pad">
               <view class="row between center">
               <view class="row center gap-12">
-                <view class="secIco secIcoOra">℃</view>
+                <view class="secIco secIcoOra">水</view>
                 <view class="rentTitle">水电与杂费</view>
               </view>
               <view class="modePill">{{room.utilsInc ? '全包模式' : '按表计费'}}</view>
@@ -121,7 +121,7 @@
               <view class="uStats mt-14">
                 <view class="uCol">
                   <view class="uLab muted">
-                    <text class="uIcon uIconWater">💧</text>
+                    <text class="uIcon uIconWater">水</text>
                     上期水表底数
                   </view>
                   <view class="mono uVal">{{room.lastWater}}</view>
@@ -129,7 +129,7 @@
                 <view class="uDiv"></view>
                 <view class="uCol">
                   <view class="uLab muted">
-                    <text class="uIcon uIconElec">⚡</text>
+                    <text class="uIcon uIconElec">电</text>
                     上期电表底数
                   </view>
                   <view class="mono uVal">{{room.lastElectric}}</view>
@@ -202,7 +202,7 @@
 <view wx:if="{{showContractModal}}" class="fullOverlay anim-fade-in">
   <view class="fullHead">
     <view class="fullTitle">{{room.tenant}} 合同归档</view>
-    <view class="fullClose" bindtap="closeContract">×</view>
+    <view class="fullClose" bindtap="closeContract">X</view>
   </view>
   <view class="fullBody safe-inset">
     <view wx:if="{{!room.hasContract}}" class="contractEmpty">
@@ -221,7 +221,7 @@
 <view wx:if="{{showBillModal}}" class="fullOverlay anim-fade-in" style="background:#f8fafc;">
   <view class="fullHead light">
     <view class="fullTitle">杂费单核对 · {{room.roomNo}}</view>
-    <view class="fullClose gray" bindtap="closeBillModal">×</view>
+    <view class="fullClose gray" bindtap="closeBillModal">X</view>
   </view>
   <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="fullBody pad safe-foot">
     <view wx:if="{{room.utilsInc}}" class="card pad">
@@ -242,8 +242,8 @@
       <view class="row between center mt-14">
         <view class="muted">拍照留底</view>
         <view class="row gap-12">
-          <button class="btn btn-ghost btn-sm" bindtap="pickWaterPhoto">水(×{{waterPhotoCount}})</button>
-          <button class="btn btn-ghost btn-sm" bindtap="pickElectricPhoto">电(×{{electricPhotoCount}})</button>
+          <button class="btn btn-ghost btn-sm" bindtap="pickWaterPhoto">水(x{{waterPhotoCount}})</button>
+          <button class="btn btn-ghost btn-sm" bindtap="pickElectricPhoto">电(x{{electricPhotoCount}})</button>
         </view>
       </view>
     </view>
@@ -269,7 +269,7 @@
 <view wx:if="{{showCheckInModal}}" class="fullOverlay anim-fade-in" style="background:#f8fafc;">
   <view class="fullHead light">
     <view class="fullTitle">办理入住 · {{room.roomNo}}</view>
-    <view class="fullClose gray" bindtap="closeCheckIn">×</view>
+    <view class="fullClose gray" bindtap="closeCheckIn">X</view>
   </view>
 
   <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="fullBody pad safe-foot">
@@ -381,7 +381,7 @@
 <view wx:if="{{showCheckOutModal}}" class="fullOverlay anim-fade-in" style="background:#f8fafc;">
   <view class="fullHead light">
     <view class="fullTitle">办理退租 · {{room.roomNo}}</view>
-    <view class="fullClose gray" bindtap="closeCheckOut">×</view>
+    <view class="fullClose gray" bindtap="closeCheckOut">X</view>
   </view>
   <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="fullBody pad safe-foot">
     <view class="card pad">

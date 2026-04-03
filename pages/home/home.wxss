@@ -1,6 +1,33 @@
+.screen {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .wrap {
   max-width: 720rpx;
   margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.top {
+  flex: 0 0 auto;
+}
+
+.topSub {
+  padding: 14rpx 18rpx 12rpx;
+  border-bottom: 1rpx solid rgba(231, 238, 248, 1);
+  background: rgba(247, 249, 255, 0.96);
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+}
+
+.contentPad {
+  padding: 16rpx 18rpx 0;
 }
 
 .gap-8 {
@@ -17,10 +44,9 @@
 }
 
 .appbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  border-bottom: 1rpx solid rgba(226, 232, 240, 0.85);
+  position: relative;
+  z-index: 60;
+  border-bottom: 1rpx solid rgba(231, 238, 248, 1);
 }
 
 .appbar-inner {
@@ -29,7 +55,7 @@
 }
 
 .appbar-edit {
-  padding-top: calc(72rpx + env(safe-area-inset-top) + 64rpx);
+  padding-top: calc(72rpx + env(safe-area-inset-top) + 52rpx);
 }
 
 .edit-banner {
@@ -37,10 +63,10 @@
   top: env(safe-area-inset-top);
   left: 0;
   right: 0;
-  height: 64rpx;
+  height: 52rpx;
   border-radius: 0;
-  background: rgba(251, 191, 36, 0.96);
-  color: rgba(255, 255, 255, 0.98);
+  background: rgba(254, 243, 199, 0.98);
+  color: rgba(180, 83, 9, 1);
   font-weight: 1100;
   font-size: 22rpx;
   display: flex;
@@ -48,6 +74,7 @@
   justify-content: center;
   letter-spacing: 0.02em;
   gap: 10rpx;
+  border-bottom: 1rpx solid rgba(253, 230, 138, 1);
 }
 
 .edit-gear {
@@ -257,13 +284,10 @@
 }
 
 .crumb {
-  padding: 16rpx 18rpx;
-  border-bottom: 1rpx solid rgba(241, 245, 249, 1);
-  background: rgba(248, 250, 252, 0.92);
-  backdrop-filter: blur(16rpx);
-  position: sticky;
-  top: calc(136rpx + env(safe-area-inset-top));
-  z-index: 28;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid rgba(231, 238, 248, 1);
+  margin-bottom: 12rpx;
+  background: transparent;
 }
 
 .crumb-link {
@@ -298,8 +322,84 @@
   color: var(--primary);
 }
 
-.main {
-  min-height: 100vh;
+.props {
+  margin-top: 4rpx;
+}
+
+.summary {
+  margin-top: 14rpx;
+  padding: 16rpx 16rpx 14rpx;
+}
+
+.sumTitle {
+  font-size: 26rpx;
+  font-weight: 1200;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.sumHint {
+  font-size: 20rpx;
+  font-weight: 1000;
+  max-width: 360rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sumGrid {
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid rgba(231, 238, 248, 1);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10rpx;
+}
+
+.sumCell {
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(231, 238, 248, 1);
+  background: rgba(248, 250, 252, 1);
+  padding: 12rpx 10rpx 10rpx;
+}
+
+.sumLab {
+  font-size: 18rpx;
+  font-weight: 1000;
+  color: rgba(100, 116, 139, 0.88);
+}
+
+.sumNum {
+  margin-top: 6rpx;
+  font-size: 34rpx;
+  font-weight: 1200;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.sumDanger {
+  color: rgba(225, 29, 72, 1);
+}
+
+.sumWarn {
+  color: rgba(180, 83, 9, 1);
+}
+
+.blockHead {
+  padding: 16rpx 18rpx 14rpx;
+  border-bottom: 1rpx solid rgba(231, 238, 248, 1);
+}
+
+.miniBtn {
+  padding: 12rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 1100;
+  color: rgba(37, 99, 235, 1);
+  background: rgba(37, 99, 235, 0.10);
+  border: 1rpx solid rgba(37, 99, 235, 0.18);
+  min-height: 52rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .prop-scroll {
@@ -550,7 +650,8 @@
 }
 
 .rooms-grid-edit .room {
-  min-height: 156rpx;
+  min-height: 128rpx;
+  padding: 14rpx 12rpx 12rpx;
 }
 
 .room {
@@ -558,8 +659,8 @@
   border-radius: 18rpx;
   border: 1rpx solid rgba(226, 232, 240, 1);
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.02);
-  padding: 16rpx 16rpx 14rpx;
-  min-height: 156rpx;
+  padding: 14rpx 14rpx 12rpx;
+  min-height: 140rpx;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -578,7 +679,7 @@
 }
 
 .room-no {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 1100;
   letter-spacing: -0.02em;
 }
@@ -680,6 +781,21 @@
   font-size: 26rpx;
   font-weight: 900;
   color: rgba(148, 163, 184, 0.92);
+}
+
+.fab {
+  position: fixed;
+  right: 22rpx;
+  bottom: calc(220rpx + env(safe-area-inset-bottom));
+  padding: 18rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 1200;
+  color: #fff;
+  background: rgba(37, 99, 235, 1);
+  box-shadow: 0 20rpx 60rpx rgba(37, 99, 235, 0.30);
+  border: 1rpx solid rgba(37, 99, 235, 0.28);
+  z-index: 120;
 }
 
 .status-empty {

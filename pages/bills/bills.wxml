@@ -1,5 +1,6 @@
 <view class="screen">
   <view class="wrap">
+    <view class="top">
     <!-- App Bar (glass) -->
     <view class="appbar glass">
       <view class="appbar-inner">
@@ -21,7 +22,7 @@
       </view>
     </view>
 
-    <view class="main pad safe-bottom">
+    <view class="topSub pad">
       <view class="row between center">
         <view class="page-h2">年度报表追踪</view>
         <view class="year-pill row center gap-8">
@@ -79,6 +80,11 @@
         </view>
       </view>
 
+    </view>
+    </view>
+
+    <scroll-view scroll-y enhanced bounces="false" show-scrollbar="{{false}}" class="content safe-bottom">
+      <view class="contentPad">
       <view class="mt-16">
         <block wx:if="{{billFilter==='pending'}}">
           <view class="col gap-16">
@@ -152,7 +158,8 @@
           </view>
         </block>
       </view>
-    </view>
+      </view>
+    </scroll-view>
   </view>
 </view>
 
