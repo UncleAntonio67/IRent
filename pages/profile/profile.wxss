@@ -171,7 +171,7 @@
 }
 
 .li {
-  padding: 18rpx 18rpx;
+  padding: 20rpx 20rpx;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -216,7 +216,7 @@
 }
 
 .li-title {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 1100;
   color: rgba(51, 65, 85, 0.92);
 }
