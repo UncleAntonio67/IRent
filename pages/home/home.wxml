@@ -8,8 +8,8 @@
       </view>
 
       <view class="appbar-inner {{editMode ? 'appbar-edit' : ''}}">
-        <!-- Header row: keep clean, less cramped -->
-        <view class="row between center">
+        <!-- Harmonized header: title + subtle meta line; structure button stays top-right -->
+        <view class="header row between center">
           <view class="row center gap-12">
             <view class="building">
               <view class="bldg">
@@ -21,22 +21,9 @@
                 <view class="bldg-win"></view>
               </view>
             </view>
-            <view class="brand">租管家</view>
-          </view>
-        </view>
-
-        <!-- Meta row: date/time + weather placeholder + structure button -->
-        <view class="meta row between center">
-          <view class="row center gap-10">
-            <view class="meta-pill">
-              <text class="meta-ico">📅</text>
-              <text class="meta-t">{{metaDate}}</text>
-              <text class="meta-sep">·</text>
-              <text class="meta-t mono">{{metaTime}}</text>
-            </view>
-            <view class="meta-pill meta-pill-ghost">
-              <text class="meta-ico">☁</text>
-              <text class="meta-t">{{metaWeather}}</text>
+            <view class="col">
+              <view class="brand">租管家</view>
+              <view class="brandSub">{{metaDate}} / {{metaTime}} / {{metaWeather}}</view>
             </view>
           </view>
 
