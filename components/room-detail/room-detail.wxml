@@ -3,12 +3,16 @@
     <view class="handle"></view>
 
     <view class="head">
-      <view class="row between center">
-        <view class="row center gap-12">
-          <view class="roomNo">{{room.roomNo}}</view>
-          <view class="tag {{roomTagClass}}">{{roomTagText}}</view>
+      <view class="headTop row between center">
+        <view class="headLeft">
+          <view class="row center gap-12">
+            <view class="roomNo mono">{{room.roomNo}}</view>
+            <view class="tag {{roomTagClass}}">{{roomTagText}}</view>
+          </view>
+          <view wx:if="{{room.tenant}}" class="headSub muted">{{room.tenant}} / {{room.lease}}</view>
+          <view wx:if="{{!room.tenant}}" class="headSub muted">空置待租</view>
         </view>
-        <view class="close" bindtap="emitClose">X</view>
+        <view class="close press" bindtap="emitClose">X</view>
       </view>
 
       <view wx:if="{{room.tenant}}" class="tabs">
@@ -29,12 +33,12 @@
       <block wx:if="{{roomTagStatus!=='empty' && roomTab==='current'}}">
         <view class="col gap-16 anim-slide-in-left">
           <view class="card pad">
-            <view class="row between start">
+            <view class="row between center">
               <view class="row center gap-12">
                 <view class="avatar">{{avatar}}</view>
                 <view class="col">
                   <view class="subtitle">{{room.tenant}}</view>
-                  <view class="muted mono">{{room.phone}}</view>
+                  <view class="muted mono">{{room.phone ? room.phone : '—'}}</view>
                 </view>
               </view>
               <view class="row gap-12">
@@ -55,7 +59,7 @@
               <view class="muted">租期合约</view>
               <view class="val mono">{{room.lease}}</view>
             </view>
-            <button class="contractBtn press mt-16" bindtap="openContract">
+            <button class="btn btn-ghost contractBtn press mt-16" bindtap="openContract">
               {{room.hasContract ? '查看合同附件' : '上传合同照片'}}
             </button>
           </view>
