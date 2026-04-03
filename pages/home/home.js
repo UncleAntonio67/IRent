@@ -162,6 +162,7 @@ Page({
   onShow() {
     if (typeof this.getTabBar === "function" && this.getTabBar()) {
       this.getTabBar().setSelected(0);
+      this.getTabBar().setHidden(false);
     }
 
     const now = new Date();
@@ -174,6 +175,13 @@ Page({
     const activePropertyId =
       this.data.activePropertyId || (state.properties && state.properties[0] ? state.properties[0].id : "");
     this.setData({ activePropertyId }, () => this.refresh());
+  },
+
+  onHide() {
+    // Ensure tabbar isn't left hidden if user switches tabs mid-drawer.
+    if (typeof this.getTabBar === "function" && this.getTabBar()) {
+      this.getTabBar().setHidden(false);
+    }
   },
 
   refresh() {
@@ -240,11 +248,19 @@ Page({
       return;
     }
 
+    // Custom tabbar is a cover-view and can sit above overlays; hide it while the drawer is open.
+    if (typeof this.getTabBar === "function" && this.getTabBar()) {
+      this.getTabBar().setHidden(true);
+    }
     this.setData({ selectedRoomId: roomId, detailVisible: true });
   },
 
   closeDetail() {
-    this.setData({ detailVisible: false });
+    this.setData({ detailVisible: false }, () => {
+      if (typeof this.getTabBar === "function" && this.getTabBar()) {
+        this.getTabBar().setHidden(false);
+      }
+    });
   },
 
   openAddProperty() {

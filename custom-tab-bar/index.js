@@ -1,11 +1,24 @@
 Component({
   data: {
-    selected: 0
+    selected: 0,
+    hidden: false
   },
 
   methods: {
     setSelected(index) {
       this.setData({ selected: index });
+    },
+
+    setHidden(hidden) {
+      this.setData({ hidden: !!hidden });
+    },
+
+    hide() {
+      this.setHidden(true);
+    },
+
+    show() {
+      this.setHidden(false);
     },
 
     onTap(e) {
@@ -16,4 +29,3 @@ Component({
     }
   }
 });
-

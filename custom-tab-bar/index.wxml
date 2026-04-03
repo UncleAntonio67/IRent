@@ -1,4 +1,4 @@
-<cover-view class="tab">
+<cover-view wx:if="{{!hidden}}" class="tab">
   <cover-view class="tab-inner">
     <cover-view
       class="item {{selected===0 ? 'on' : ''}}"
