@@ -104,6 +104,47 @@
   color: rgba(15, 23, 42, 0.92);
 }
 
+.meta {
+  margin-top: 14rpx;
+  gap: 14rpx;
+}
+
+.meta-pill {
+  padding: 10rpx 14rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(231, 238, 248, 1);
+  background: rgba(255, 255, 255, 0.90);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 22rpx;
+  font-weight: 1000;
+  color: rgba(100, 116, 139, 0.95);
+  max-width: 340rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta-pill-ghost {
+  background: rgba(241, 245, 249, 0.72);
+}
+
+.meta-ico {
+  font-size: 22rpx;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.meta-t {
+  line-height: 1;
+}
+
+.meta-sep {
+  opacity: 0.55;
+}
+
 .mode-btn {
   padding: 14rpx 18rpx;
   border-radius: 999rpx;
@@ -132,7 +173,7 @@
 }
 
 .filters {
-  margin-top: 18rpx;
+  margin-top: 14rpx;
 }
 
 .mt-16 {

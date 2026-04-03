@@ -30,6 +30,21 @@ function titleClass(s) {
   return "t-slate";
 }
 
+function formatMetaDate(d) {
+  const x = d ? new Date(d) : new Date();
+  const m = x.getMonth() + 1;
+  const day = x.getDate();
+  const wk = ["日", "一", "二", "三", "四", "五", "六"][x.getDay()];
+  return `${m}月${String(day).padStart(2, "0")}日 周${wk}`;
+}
+
+function formatMetaTime(d) {
+  const x = d ? new Date(d) : new Date();
+  const hh = String(x.getHours()).padStart(2, "0");
+  const mm = String(x.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 function buildVM(state, { filterStatus, activePropertyId, activeBlockId, editMode }) {
   const now = new Date();
   const properties = (state.properties || []).map((p) => ({
@@ -123,6 +138,10 @@ Page({
     detailBlocks: [],
     stats: { overdue: 0, dueSoon: 0, empty: 0, totalRooms: 0 },
 
+    metaDate: "",
+    metaTime: "",
+    metaWeather: "天气未接入",
+
     editMode: false,
     filterStatus: "all",
 
@@ -144,6 +163,13 @@ Page({
     if (typeof this.getTabBar === "function" && this.getTabBar()) {
       this.getTabBar().setSelected(0);
     }
+
+    const now = new Date();
+    this.setData({
+      metaDate: formatMetaDate(now),
+      metaTime: formatMetaTime(now)
+    });
+
     const state = store.getAppState();
     const activePropertyId =
       this.data.activePropertyId || (state.properties && state.properties[0] ? state.properties[0].id : "");
