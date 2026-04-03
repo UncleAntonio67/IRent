@@ -22,31 +22,33 @@
     </view>
 
     <view class="main pad safe-bottom">
-      <view class="hero">
-        <view class="hero-wm">◉</view>
-        <view class="hero-row">
-          <view class="avatar">{{avatarText}}</view>
-          <view class="col">
-            <view class="hero-name">{{landlordName}}</view>
-            <view class="row gap-12 mt-10">
-              <view class="badge badge-pro">高级专业版</view>
-              <view class="badge badge-verified">已实名</view>
+      <view class="profile card">
+        <view class="profileTop row between center">
+          <view class="row center gap-12">
+            <view class="avatar">{{avatarText}}</view>
+            <view class="col">
+              <view class="name">{{landlordName}}</view>
+              <view class="row gap-12 mt-10">
+                <view class="badge badge-pro">高级专业版</view>
+                <view class="badge badge-verified">已实名</view>
+              </view>
             </view>
           </view>
+          <view class="proPill">账号</view>
         </view>
 
-        <view class="hero-grid">
-          <view class="hero-cell">
-            <view class="hero-num">{{stats.propertyCount}}</view>
-            <view class="hero-lab">管理院落</view>
+        <view class="profileGrid">
+          <view class="pCell">
+            <view class="pNum mono">{{stats.propertyCount}}</view>
+            <view class="pLab">管理院落</view>
           </view>
-          <view class="hero-cell">
-            <view class="hero-num">{{stats.totalRooms}}</view>
-            <view class="hero-lab">总房间数</view>
+          <view class="pCell">
+            <view class="pNum mono">{{stats.totalRooms}}</view>
+            <view class="pLab">总房间</view>
           </view>
-          <view class="hero-cell">
-            <view class="hero-num blue">{{stats.rented}}</view>
-            <view class="hero-lab">在住租客</view>
+          <view class="pCell">
+            <view class="pNum mono pBlue">{{stats.rented}}</view>
+            <view class="pLab">在住租客</view>
           </view>
         </view>
       </view>

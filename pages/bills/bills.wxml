@@ -38,22 +38,21 @@
         </view>
       </view>
 
-      <view class="dash mt-16">
-        <view class="dash-wm">◔</view>
-        <view class="dash-kicker">总实收金额 (元)</view>
+      <view class="dash card mt-16">
+        <view class="dash-kicker muted">全年实收</view>
         <view class="dash-total mono">¥{{billStats.currentYearTotal}}</view>
 
         <view class="dash-grid">
           <view class="dash-cell">
-            <view class="dash-mini">已收租金/押金/水电</view>
-            <view class="dash-mini-val mono">
-              ¥{{billStats.rentTotal}}
-              <text class="dash-sep">/</text>
-              ¥{{billStats.utilsTotal}}
-            </view>
+            <view class="dash-mini muted">租金与押金</view>
+            <view class="dash-mini-val mono">¥{{billStats.rentTotal}}</view>
           </view>
-          <view class="dash-cell right">
-            <view class="dash-mini warn">当前待收欠款总额</view>
+          <view class="dash-cell">
+            <view class="dash-mini muted">水电与杂费</view>
+            <view class="dash-mini-val mono">¥{{billStats.utilsTotal}}</view>
+          </view>
+          <view class="dash-cell dash-warn">
+            <view class="dash-mini warn">待收总额</view>
             <view class="dash-pending mono">¥{{billStats.currentYearPending}}</view>
           </view>
         </view>

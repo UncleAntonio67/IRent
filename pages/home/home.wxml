@@ -29,23 +29,22 @@
         </view>
 
         <view wx:if="{{!editMode}}" class="filters">
-          <scroll-view scroll-x="true" enhanced class="filters-scroll" show-scrollbar="{{false}}">
-            <view class="filters-row">
-              <view class="f-pill type-all {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
-              <view class="f-pill type-overdue {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
-                <view class="f-dot f-dot-rose"></view> 欠费 {{stats.overdue}}
-              </view>
-              <view class="f-pill type-due {{filterStatus==='due_soon' ? 'f-on due' : ''}}" data-key="due_soon" bindtap="setFilter">
-                <view class="f-dot f-dot-amber"></view> 待收 {{stats.dueSoon}}
-              </view>
-              <view class="f-pill type-rented {{filterStatus==='rented' ? 'f-on rented' : ''}}" data-key="rented" bindtap="setFilter">
-                <view class="f-dot f-dot-grn"></view> 已租
-              </view>
-              <view class="f-pill type-empty {{filterStatus==='empty' ? 'f-on empty' : ''}}" data-key="empty" bindtap="setFilter">
-                <view class="f-dot f-dot-slt"></view> 空置
-              </view>
+          <!-- Prototype: fixed horizontal pills (no scroll container) -->
+          <view class="filters-row">
+            <view class="f-pill type-all {{filterStatus==='all' ? 'f-on all' : ''}}" data-key="all" bindtap="setFilter">全部</view>
+            <view class="f-pill type-overdue {{filterStatus==='overdue' ? 'f-on overdue' : ''}}" data-key="overdue" bindtap="setFilter">
+              <view class="f-dot f-dot-rose"></view> 欠费 {{stats.overdue}}
             </view>
-          </scroll-view>
+            <view class="f-pill type-due {{filterStatus==='due_soon' ? 'f-on due' : ''}}" data-key="due_soon" bindtap="setFilter">
+              <view class="f-dot f-dot-amber"></view> 待收 {{stats.dueSoon}}
+            </view>
+            <view class="f-pill type-rented {{filterStatus==='rented' ? 'f-on rented' : ''}}" data-key="rented" bindtap="setFilter">
+              <view class="f-dot f-dot-grn"></view> 已租
+            </view>
+            <view class="f-pill type-empty {{filterStatus==='empty' ? 'f-on empty' : ''}}" data-key="empty" bindtap="setFilter">
+              <view class="f-dot f-dot-slt"></view> 空置
+            </view>
+          </view>
         </view>
       </view>
     </view>
@@ -79,39 +78,6 @@
           <view wx:if="{{editMode}}" class="prop prop-add" bindtap="openAddProperty">+ 新建院落</view>
         </view>
       </scroll-view>
-    </view>
-
-    <!-- New: dashboard summary (redesigned UI, logic unchanged) -->
-    <view wx:if="{{!editMode && !activeBlockId}}" class="dash card mt-16">
-      <view class="dashTop row between center">
-        <view class="dashTitle">工作台概览</view>
-        <view class="dashPill">当前：{{activeProperty.name}}</view>
-      </view>
-
-      <view class="dashGrid">
-        <view class="dashCell">
-          <view class="dashLab muted">总房间</view>
-          <view class="dashNum mono">{{stats.totalRooms}}</view>
-        </view>
-        <view class="dashCell">
-          <view class="dashLab muted">空置</view>
-          <view class="dashNum mono">{{stats.empty}}</view>
-        </view>
-        <view class="dashCell">
-          <view class="dashLab muted">欠费</view>
-          <view class="dashNum mono dashNumDanger">{{stats.overdue}}</view>
-        </view>
-        <view class="dashCell">
-          <view class="dashLab muted">待收</view>
-          <view class="dashNum mono dashNumWarn">{{stats.dueSoon}}</view>
-        </view>
-      </view>
-
-      <view class="dashActs row gap-12 mt-16">
-        <button class="dashBtn press" bindtap="toggleEditMode">结构管理</button>
-        <button class="dashBtn dashBtnDanger press" data-key="overdue" bindtap="setFilter">只看欠费</button>
-        <button class="dashBtn dashBtnWarn press" data-key="due_soon" bindtap="setFilter">只看待收</button>
-      </view>
     </view>
 
     <!-- View 1: blocks overview -->

@@ -67,110 +67,101 @@
   min-height: 100vh;
 }
 
-.hero {
-  border-radius: 26rpx;
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
-  padding: 24rpx 22rpx 18rpx;
-  color: #fff;
-  border: 1rpx solid rgba(255, 255, 255, 0.10);
-  box-shadow: 0 18rpx 70rpx rgba(15, 23, 42, 0.22);
-  position: relative;
-  overflow: hidden;
+.profile {
+  padding: 22rpx 20rpx 18rpx;
 }
 
-.hero-wm {
-  position: absolute;
-  right: -34rpx;
-  top: -54rpx;
-  font-size: 220rpx;
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.06);
-  pointer-events: none;
-}
-
-.hero-row {
-  display: flex;
-  flex-direction: row;
+.profileTop {
   align-items: center;
-  gap: 18rpx;
-  position: relative;
-  z-index: 1;
 }
 
 .avatar {
-  width: 128rpx;
-  height: 128rpx;
+  width: 112rpx;
+  height: 112rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1rpx solid rgba(255, 255, 255, 0.18);
+  background: rgba(37, 99, 235, 0.10);
+  border: 1rpx solid rgba(37, 99, 235, 0.16);
+  color: rgba(37, 99, 235, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56rpx;
-  font-weight: 1100;
+  font-size: 52rpx;
+  font-weight: 1200;
 }
 
-.hero-name {
-  font-size: 40rpx;
-  font-weight: 1100;
+.name {
+  font-size: 38rpx;
+  font-weight: 1200;
   letter-spacing: -0.02em;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.proPill {
+  padding: 10rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(241, 245, 249, 0.9);
+  border: 1rpx solid var(--border);
+  font-size: 22rpx;
+  font-weight: 1100;
+  color: rgba(100, 116, 139, 0.95);
 }
 
 .badge {
   padding: 6rpx 10rpx;
-  border-radius: 10rpx;
+  border-radius: 999rpx;
   font-size: 18rpx;
   font-weight: 1000;
-  border: 1rpx solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1rpx solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(100, 116, 139, 0.95);
 }
 
 .badge-pro {
-  border-color: rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.18);
-  color: rgba(219, 234, 254, 0.95);
+  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(37, 99, 235, 0.08);
+  color: rgba(37, 99, 235, 1);
 }
 
 .badge-verified {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.18);
-  color: rgba(209, 250, 229, 0.95);
+  border-color: rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.10);
+  color: rgba(5, 150, 105, 1);
 }
 
-.hero-grid {
+.profileGrid {
   margin-top: 18rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.10);
+  border-top: 1rpx solid rgba(231, 238, 248, 1);
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 14rpx;
-  position: relative;
-  z-index: 1;
+  gap: 12rpx;
 }
 
-.hero-cell {
+.pCell {
   text-align: center;
-  border-left: 1rpx solid rgba(255, 255, 255, 0.08);
-}
-.hero-cell:first-child {
-  border-left: none;
+  border-radius: 18rpx;
+  border: 1rpx solid var(--border);
+  background: rgba(248, 250, 252, 1);
+  padding: 14rpx 12rpx 12rpx;
 }
 
-.hero-num {
-  font-size: 46rpx;
-  font-weight: 1100;
+.pNum {
+  font-size: 44rpx;
+  font-weight: 1200;
+  color: rgba(15, 23, 42, 0.92);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
 }
-.hero-num.blue {
-  color: rgba(96, 165, 250, 0.95);
+
+.pBlue {
+  color: rgba(37, 99, 235, 1);
 }
 
-.hero-lab {
+.pLab {
   margin-top: 6rpx;
   font-size: 18rpx;
-  font-weight: 900;
-  color: rgba(148, 163, 184, 0.85);
+  font-weight: 1000;
+  color: rgba(100, 116, 139, 0.90);
 }
 
 .list {
