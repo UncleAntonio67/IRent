@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.output/
+.temp/
+.tmp/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+h5-dev.log
+mp-dev.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local env / cache
+*.local
+.env
+.env.*
+!.env.example
+.cache/
+.vite/
+
+# IDE / editor
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Uni-app / WeChat local files
+unpackage/
+project.private.config.json
+project.tt.json
+project.swan.json
+
+# Test / coverage
+coverage/
