@@ -5,7 +5,7 @@
         class="bg-white-80 border-b px-5 pb-3 relative shrink-0 border-slate-200-60 z-20 shadow-soft sticky-header"
         :style="{ paddingTop: headerTopPadding + 'px' }"
       >
-        <view
+                <view
           v-if="editMode"
           class="absolute top-0 left-0 right-0 h-10 bg-amber-500 flex items-center justify-center text-amber-50 text-xs font-bold gap-2 animate-in fade-in"
         >
@@ -73,7 +73,7 @@
           </view>
         </scroll-view>
 
-        <scroll-view scroll-x class="mt-4" show-scrollbar="false">
+<scroll-view scroll-x class="mt-4" show-scrollbar="false">
           <view class="flex items-center gap-2 pb-1">
             <button
               v-for="property in properties"
