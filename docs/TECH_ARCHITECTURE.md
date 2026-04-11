@@ -1,5 +1,7 @@
 # 技术架构与工程约定
 
+最后更新日期：2026-04-11
+
 ## 1. 目标技术路线
 
 ### 前端
@@ -8,10 +10,10 @@
 - `Uni-app`
 - `Tailwind CSS`
 
-目标：
+当前目标是：
 
 - 一套代码优先编译到微信小程序
-- 兼容 H5 作为辅助预览
+- H5 作为辅助预览和开发验证
 
 ### 后端规划
 
@@ -25,43 +27,43 @@
 
 ### 文件存储规划
 
-- 对象存储：`Cloudflare R2`
-- 未来存储对象：
-  - 身份证照片
-  - 合同文件
-  - 收款凭证
-  - 表计照片
-  - 房间资产图片
+- `Cloudflare R2`
 
-## 2. 当前仓库实际状态
+未来主要存储对象：
 
-当前仓库并未接入正式后端，实际情况是：
+- 身份证图片
+- 合同文件
+- 收款凭证
+- 抄表图片
+- 房屋图片
 
-- 只有前端原型工程
-- 数据主要来自 `src/data/rentStore.js`
-- 已实现本地存储持久化
-- 没有 MySQL
-- 没有 Prisma
-- 没有真实 API 层
-- 没有真实登录鉴权
+## 2. 当前仓库的真实状态
 
-也就是说，当前是：
+当前仓库仍然是前端高保真原型，不是正式前后端分离系统。
 
-- `前端高保真原型 + mock 数据 + 本地持久化`
+已经具备：
 
-不是：
+- 前端页面原型
+- 本地 mock 数据
+- 本地持久化
+- 领域模型与页面写操作封装
+- 小程序构建与兼容性修补
 
-- `正式前后端分离生产系统`
+当前还没有：
 
-## 3. 当前页面结构
+- 正式后端 API
+- MySQL / Prisma
+- 真正对象存储上传
+- 登录鉴权
+- 多租户
 
-### 路由
+## 3. 当前核心页面结构
 
-定义在：
+路由定义在：
 
 - `src/pages.json`
 
-当前页面：
+当前主要页面：
 
 - `pages/workbench/index`
 - `pages/block/detail`
@@ -70,146 +72,202 @@
 - `pages/bills/index`
 - `pages/profile/index`
 
-### tabBar
+其中与房间经营最相关的两条主路径已经稳定为：
 
-当前已经回退使用原生小程序 `tabBar`，原因是：
+1. 楼栋页点空房，直接进入办理入住页
+2. 楼栋页点非空房，打开完整房间详情抽屉
 
-- 自绘 tabBar 虽然更自由，但切页性能和稳定性较差
-- 原生 `switchTab` 更适合当前小程序体验要求
+## 4. 当前关键代码模块
 
-## 4. 关键代码模块
-
-### 状态与 mock 数据
+### 数据与领域层
 
 - `src/data/rentStore.js`
 - `src/domain/rent-models.js`
 - `src/domain/rent-room-service.js`
 - `src/domain/rent-api-mappers.js`
 
-负责：
+职责划分：
 
-- `rentStore.js`：本地持久化、种子场景、查询入口
-- `rent-models.js`：稳定数据模型、规范化、基础格式化与默认值
-- `rent-room-service.js`：房间级业务写操作与账务计算
-- `rent-api-mappers.js`：把当前前端聚合对象映射到未来后端记录结构
+- `rentStore.js`
+  - 本地持久化
+  - mock 场景数据
+  - 页面查询入口
+- `rent-models.js`
+  - 稳定数据模型
+  - 格式化与默认值
+- `rent-room-service.js`
+  - 房间级写操作
+  - 收租、附加收费、抄表、附件、入住、退租
+- `rent-api-mappers.js`
+  - 面向未来后端的数据映射
 
-### 路由保护
+### 页面与展示层
+
+- `src/components/RoomDetailSheet.vue`
+- `src/components/OccupancyTimeline.vue`
+- `src/pages/room/checkin.vue`
+- `src/pages/block/detail.vue`
+
+当前状态：
+
+- `RoomDetailSheet.vue` 是房间经营主视图
+- `room/detail.vue` 已复用抽屉详情实现
+- `room/checkin.vue` 是空置房办理入住页
+- `OccupancyTimeline.vue` 负责历史入住时间轴
+
+### 通用能力
 
 - `src/utils/navigation.js`
 - `src/utils/layout.js`
-
-负责：
-
-- 页面跳转节流
-- 防重复点击
-- 安全返回
-- 页面头部高度 / 安全区读取统一收口
-
-### 公共组件
-
 - `src/components/BottomDrawer.vue`
 - `src/components/InnerDrawer.vue`
-- `src/components/OccupancyTimeline.vue`
-- `src/components/AppTabBar.vue`
 
-说明：
+职责：
 
-- `AppTabBar.vue` 曾用于自绘 tabbar，但当前主导航已回归原生 tabBar，后续是否继续保留可再评估。
+- 路由节流
+- 防重复跳转
+- 安全返回
+- 头部高度 / 安全区读取
+- 抽屉容器与弹层统一
 
-### 样式体系
+## 5. 当前房间页的信息架构
 
-- `src/tailwind.css`
+### 房间详情页
+
+当前已统一为：
+
+- `当前情况`
+- `历史入住`
+
+`当前情况` 内的稳定模块：
+
+- 房间概况
+- 当前租客
+- 租金收费
+- 附加收费
+- 收费明细
+
+其中：
+
+- `房间概况` 与 `当前租客` 已支持折叠
+- `租金收费` 与 `附加收费` 都采用表格式台账布局
+- `收费明细` 默认折叠
+
+### 办理入住页
+
+当前也统一为：
+
+- `当前情况`
+- `历史入住`
+
+`当前情况` 当前结构：
+
+- 房间概况
+- 当前租客
+- 租金与租期
+
+其中：
+
+- 房间概况与当前租客已支持折叠
+- 日期选择改为自定义弹层
+- 租期结束日不手选，按开始日期 + 月数自动推算
+
+## 6. 真实收费模型
+
+当前实现已经不再只依赖“账期已付 / 未付”。
+
+### 租金
+
+已支持：
+
+- 按合同生成理论账期
+- 一期多次收费
+- 部分收费
+- 补收
+- 上传凭证
+
+页面表达方式：
+
+- 一个总收费进度条
+- 一张账期表
+- 每期显示应收 / 已收 / 状态 / 操作
+
+### 附加收费
+
+当前已统一纳入：
+
+- 水费
+- 电费
+- 燃汽
+- 供暖
+
+规则：
+
+- 水费、电费支持抄表生成应收
+- 也支持直接收费
+- 燃汽、供暖走手动收费
+- 全部支持上传凭证
+
+## 7. 小程序兼容性约束
+
+### WXSS 兼容性
+
+微信小程序对部分 Tailwind 产物不兼容，因此当前工程仍依赖：
+
 - `src/tailwind.generated.css`
-- `src/styles/utilities.css`
-
-当前采用方式：
-
-- Tailwind 生成基础原子类
-- `utilities.css` 放微信小程序安全类和项目级组件类
-
-## 5. 微信小程序特殊约束
-
-这是当前工程里非常重要的一部分。
-
-### WXSS 兼容约束
-
-微信小程序对部分 Tailwind 产物不兼容，因此必须避免：
-
-- 带反斜杠的选择器
-- `space-y-*`
-- `divide-y`
-- `::-webkit-scrollbar`
-- `:not(...)`
-- 某些复杂伪元素与伪类
-
-### 已做的构建后处理
-
-脚本：
-
 - `scripts/sanitize-mp-weixin-wxss.cjs`
 - `scripts/postprocess-mp-build.cjs`
 
-用途：
+需要继续避免：
 
-- 清理不兼容 WXSS 片段
-- 规避小程序编译报错
+- 复杂转义类名
+- 小程序不支持的复杂选择器
+- 依赖浏览器伪元素的样式方案
 
-### 原生 API 警告
+### 系统信息读取
 
-当前项目已把页面层散落的系统信息读取收敛到 `src/utils/layout.js`，页面本身不再直接调用相关 API。
+系统信息读取已经统一收口到：
 
-当前仍保留的兼容兜底：
+- `src/utils/layout.js`
 
-- 优先使用 `uni.getWindowInfo`
-- 退化时仍会 fallback 到 `uni.getSystemInfoSync`
-- 后续仍建议继续向更新的平台 API 收敛
+规则：
 
-## 6. 数据持久化现状
+- 优先 `uni.getWindowInfo`
+- 回退 `uni.getSystemInfoSync`
 
-### 当前已实现
+## 8. 测试与校验
 
-- `properties` 本地持久化
-- 全局水电配置本地持久化
-- 提醒配置本地持久化
+当前已补的工程校验：
 
-### 当前未实现
+- `npm run build:mp-weixin`
+- `npm run build:h5`
+- `npm run test:domain`
+- `npm run verify:encoding`
 
-- 后端数据库持久化
-- 多设备同步
-- 多用户隔离
+其中：
 
-## 7. 后续推荐落地架构
+- `tests/domain.test.js` 覆盖领域层核心链路
+- `scripts/verify-encoding.cjs` 用于扫描编码污染
 
-当进入正式开发阶段时，建议新增这些目录：
+## 9. 当前开发约定
 
-- `server/`
-- `prisma/`
-- `docs/api/`
+### 页面修改约定
 
-建议优先落地的后端模块：
+1. 优先保证微信小程序可用性
+2. 再收原型还原度
+3. 再做 H5 辅助表现
 
-1. 认证与租户模型
-2. 房产结构管理 API
-3. 租约与账单 API
-4. 对象存储上传签名接口
-5. 历史流水与导出接口
+### 文档约定
 
-## 8. 开发约定
+每次重要结构或交互变化后，都要同步更新：
 
-### 每次改动后必须做
+- `docs/IMPLEMENTATION_STATUS.md`
+- `docs/PROJECT_HISTORY.md`
+- `docs/TECH_ARCHITECTURE.md`
 
-1. 更新 `docs/IMPLEMENTATION_STATUS.md`
-2. 更新 `docs/PROJECT_HISTORY.md`
-3. 若需求变更，更新 `docs/PRODUCT_REQUIREMENTS.md`
-4. 若工程结构或技术方案变更，更新 `docs/TECH_ARCHITECTURE.md`
+### 当前推荐后续方向
 
-### 页面改动原则
-
-- 优先保证微信小程序可用性
-- 再追求高保真视觉
-- 再考虑 H5 效果
-
-### 文案原则
-
-- 中文文案必须统一，避免乱码
-- 不要残留“返”“关”等不符合小程序习惯的按钮文案
+1. 继续把折叠卡头抽成公共小组件
+2. 继续统一底部双按钮 footer 样式
+3. 在不改原型功能的前提下继续压缩页面长度
+4. 再推进后端 API 边界落地
