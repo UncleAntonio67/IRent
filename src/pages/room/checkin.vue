@@ -1,26 +1,29 @@
 <template>
   <view class="min-h-screen bg-slate-900-45 flex items-end justify-center" @click="closeSelf">
     <view class="w-full max-w-md drawer-page-panel flex flex-col bg-slate-50 rounded-t-3xl shadow-2xl relative overflow-hidden" @click.stop>
-      <view class="bg-white-80 border-b px-5 pt-3 pb-3 border-slate-200-60 relative shrink-0">
+      <view class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 shrink-0" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view class="flex justify-center">
           <view class="w-12 h-1_5 rounded-full bg-slate-200 mt-1"></view>
         </view>
-        <view class="flex items-center justify-between gap-3">
+        <view class="flex items-center justify-between gap-3 mt-2">
           <view class="flex items-center gap-3 min-w-0">
-            <button class="nav-icon-button tap-scale" @click="closeSelf"><view class="icon-close"><view class="icon-close-line"></view><view class="icon-close-line icon-close-line-second"></view></view></button>
+            <button class="nav-icon-button tap-scale" @click="closeSelf">
+              <view class="icon-close">
+                <view class="icon-close-line"></view>
+                <view class="icon-close-line icon-close-line-second"></view>
+              </view>
+            </button>
             <view class="min-w-0">
               <view class="font-black text-slate-900 text-base truncate">办理入住</view>
-              <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">
-                {{ property?.name || '' }}<text v-if="property" class="mx-1 text-slate-200">|</text>{{ block?.name || '' }}
-              </view>
+              <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">{{ roomLocationText }}</view>
             </view>
           </view>
           <view v-if="room" class="text-2xs font-bold px-3 py-1 rounded-full chip-soft text-slate-600">
-            {{ room.roomNo }} 空置
+            {{ room.roomNo }} {{ room.status === 'empty' ? '空置' : '已租' }}
           </view>
         </view>
 
-        <view class="mt-4">
+        <view class="mt-3">
           <view class="p-1 surface-muted rounded-2xl flex gap-1">
             <button
               class="flex-1 py-2 rounded-xl text-xs font-black tap-scale"
@@ -41,153 +44,144 @@
       </view>
 
       <scroll-view scroll-y class="drawer-scroll-area" :scroll-with-animation="true" enable-flex>
-        <view v-if="!room" class="p-5">
-          <view class="p-5 rounded-2xl surface-card">
-            <view class="text-sm text-slate-600 font-medium leading-relaxed">房间不存在或参数缺失。</view>
+        <view v-if="!room" class="px-5 pt-3 pb-5">
+          <view class="p-4 rounded-2xl surface-card">
+            <view class="text-sm text-slate-600 font-medium">房间不存在或参数缺失。</view>
           </view>
         </view>
 
-        <view v-else-if="room.status !== 'empty'" class="p-5 stack-4">
-          <view class="p-5 rounded-2xl bg-white border border-slate-200-60 shadow-soft">
-            <view class="font-black text-slate-800">当前房间已入住</view>
-            <view class="text-sm text-slate-600 font-medium leading-relaxed mt-2">
-              该房间当前不是空置状态，不能重复办理入住。
+        <view v-else-if="room.status !== 'empty'" class="px-5 pt-3 pb-5 stack-3">
+          <view class="p-4 rounded-2xl surface-card">
+            <view class="font-black text-slate-800">该房间当前已在租</view>
+            <view class="text-sm text-slate-600 font-medium mt-2 leading-relaxed">
+              只有空置房才能办理入住。你可以直接查看房间详情，或先完成退租后再重新入住。
             </view>
           </view>
-          <button class="w-full py-4 rounded-xl btn-blue font-bold tap-scale" @click="goRoomDetail">
-            去房间详情
-          </button>
+          <button class="w-full py-4 rounded-xl btn-blue font-bold tap-scale" @click="goRoomDetail">前往房间详情</button>
         </view>
 
-        <view v-else class="p-5 stack-4">
-          <view v-if="tab === 'history'" class="stack-4">
-            <view class="p-5 rounded-2xl surface-card">
-              <view class="font-black text-slate-800">历史入住情况</view>
-              <view class="text-xs text-slate-400 font-medium mt-1">按时间轴组织，便于快速追溯。</view>
-              <view class="mt-4">
-                <OccupancyTimeline :occupancies="room.occupancies || []" />
+        <view v-else class="px-5 pt-3 pb-5">
+          <view v-if="tab === 'history'" class="stack-2">
+            <view class="p-4 rounded-2xl surface-card">
+              <view class="flex items-center justify-between">
+                <view class="font-black text-slate-800">历史入住</view>
+                <view class="text-2xs text-slate-400 font-bold">{{ historyTimelineItems.length }} 段</view>
+              </view>
+              <view class="mt-3">
+                <OccupancyTimeline :occupancies="historyTimelineItems" />
               </view>
             </view>
-            <view class="h-24"></view>
+            <view class="h-16"></view>
           </view>
 
-          <view v-else class="stack-4">
-            <view class="p-5 rounded-2xl surface-card">
-              <view class="font-black text-slate-800">租金与周期</view>
-              <view class="grid grid-cols-2 gap-3 mt-4">
-                <view class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <view class="text-xs text-slate-500 font-bold">租金(每期)</view>
-                  <input
-                    v-model="form.rent"
-                    type="number"
-                    class="mt-2 w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-mono"
-                    placeholder="例如：3200"
-                  />
+          <view v-else class="stack-2">
+            <view class="p-3 rounded-2xl surface-card">
+              <button class="w-full flex items-center justify-between bg-transparent p-0 text-left tap-scale" @click="roomOverviewExpanded = !roomOverviewExpanded">
+                <view class="text-xs text-slate-400 font-bold">房间概况</view>
+                <view class="text-2xs text-slate-400 font-bold">{{ roomOverviewExpanded ? '收起' : '展开' }}</view>
+              </button>
+              <view v-if="roomOverviewExpanded" class="mt-2">
+                <view class="text-base font-black text-slate-800">{{ room.roomNo }}</view>
+                <view class="text-xs text-slate-500 font-medium mt-1">当前为空置房，确认入住后会生成首期账期并写入入住历史。</view>
+
+                <view class="mt-3 flex items-center gap-2 overflow-hidden">
+                  <button class="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 tap-scale shrink-0 flex flex-col items-center justify-center" @click="handleRoomPhotoUpload">
+                    <text class="text-sm font-black leading-none">+</text>
+                    <text class="text-2xs font-medium mt-0_5">上传</text>
+                  </button>
+                  <scroll-view scroll-x class="flex-1 min-w-0 whitespace-nowrap overflow-hidden">
+                    <view class="inline-flex gap-2">
+                      <view
+                        v-for="photo in roomPhotos.slice(0, 6)"
+                        :key="photo.id"
+                        class="w-11 h-11 px-2 rounded-xl border border-slate-200 bg-slate-50 inline-flex flex-col justify-end overflow-hidden shrink-0"
+                      >
+                        <view class="text-2xs font-black text-slate-700 truncate">{{ room.roomNo }}</view>
+                        <view class="text-2xs text-slate-400 truncate">{{ photo.name }}</view>
+                      </view>
+                      <view v-if="roomPhotos.length === 0" class="w-11 h-11 px-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 inline-flex items-center justify-center text-2xs text-slate-400 font-bold shrink-0">暂无</view>
+                    </view>
+                  </scroll-view>
                 </view>
-                <view class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <view class="text-xs text-slate-500 font-bold">押金</view>
-                  <input
-                    v-model="form.deposit"
-                    type="number"
-                    class="mt-2 w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-mono"
-                    placeholder="例如：6400"
-                  />
+              </view>
+            </view>
+
+            <view class="p-3 rounded-2xl surface-card">
+              <button class="w-full flex items-center justify-between bg-transparent p-0 text-left tap-scale" @click="currentTenantExpanded = !currentTenantExpanded">
+                <view class="text-xs text-slate-500 font-bold">当前租客</view>
+                <view class="text-2xs text-slate-400 font-bold">{{ currentTenantExpanded ? '收起' : '展开' }}</view>
+              </button>
+              <view v-if="currentTenantExpanded" class="flex items-end justify-between gap-3 mt-3">
+                <view class="min-w-0 flex-1">
+                  <input v-model="form.tenant" type="text" class="tenant-inline-input" placeholder="请输入租客姓名" />
+                  <input v-model="form.phone" type="text" class="tenant-inline-input mt-2" placeholder="请输入手机号" />
+                </view>
+                <button
+                  class="detail-side-button tap-scale"
+                  :class="attachments.idCard ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'"
+                  @click="pickAttachment('idCard')"
+                >
+                  <view class="detail-side-button-text" :class="attachments.idCard ? 'text-emerald-800' : 'text-slate-700'">
+                    {{ attachments.idCard ? '查看身份证' : '上传身份证' }}
+                  </view>
+                </button>
+                <button
+                  class="detail-side-button tap-scale"
+                  :class="attachments.contract ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'"
+                  @click="pickAttachment('contract')"
+                >
+                  <view class="detail-side-button-text" :class="attachments.contract ? 'text-emerald-800' : 'text-slate-700'">
+                    {{ attachments.contract ? '查看合同' : '上传合同' }}
+                  </view>
+                </button>
+              </view>
+            </view>
+
+            <view class="p-3 rounded-2xl surface-card">
+              <view class="text-base font-bold text-slate-900">租金与租期</view>
+
+              <view class="grid grid-cols-2 gap-2 mt-2">
+                <view class="compact-section">
+                  <view class="compact-field-label">租金（每期）</view>
+                  <input v-model="form.rent" type="number" class="checkin-input mt-1_5" placeholder="请输入租金" />
+                </view>
+                <view class="compact-section">
+                  <view class="compact-field-label">押金</view>
+                  <input v-model="form.deposit" type="number" class="checkin-input mt-1_5" placeholder="请输入押金" />
                 </view>
               </view>
 
-              <view class="mt-4">
-                <view class="text-xs text-slate-500 font-bold">付款周期(可配置)</view>
-                <view class="flex gap-2 mt-2 flex-wrap">
+              <view class="compact-section mt-2">
+                <view class="compact-field-label">支付周期</view>
+                <view class="flex gap-2 mt-1_5 flex-wrap items-center">
                   <button
                     v-for="opt in cycleOptions"
                     :key="opt.value"
-                    class="px-3 py-2 rounded-xl text-xs font-bold border tap-scale"
-                    :class="Number(form.paymentCycle) === opt.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'"
+                    class="cycle-option-button tap-scale"
+                    :class="Number(form.paymentCycle) === opt.value ? 'cycle-option-active' : 'cycle-option-default'"
                     @click="form.paymentCycle = String(opt.value)"
                   >
                     {{ opt.label }}
                   </button>
-                  <view class="flex items-center gap-2">
-                    <view class="text-xs text-slate-400 font-bold">自定义几个月</view>
-                    <input
-                      v-model="form.paymentCycle"
-                      type="number"
-                      class="w-20 px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs"
-                      placeholder="例如：2"
-                    />
+                  <input v-model="form.paymentCycle" type="number" class="checkin-cycle-input" placeholder="月数" />
+                </view>
+              </view>
+
+              <view class="grid grid-cols-2 gap-2 mt-2">
+                <view class="compact-section">
+                  <view class="compact-field-label">租期开始</view>
+                  <button class="checkin-picker text-left tap-scale mt-1_5" @click="dateDrawerOpen = true">
+                    {{ form.leaseStart }}
+                  </button>
+                  <view class="compact-inline-note mt-1">
+                    <text class="compact-inline-note-label">预计到期</text>
+                    <text class="compact-inline-note-value">{{ leaseEndPreview || '请先填写租期月数' }}</text>
                   </view>
                 </view>
-              </view>
-
-              <view class="grid grid-cols-2 gap-3 mt-4">
-                <view class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <view class="text-xs text-slate-500 font-bold">租期开始</view>
-                  <picker mode="date" :value="form.leaseStart" @change="(e) => (form.leaseStart = e.detail.value)">
-                    <view class="mt-2 px-3 py-3 bg-white border border-slate-200 rounded-xl font-mono text-xs">
-                      {{ form.leaseStart || '选择日期' }}
-                    </view>
-                  </picker>
+                <view class="compact-section">
+                  <view class="compact-field-label">租期月数</view>
+                  <input v-model="form.leaseMonths" type="number" class="checkin-input mt-1_5" placeholder="请输入月数" />
                 </view>
-                <view class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <view class="text-xs text-slate-500 font-bold">租期结束</view>
-                  <picker mode="date" :value="form.leaseEnd" @change="(e) => (form.leaseEnd = e.detail.value)">
-                    <view class="mt-2 px-3 py-3 bg-white border border-slate-200 rounded-xl font-mono text-xs">
-                      {{ form.leaseEnd || '选择日期' }}
-                    </view>
-                  </picker>
-                </view>
-              </view>
-            </view>
-
-            <view class="p-5 rounded-2xl surface-card">
-              <view class="font-black text-slate-800">租客信息</view>
-              <view class="grid grid-cols-2 gap-3 mt-4">
-                <view class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <view class="text-xs text-slate-500 font-bold">姓名</view>
-                  <input v-model="form.tenant" type="text" class="mt-2 w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-medium" placeholder="例如：王先生" />
-                </view>
-                <view class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                  <view class="text-xs text-slate-500 font-bold">手机号</view>
-                  <input v-model="form.phone" type="text" class="mt-2 w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-mono" placeholder="例如：13800000000" />
-                </view>
-              </view>
-              <view class="p-4 rounded-2xl bg-slate-50 border border-slate-200 mt-3">
-                <view class="text-xs text-slate-500 font-bold">身份证号</view>
-                <input v-model="form.idCard" type="text" class="mt-2 w-full px-3 py-3 bg-white border border-slate-200 rounded-xl font-mono" placeholder="例如：4403xxxxxxxxxxxxxx" />
-              </view>
-            </view>
-
-            <view class="p-5 rounded-2xl bg-white border border-slate-200-60 shadow-soft">
-              <view class="font-black text-slate-800">强制双证</view>
-              <view class="text-xs text-slate-400 font-medium mt-1">身份证与合同都需要上传后，才能确认入住。</view>
-              <view class="grid grid-cols-2 gap-3 mt-4">
-                <button
-                  class="p-4 rounded-2xl border tap-scale text-left"
-                  :class="attachments.idCard ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'"
-                  @click="pickAttachment('idCard')"
-                >
-                  <view class="text-xs font-bold" :class="attachments.idCard ? 'text-emerald-700' : 'text-rose-700'">身份证照片</view>
-                  <view class="text-2xs font-medium mt-2" :class="attachments.idCard ? 'text-emerald-600' : 'text-rose-600'">
-                    {{ attachments.idCard ? '已上传(模拟)' : '点击上传' }}
-                  </view>
-                </button>
-                <button
-                  class="p-4 rounded-2xl border tap-scale text-left"
-                  :class="attachments.contract ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'"
-                  @click="pickAttachment('contract')"
-                >
-                  <view class="text-xs font-bold" :class="attachments.contract ? 'text-emerald-700' : 'text-rose-700'">电子合同</view>
-                  <view class="text-2xs font-medium mt-2" :class="attachments.contract ? 'text-emerald-600' : 'text-rose-600'">
-                    {{ attachments.contract ? '已上传(模拟)' : '点击上传' }}
-                  </view>
-                </button>
-              </view>
-            </view>
-
-            <view class="p-5 rounded-2xl bg-slate-900 text-white">
-              <view class="text-xs text-slate-300 font-bold">收款提示</view>
-              <view class="text-sm font-medium leading-relaxed mt-2 text-slate-100">
-                这里先模拟“确认收款并入住”，后续接入账单引擎后，会按租期与周期生成全部分期账单。
               </view>
             </view>
 
@@ -198,15 +192,34 @@
 
       <view v-if="room && room.status === 'empty' && tab === 'current'" class="absolute inset-x-0 bottom-0 bg-white border-t border-slate-200-60">
         <view class="px-5 py-3 flex items-center gap-2">
-          <button class="flex-1 py-4 rounded-xl btn-soft text-slate-700 font-bold tap-scale" @click="resetForm">
-            重置
-          </button>
-          <button class="flex-1 py-4 rounded-xl btn-emerald font-bold tap-scale" @click="confirmCheckIn">
-            确认收款并入住
-          </button>
+          <button class="footer-secondary-button tap-scale" @click="resetForm">重置</button>
+          <button class="footer-primary-button tap-scale" @click="confirmCheckIn">确认收款并入住</button>
         </view>
       </view>
     </view>
+
+    <InnerDrawer v-if="dateDrawerOpen" :open="dateDrawerOpen" title="选择租期开始" compact @close="dateDrawerOpen = false">
+      <view class="stack-2">
+        <view class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+          <button class="date-step-button tap-scale" @click="shiftLeaseStart(-1)">前一天</button>
+          <view class="text-center min-w-0 flex-1">
+            <view class="text-sm font-black text-slate-800">{{ form.leaseStart }}</view>
+            <view class="text-2xs text-slate-400 mt-1">默认当前日期，可向前或向后调整</view>
+          </view>
+          <button class="date-step-button tap-scale" @click="shiftLeaseStart(1)">后一天</button>
+        </view>
+
+        <view class="grid grid-cols-3 gap-2">
+          <button class="date-chip tap-scale" @click="shiftLeaseStart(-30)">前30天</button>
+          <button class="date-chip tap-scale" @click="setLeaseStart(todayString)">今天</button>
+          <button class="date-chip tap-scale" @click="shiftLeaseStart(30)">后30天</button>
+        </view>
+      </view>
+
+      <template #footer>
+        <button class="w-full py-3 rounded-xl btn-blue font-bold tap-scale" @click="dateDrawerOpen = false">确认日期</button>
+      </template>
+    </InnerDrawer>
   </view>
 </template>
 
@@ -215,20 +228,34 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { cloneProperties, findBlock, findProperty, findRoomWithFloor, generatePaymentSchedule, setProperties } from '../../data/rentStore'
 import OccupancyTimeline from '../../components/OccupancyTimeline.vue'
-import { safeNavigateBack, safeRedirectTo, safeSwitchTab } from '../../utils/navigation'
+import InnerDrawer from '../../components/InnerDrawer.vue'
+import { safeNavigateBack, safeRedirectTo } from '../../utils/navigation'
+import { getDrawerHeaderTopPadding } from '../../utils/layout'
+import { checkInRoom, createRoomTreeMutator, uploadRoomPhoto } from '../../domain/rent-room-service'
 
 const headerTopPadding = ref(44)
 const propertyId = ref('')
 const blockId = ref('')
 const roomId = ref('')
 const tab = ref('current')
+const dateDrawerOpen = ref(false)
+const roomOverviewExpanded = ref(true)
+const currentTenantExpanded = ref(true)
 
 const property = computed(() => (propertyId.value ? findProperty(propertyId.value) : null))
 const block = computed(() => (propertyId.value && blockId.value ? findBlock(propertyId.value, blockId.value) : null))
-const roomWithFloor = computed(() =>
-  propertyId.value && blockId.value && roomId.value ? findRoomWithFloor(propertyId.value, blockId.value, roomId.value) : null
-)
+const roomWithFloor = computed(() => (propertyId.value && blockId.value && roomId.value ? findRoomWithFloor(propertyId.value, blockId.value, roomId.value) : null))
 const room = computed(() => roomWithFloor.value?.room || null)
+const roomPhotos = computed(() => room.value?.roomPhotos || [])
+const roomLocationText = computed(() => [property.value?.name, block.value?.name].filter(Boolean).join(' · '))
+const historyOccupancies = computed(() => (room.value?.occupancies || []).filter((occupancy) => occupancy.kind === 'lease'))
+const historyTimelineItems = computed(() =>
+  historyOccupancies.value.map((occupancy) => ({
+    ...occupancy,
+    rentTotal: occupancyRentTotal(occupancy),
+    extraTotal: occupancyExtraCollectionTotal(occupancy),
+  }))
+)
 
 const cycleOptions = [
   { value: 1, label: '月付' },
@@ -237,27 +264,23 @@ const cycleOptions = [
   { value: 12, label: '年付' },
 ]
 
+const todayString = formatDate(new Date())
+
 const form = ref({
   rent: '',
   deposit: '',
   paymentCycle: '3',
-  leaseStart: '',
-  leaseEnd: '',
+  leaseStart: todayString,
+  leaseMonths: '12',
   tenant: '',
   phone: '',
-  idCard: '',
 })
 
 const attachments = ref({ idCard: null, contract: null })
+const leaseEndPreview = computed(() => resolveLeaseEnd(form.value.leaseStart, form.value.leaseMonths))
 
 onLoad((query) => {
-  try {
-    const sys = uni.getSystemInfoSync()
-    headerTopPadding.value = Math.max(18, Math.min(24, (sys.statusBarHeight || 20)))
-  } catch {
-    headerTopPadding.value = 44
-  }
-
+  headerTopPadding.value = getDrawerHeaderTopPadding(24)
   propertyId.value = String(query?.propertyId || '')
   blockId.value = String(query?.blockId || '')
   roomId.value = String(query?.roomId || '')
@@ -283,158 +306,356 @@ function resetForm() {
     rent: String(room.value.rent || ''),
     deposit: String(room.value.deposit || ''),
     paymentCycle: String(room.value.paymentCycle || 3),
-    leaseStart: '',
-    leaseEnd: '',
+    leaseStart: todayString,
+    leaseMonths: '12',
     tenant: '',
     phone: '',
-    idCard: '',
   }
   attachments.value = { idCard: null, contract: null }
+  roomOverviewExpanded.value = true
+  currentTenantExpanded.value = true
   uni.showToast({ title: '已重置', icon: 'none' })
 }
 
-function pickAttachment(type) {
-  if (type === 'idCard') attachments.value.idCard = buildAttachmentFile('idCard')
-  if (type === 'contract') attachments.value.contract = buildAttachmentFile('contract')
-  uni.showToast({ title: '已上传(模拟)', icon: 'none' })
+function nowString() {
+  const date = new Date()
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-function todayStr() {
-  const d = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+function formatDate(date) {
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function parseDate(dateString) {
+  if (!dateString) return null
+  const date = new Date(`${dateString}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function setLeaseStart(nextValue) {
+  form.value.leaseStart = nextValue
+}
+
+function shiftLeaseStart(days) {
+  const current = parseDate(form.value.leaseStart) || new Date()
+  current.setDate(current.getDate() + days)
+  form.value.leaseStart = formatDate(current)
+}
+
+function resolveLeaseEnd(startDate, monthsValue) {
+  const start = parseDate(startDate)
+  const months = Number(monthsValue)
+  if (!start || !Number.isFinite(months) || months <= 0) return ''
+  const end = new Date(start)
+  end.setMonth(end.getMonth() + months)
+  end.setDate(end.getDate() - 1)
+  return formatDate(end)
 }
 
 function buildAttachmentFile(type) {
-  const now = todayStr()
+  const now = nowString()
   if (type === 'idCard') {
     return {
-      name: `${form.value.tenant.trim() || '租客'}_身份证.jpg`,
+      name: `${form.value.tenant.trim() || '租客'}_id_card.jpg`,
       uploadedAt: now,
       source: 'mock',
       previewText: '身份证正反面影像（模拟）',
     }
   }
+
   return {
-    name: `${room.value?.roomNo || '房间'}_电子合同.pdf`,
+    name: `${room.value?.roomNo || 'room'}_lease_contract.pdf`,
     uploadedAt: now,
     source: 'mock',
     previewText: '已签署租赁合同（模拟）',
   }
 }
 
+function pickAttachment(type) {
+  if (type === 'idCard') attachments.value.idCard = buildAttachmentFile('idCard')
+  if (type === 'contract') attachments.value.contract = buildAttachmentFile('contract')
+  uni.showToast({ title: '已上传（模拟）', icon: 'none' })
+}
+
+function handleRoomPhotoUpload() {
+  const nextProperties = cloneProperties()
+  const hit = createRoomTreeMutator(nextProperties, propertyId.value, blockId.value, roomId.value)
+  if (!hit) return
+  uploadRoomPhoto(hit.room, { now: nowString() })
+  setProperties(nextProperties)
+  uni.showToast({ title: '已上传房屋图片', icon: 'none' })
+}
+
+function occupancyRentTotal(occupancy) {
+  if (!occupancy) return 0
+  const paymentSchedule = occupancy.archive?.paymentSchedule || []
+  if (paymentSchedule.length > 0) return paymentSchedule.reduce((sum, item) => sum + Number(item.expectedAmount || 0), 0)
+  return Number(occupancy.rent || 0)
+}
+
+function occupancyExtraCollectionTotal(occupancy) {
+  if (!occupancy) return 0
+  const collections = occupancy.archive?.collections || []
+  return collections.filter((item) => item.kind !== 'rent').reduce((sum, item) => sum + Number(item.amount || 0), 0)
+}
+
 function confirmCheckIn() {
   if (!room.value) return
-  if (!form.value.tenant.trim()) {
-    uni.showToast({ title: '请填写租客姓名', icon: 'none' })
-    return
-  }
+  if (!form.value.tenant.trim()) return uni.showToast({ title: '请填写租客姓名', icon: 'none' })
 
   const rent = Number(form.value.rent)
   const deposit = Number(form.value.deposit)
   const paymentCycle = Number(form.value.paymentCycle)
+  const leaseMonths = Number(form.value.leaseMonths)
   if (!Number.isFinite(rent) || rent <= 0 || !Number.isFinite(deposit) || deposit < 0 || !Number.isFinite(paymentCycle) || paymentCycle <= 0) {
-    uni.showToast({ title: '请完善租金、押金和周期', icon: 'none' })
-    return
+    return uni.showToast({ title: '请完善租金、押金和周期', icon: 'none' })
+  }
+  if (!Number.isFinite(leaseMonths) || leaseMonths <= 0) {
+    return uni.showToast({ title: '请填写租期月数', icon: 'none' })
   }
   if (!attachments.value.idCard || !attachments.value.contract) {
-    uni.showToast({ title: '请先上传身份证和合同', icon: 'none' })
-    return
+    return uni.showToast({ title: '请先上传身份证和合同', icon: 'none' })
   }
 
-  const next = cloneProperties()
-  const p = next.find((pp) => pp.id === propertyId.value)
-  const b = p?.blocks.find((bb) => bb.id === blockId.value)
-  if (!p || !b) return
+  const now = nowString()
+  const leaseStart = form.value.leaseStart || todayString
+  const leaseEnd = resolveLeaseEnd(leaseStart, form.value.leaseMonths)
 
-  let hit = null
-  for (const f of b.floors) {
-    const r = f.rooms.find((rr) => rr.id === roomId.value)
-    if (r) {
-      hit = r
-      break
-    }
-  }
+  const nextProperties = cloneProperties()
+  const hit = createRoomTreeMutator(nextProperties, propertyId.value, blockId.value, roomId.value)
   if (!hit) return
 
-  const now = todayStr()
-  const nowDate = now.slice(0, 10)
-
-  const lastIdle = (hit.occupancies || []).find((o) => o.kind === 'idle' && (!o.endDate || o.endDate === '') && o.status === 'idle')
-  if (lastIdle) lastIdle.endDate = nowDate
-
-  const occId = `oc_${Date.now()}`
-  hit.occupancies = Array.isArray(hit.occupancies) ? hit.occupancies : []
-  hit.occupancies.unshift({
-    id: occId,
-    kind: 'lease',
-    status: 'active',
-    tenant: form.value.tenant.trim(),
-    phone: form.value.phone.trim(),
-    idCard: form.value.idCard.trim(),
-    startDate: form.value.leaseStart || nowDate,
-    endDate: form.value.leaseEnd || '',
-    rent,
-    deposit,
-    paymentCycle,
-    remark: '办理入住(模拟)',
-    archive: null,
-  })
-  hit.activeOccupancyId = occId
-
-  const leaseStart = form.value.leaseStart || nowDate
-  let leaseEnd = form.value.leaseEnd || ''
-  if (!leaseEnd) {
-    const tmp = new Date(leaseStart)
-    if (!Number.isNaN(tmp.getTime())) {
-      tmp.setFullYear(tmp.getFullYear() + 1)
-      tmp.setDate(tmp.getDate() - 1)
-      const pad = (n) => String(n).padStart(2, '0')
-      leaseEnd = `${tmp.getFullYear()}-${pad(tmp.getMonth() + 1)}-${pad(tmp.getDate())}`
-    }
-  }
-
-  hit.paymentSchedule = generatePaymentSchedule({
+  const paymentSchedule = generatePaymentSchedule({
     startDate: leaseStart,
     endDate: leaseEnd,
     cycleMonths: paymentCycle,
     rentPerCycle: rent,
   })
 
-  if (hit.paymentSchedule.length > 0) {
-    hit.paymentSchedule[0].paidAmount = hit.paymentSchedule[0].expectedAmount
-    hit.paymentSchedule[0].status = 'paid'
-    hit.paymentSchedule[0].payDate = now
-    hit.paymentSchedule[0].receiptPic = true
-  }
+  checkInRoom(
+    hit.room,
+    {
+      tenant: form.value.tenant.trim(),
+      phone: form.value.phone.trim(),
+      idCard: '',
+      rent,
+      deposit,
+      paymentCycle,
+      leaseStart,
+      leaseEnd,
+    },
+    {
+      now,
+      paymentSchedule,
+      attachments: {
+        idCard: attachments.value.idCard,
+        contract: attachments.value.contract,
+      },
+    }
+  )
 
-  hit.tenant = form.value.tenant.trim()
-  hit.phone = form.value.phone.trim()
-  hit.idCard = form.value.idCard.trim()
-  hit.rent = rent
-  hit.deposit = deposit
-  hit.paymentCycle = paymentCycle
-  hit.leaseStart = leaseStart
-  hit.leaseEnd = leaseEnd
-  hit.hasIdCardPic = true
-  hit.hasContract = true
-  hit.attachmentFiles = {
-    idCard: attachments.value.idCard,
-    contract: attachments.value.contract,
-  }
-  hit.status = 'rented'
-
-  const amount = Number((rent * paymentCycle).toFixed(2))
-  hit.history.unshift({
-    id: `h_${Date.now()}`,
-    type: 'checkin',
-    date: now,
-    remark: `办理入住并确认收款：${hit.tenant}，首期 ¥${amount}`,
-  })
-
-  setProperties(next)
-  uni.showToast({ title: '已入住(模拟)', icon: 'success' })
+  setProperties(nextProperties)
+  uni.showToast({ title: '已办理入住', icon: 'success' })
   safeRedirectTo(`/pages/room/detail?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`)
 }
 </script>
 
+<style>
+.drawer-page-panel {
+  animation: room-sheet-enter 220ms ease-out;
+  transform-origin: bottom center;
+}
+
+.tenant-inline-input {
+  width: 100%;
+  min-height: 36rpx;
+  padding: 2rpx 0;
+  background: transparent;
+  border: 0;
+  box-sizing: border-box;
+  font-size: 26rpx;
+  line-height: 1.4;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.tenant-inline-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.detail-side-button {
+  min-width: 112rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 14rpx;
+  border-width: 1rpx;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.detail-side-button-text {
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.checkin-input {
+  width: 100%;
+  height: 68rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 18rpx;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  background: #ffffff;
+  box-sizing: border-box;
+  line-height: 1.2;
+  font-size: 26rpx;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.checkin-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.checkin-picker {
+  width: 100%;
+  height: 68rpx;
+  padding: 0 20rpx;
+  border-radius: 18rpx;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  background: #ffffff;
+  box-sizing: border-box;
+  line-height: 68rpx;
+  font-size: 26rpx;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.checkin-cycle-input {
+  width: 96rpx;
+  height: 60rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  background: #ffffff;
+  box-sizing: border-box;
+  line-height: 1.2;
+  font-size: 24rpx;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.compact-section {
+  padding: 8rpx 0;
+}
+
+.compact-field-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #334155;
+}
+
+.compact-inline-note {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.compact-inline-note-label {
+  font-size: 20rpx;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.compact-inline-note-value {
+  font-size: 22rpx;
+  color: #334155;
+  font-weight: 600;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.cycle-option-button {
+  min-width: 92rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cycle-option-default {
+  background: #ffffff;
+  color: #475569;
+}
+
+.cycle-option-active {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.footer-secondary-button {
+  flex: 1;
+  padding: 22rpx 20rpx;
+  border-radius: 9999rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  color: #0f172a;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.footer-primary-button {
+  flex: 1.4;
+  padding: 22rpx 20rpx;
+  border-radius: 9999rpx;
+  background: linear-gradient(135deg, #34d399, #4ade80);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 12rpx 24rpx rgba(52, 211, 153, 0.18);
+}
+
+.date-step-button {
+  min-width: 120rpx;
+  height: 64rpx;
+  padding: 0 18rpx;
+  border-radius: 18rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #334155;
+}
+
+.date-chip {
+  height: 60rpx;
+  border-radius: 16rpx;
+  background: #f8fafc;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #475569;
+}
+
+@keyframes room-sheet-enter {
+  from {
+    transform: translateY(36px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+</style>

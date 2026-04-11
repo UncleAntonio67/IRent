@@ -1,148 +1,16 @@
 import { ref } from 'vue'
+import { toRoomAggregatePayload } from '../domain/rent-api-mappers'
+import {
+  cloneDeep,
+  normalizeAttachmentFile,
+  normalizeOccupancy,
+  normalizePaymentTerm,
+  normalizePropertyTree,
+  generateId,
+} from '../domain/rent-models'
 
 const PROPERTIES_STORAGE_KEY = 'rent_demo_properties_v1'
 const GLOBAL_CONFIG_STORAGE_KEY = 'rent_global_config_v1'
-
-function generateId(prefix) {
-  return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`
-}
-
-function normalizeOccupancy(occ) {
-  const rent = Number(occ.rent || 0) || 0
-  const paymentCycle = Number(occ.paymentCycle || 3) || 3
-  return {
-    id: occ.id || generateId('oc'),
-    kind: occ.kind || 'lease', // lease | idle
-    status: occ.status || 'completed', // active | completed | idle
-    tenant: occ.tenant || '',
-    phone: occ.phone || '',
-    idCard: occ.idCard || '',
-    startDate: occ.startDate || '',
-    endDate: occ.endDate || '',
-    rent,
-    deposit: Number(occ.deposit || (rent ? rent : 0)) || 0,
-    paymentCycle,
-    remark: occ.remark || '',
-    archive: occ.archive || null,
-  }
-}
-
-function normalizePaymentTerm(term) {
-  return {
-    id: term.id || generateId('term'),
-    term: Number(term.term || 1) || 1,
-    startDate: term.startDate || '',
-    endDate: term.endDate || '',
-    dueDate: term.dueDate || term.startDate || '',
-    expectedAmount: Number(term.expectedAmount || 0) || 0,
-    paidAmount: Number(term.paidAmount || 0) || 0,
-    payDate: term.payDate || '',
-    receiptPic: Boolean(term.receiptPic),
-    status: term.status || 'unpaid', // unpaid | paid | due_soon | overdue
-  }
-}
-
-function normalizeAttachmentFile(file, fallbackName) {
-  if (!file) return null
-  return {
-    name: file.name || fallbackName || '未命名文件',
-    uploadedAt: file.uploadedAt || '',
-    source: file.source || 'mock',
-    previewText: file.previewText || '',
-  }
-}
-
-function normalizeRoom(room) {
-  const rent = Number(room.rent || 0) || 0
-  const paymentCycle = Number(room.paymentCycle || 3) || 3
-  const normalized = {
-    id: room.id || generateId('r'),
-    roomNo: room.roomNo || '000',
-    status: room.status || 'empty', // empty | rented | due_soon | overdue
-    tenant: room.tenant || '',
-    phone: room.phone || '',
-    idCard: room.idCard || '',
-    rent,
-    deposit: Number(room.deposit || (rent ? rent : 0)) || 0,
-    paymentCycle, // months per term (3/6/12 etc). For prototype only.
-    nextDueDate: room.nextDueDate || '',
-    nextDueAmount: Number(room.nextDueAmount || 0) || 0,
-    hasIdCardPic: Boolean(room.hasIdCardPic),
-    hasContract: Boolean(room.hasContract),
-    attachmentFiles: {
-      idCard: normalizeAttachmentFile(room.attachmentFiles?.idCard, '身份证照片.jpg'),
-      contract: normalizeAttachmentFile(room.attachmentFiles?.contract, '租赁合同.pdf'),
-    },
-    leaseStart: room.leaseStart || '',
-    leaseEnd: room.leaseEnd || '',
-    lastWater: Number(room.lastWater || 0) || 0,
-    lastElectric: Number(room.lastElectric || 0) || 0,
-    waterPrice: Number(room.waterPrice || 5.5) || 5.5,
-    electricPrice: Number(room.electricPrice || 1.2) || 1.2,
-    bills: Array.isArray(room.bills) ? room.bills : [],
-    meterReadings: Array.isArray(room.meterReadings) ? room.meterReadings : [],
-    history: Array.isArray(room.history) ? room.history : [],
-    occupancies: Array.isArray(room.occupancies) ? room.occupancies.map(normalizeOccupancy) : [],
-    activeOccupancyId: room.activeOccupancyId || '',
-    paymentSchedule: Array.isArray(room.paymentSchedule) ? room.paymentSchedule.map(normalizePaymentTerm) : [],
-  }
-
-  // Ensure every room has "历史入住情况" data so UI is consistent.
-  if (normalized.occupancies.length === 0) {
-    if (normalized.status === 'empty') {
-      normalized.occupancies = [
-        normalizeOccupancy({
-          kind: 'idle',
-          status: 'idle',
-          startDate: '',
-          endDate: '',
-          remark: '当前空置',
-        }),
-      ]
-    } else {
-      normalized.occupancies = [
-        normalizeOccupancy({
-          kind: 'lease',
-          status: 'active',
-          tenant: normalized.tenant,
-          phone: normalized.phone,
-          idCard: normalized.idCard,
-          startDate: normalized.leaseStart,
-          endDate: normalized.leaseEnd,
-          rent: normalized.rent,
-          deposit: normalized.deposit,
-          paymentCycle: normalized.paymentCycle,
-          remark: '当前租约',
-        }),
-      ]
-    }
-  }
-
-  // Fill activeOccupancyId if missing.
-  if (!normalized.activeOccupancyId) {
-    const active = normalized.occupancies.find((o) => o.status === 'active')
-    normalized.activeOccupancyId = active?.id || ''
-  }
-
-  return normalized
-}
-
-function normalizePropertyTree(tree) {
-  return (tree || []).map((property) => ({
-    id: property.id || generateId('p'),
-    name: property.name || '未命名院落',
-    blocks: (property.blocks || []).map((block) => ({
-      id: block.id || generateId('b'),
-      name: block.name || '未命名楼栋',
-      floors: (block.floors || [])
-        .map((floorItem) => ({
-          floor: Number(floorItem.floor || 1) || 1,
-          rooms: (floorItem.rooms || []).map(normalizeRoom),
-        }))
-        .sort((a, b) => b.floor - a.floor),
-    })),
-  }))
-}
 
 function findRoomById(tree, roomId) {
   for (const property of tree) {
@@ -188,8 +56,16 @@ function hydrateScenarioData(tree) {
       { id: 'mr_r3_1', date: '2026-03-31', waterRead: 138.4, electricRead: 622, total: 186.5, billId: 'bill_r3_u1' },
     ]
     r3.occupancies = [
-      normalizeOccupancy({ id: 'oc_r3_prev', kind: 'lease', status: 'completed', tenant: 'Sun', phone: '13600009999', startDate: '2025-02-01', endDate: '2025-12-20', rent: 3200, deposit: 6400, paymentCycle: 3, remark: '上一任已退租' }),
-      normalizeOccupancy({ id: 'oc_r3_now', kind: 'lease', status: 'active', tenant: '陈先生', phone: '13911112222', idCard: '310101199305155678', startDate: '2026-01-01', endDate: '2026-12-31', rent: 3400, deposit: 6800, paymentCycle: 6, remark: '当前长租合同' }),
+      normalizeOccupancy({ id: 'oc_r3_now', kind: 'lease', status: 'active', tenant: '???', phone: '13911112222', idCard: '310101199305155678', startDate: '2026-01-01', endDate: '2026-12-31', rent: 3400, deposit: 6800, paymentCycle: 6, remark: '??????', archive: { paymentSchedule: r3.paymentSchedule, collections: r3.collections, bills: r3.bills } }),
+      normalizeOccupancy({ id: 'oc_r3_09', kind: 'lease', status: 'completed', tenant: '???', phone: '13600009999', startDate: '2025-02-01', endDate: '2025-12-20', rent: 3200, deposit: 6400, paymentCycle: 3, remark: '??????', archive: { paymentSchedule: [{ expectedAmount: 38400 }], collections: [{ kind: 'utilities', amount: 420 }, { kind: 'custom', amount: 180 }], bills: [{ amount: 420 }, { amount: 180 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_08', kind: 'lease', status: 'completed', tenant: '???', phone: '13600008888', startDate: '2024-03-01', endDate: '2025-01-20', rent: 3100, deposit: 6200, paymentCycle: 3, remark: '????????', archive: { paymentSchedule: [{ expectedAmount: 34100 }], collections: [{ kind: 'utilities', amount: 560 }], bills: [{ amount: 560 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_07', kind: 'lease', status: 'completed', tenant: '???', phone: '13577776666', startDate: '2023-04-15', endDate: '2024-02-18', rent: 3000, deposit: 6000, paymentCycle: 6, remark: '????', archive: { paymentSchedule: [{ expectedAmount: 30000 }], collections: [{ kind: 'utilities', amount: 380 }, { kind: 'custom', amount: 90 }], bills: [{ amount: 380 }, { amount: 90 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_06', kind: 'lease', status: 'completed', tenant: '???', phone: '13555554444', startDate: '2022-06-01', endDate: '2023-03-31', rent: 2950, deposit: 5900, paymentCycle: 3, remark: '????', archive: { paymentSchedule: [{ expectedAmount: 29500 }], collections: [{ kind: 'utilities', amount: 410 }], bills: [{ amount: 410 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_05', kind: 'lease', status: 'completed', tenant: '???', phone: '13533332222', startDate: '2021-07-01', endDate: '2022-05-20', rent: 2850, deposit: 5700, paymentCycle: 3, remark: '????', archive: { paymentSchedule: [{ expectedAmount: 31350 }], collections: [{ kind: 'utilities', amount: 360 }, { kind: 'custom', amount: 120 }], bills: [{ amount: 360 }, { amount: 120 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_04', kind: 'lease', status: 'completed', tenant: '???', phone: '13499998888', startDate: '2020-08-10', endDate: '2021-06-25', rent: 2780, deposit: 5560, paymentCycle: 1, remark: '????', archive: { paymentSchedule: [{ expectedAmount: 30580 }], collections: [{ kind: 'utilities', amount: 500 }], bills: [{ amount: 500 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_03', kind: 'lease', status: 'completed', tenant: '???', phone: '13477776666', startDate: '2019-09-01', endDate: '2020-07-31', rent: 2680, deposit: 5360, paymentCycle: 3, remark: '??????', archive: { paymentSchedule: [{ expectedAmount: 29480 }], collections: [{ kind: 'utilities', amount: 450 }, { kind: 'custom', amount: 60 }], bills: [{ amount: 450 }, { amount: 60 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_02', kind: 'lease', status: 'completed', tenant: '???', phone: '13455554444', startDate: '2018-10-01', endDate: '2019-08-20', rent: 2550, deposit: 5100, paymentCycle: 6, remark: '?????', archive: { paymentSchedule: [{ expectedAmount: 28050 }], collections: [{ kind: 'utilities', amount: 320 }], bills: [{ amount: 320 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_01', kind: 'lease', status: 'completed', tenant: '???', phone: '13433332222', startDate: '2017-11-01', endDate: '2018-09-10', rent: 2400, deposit: 4800, paymentCycle: 3, remark: '??????', archive: { paymentSchedule: [{ expectedAmount: 26400 }], collections: [{ kind: 'utilities', amount: 260 }, { kind: 'custom', amount: 40 }], bills: [{ amount: 260 }, { amount: 40 }] } }),
     ]
     r3.activeOccupancyId = 'oc_r3_now'
     r3.history = [
@@ -725,6 +601,16 @@ export function generatePaymentSchedule({ startDate, endDate, cycleMonths, rentP
   return schedule
 }
 
-function cloneDeep(value) {
-  return JSON.parse(JSON.stringify(value))
+export function buildRoomAggregateForApi(propertyId, blockId, roomId) {
+  const property = findProperty(propertyId)
+  const block = findBlock(propertyId, blockId)
+  const roomWithFloor = findRoomWithFloor(propertyId, blockId, roomId)
+  if (!property || !block || !roomWithFloor) return null
+
+  return toRoomAggregatePayload({
+    property,
+    block,
+    floor: roomWithFloor.floor,
+    room: roomWithFloor.room,
+  })
 }

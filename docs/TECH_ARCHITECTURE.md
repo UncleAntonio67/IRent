@@ -82,24 +82,28 @@
 ### 状态与 mock 数据
 
 - `src/data/rentStore.js`
+- `src/domain/rent-models.js`
+- `src/domain/rent-room-service.js`
+- `src/domain/rent-api-mappers.js`
 
 负责：
 
-- 房产树结构
-- 房间状态
-- 账单与抄表 mock 数据
-- 历史入住情况
-- 本地存储持久化
+- `rentStore.js`：本地持久化、种子场景、查询入口
+- `rent-models.js`：稳定数据模型、规范化、基础格式化与默认值
+- `rent-room-service.js`：房间级业务写操作与账务计算
+- `rent-api-mappers.js`：把当前前端聚合对象映射到未来后端记录结构
 
 ### 路由保护
 
 - `src/utils/navigation.js`
+- `src/utils/layout.js`
 
 负责：
 
 - 页面跳转节流
 - 防重复点击
 - 安全返回
+- 页面头部高度 / 安全区读取统一收口
 
 ### 公共组件
 
@@ -152,15 +156,13 @@
 
 ### 原生 API 警告
 
-当前项目里仍存在 `wx.getSystemInfoSync` 使用。
+当前项目已把页面层散落的系统信息读取收敛到 `src/utils/layout.js`，页面本身不再直接调用相关 API。
 
-这是已知技术债：
+当前仍保留的兼容兜底：
 
-- 目前主要用于状态栏高度计算
-- 后续建议替换为：
-  - `wx.getWindowInfo`
-  - `wx.getDeviceInfo`
-  - `wx.getAppBaseInfo`
+- 优先使用 `uni.getWindowInfo`
+- 退化时仍会 fallback 到 `uni.getSystemInfoSync`
+- 后续仍建议继续向更新的平台 API 收敛
 
 ## 6. 数据持久化现状
 

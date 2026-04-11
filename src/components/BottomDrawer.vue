@@ -39,6 +39,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { getSafeAreaBottom, getWindowHeight } from '../utils/layout'
 
 defineProps({
   open: { type: Boolean, default: false },
@@ -56,16 +57,9 @@ function emitClose() {
 }
 
 onMounted(() => {
-  try {
-    const sys = uni.getSystemInfoSync()
-    safeAreaBottom.value = sys.safeAreaInsets?.bottom || 0
-    const windowHeight = Number(sys.windowHeight || 700)
-    panelMaxHeight.value = Math.max(420, Math.floor(windowHeight * 0.78))
-    contentMaxHeight.value = Math.max(240, panelMaxHeight.value - 146 - safeAreaBottom.value)
-  } catch {
-    safeAreaBottom.value = 0
-    panelMaxHeight.value = 560
-    contentMaxHeight.value = 420
-  }
+  safeAreaBottom.value = getSafeAreaBottom(0)
+  const windowHeight = getWindowHeight(700)
+  panelMaxHeight.value = Math.max(420, Math.floor(windowHeight * 0.78))
+  contentMaxHeight.value = Math.max(240, panelMaxHeight.value - 146 - safeAreaBottom.value)
 })
 </script>

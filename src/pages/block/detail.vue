@@ -1,15 +1,20 @@
 <template>
-  <view class="min-h-screen bg-slate-50 text-slate-800">
-    <view class="mx-auto max-w-md min-h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
+  <view class="h-screen bg-slate-50 text-slate-800">
+    <view class="mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
       <view
-        class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 relative shrink-0"
+        class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 relative shrink-0 sticky-header z-20 shadow-soft"
         :style="{ paddingTop: headerTopPadding + 'px' }"
       >
         <view class="flex items-center justify-between gap-3">
           <view class="flex items-center gap-3 min-w-0">
-            <button class="nav-icon-button tap-scale" @click="goBack"><view class="icon-back"><view class="icon-back-line icon-back-line-top"></view><view class="icon-back-line icon-back-line-bottom"></view></view></button>
+            <button class="nav-icon-button tap-scale" @click="goBack">
+              <view class="icon-back">
+                <view class="icon-back-line icon-back-line-top"></view>
+                <view class="icon-back-line icon-back-line-bottom"></view>
+              </view>
+            </button>
             <view class="min-w-0">
-              <view class="font-black text-slate-900 text-base truncate">{{ block?.name || '楼栋' }}</view>
+              <view class="font-black text-slate-900 text-base truncate">{{ block?.name || '楼栋详情' }}</view>
               <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">
                 {{ property?.name || '' }}
                 <text v-if="property" class="mx-1 text-slate-200">|</text>
@@ -17,10 +22,6 @@
               </view>
             </view>
           </view>
-
-          <button class="px-3 py-1_5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 tap-scale" @click="drawerOpen = true">
-            楼栋账务
-          </button>
         </view>
 
         <scroll-view scroll-x class="mt-4" show-scrollbar="false">
@@ -68,10 +69,10 @@
         </scroll-view>
       </view>
 
-      <scroll-view scroll-y class="flex-1" :scroll-with-animation="true">
+      <scroll-view scroll-y class="page-scroll flex-1" :scroll-with-animation="true" enable-flex>
         <view v-if="!block" class="p-5">
           <view class="p-5 rounded-2xl bg-white border border-slate-200-60 shadow-soft">
-            <view class="text-sm text-slate-600 font-medium leading-relaxed">楼栋不存在或参数缺失。</view>
+            <view class="text-sm text-slate-600 font-medium leading-relaxed">楼栋不存在或页面参数缺失。</view>
           </view>
         </view>
 
@@ -92,7 +93,7 @@
                   getRoomVisuals(room.status).border,
                   !isRoomHighlighted(room.status) ? 'opacity-25 grayscale' : 'opacity-100',
                 ]"
-                @click="goRoom(room.id)"
+                @click="goRoom(room)"
               >
                 <view class="flex justify-between items-start mb-1">
                   <text class="font-bold text-base font-mono" :class="getRoomVisuals(room.status).text">
@@ -108,7 +109,7 @@
                       {{ room.tenant || '租客未录入' }}
                     </view>
                     <view v-if="room.status === 'overdue'" class="text-2xs text-rose-600 font-bold mt-1 inline-block">欠费待收</view>
-                    <view v-else class="text-2xs text-slate-500 font-mono mt-1 opacity-70">￥{{ room.rent }}/期</view>
+                    <view v-else class="text-2xs text-slate-500 font-mono mt-1 opacity-70">￥{{ room.rent || 0 }}/期</view>
                   </view>
                 </view>
               </view>
@@ -117,39 +118,13 @@
         </view>
       </scroll-view>
 
-      <BottomDrawer :open="drawerOpen" title="楼栋账务" subtitle="自我记账：待收与房态概览" @close="drawerOpen = false">
-        <view class="stack-3">
-          <view class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white">
-            <view class="text-xs text-slate-200 font-bold">待收概览</view>
-            <view class="text-2xl font-black font-mono mt-2">{{ stats.overdueRooms + stats.dueSoonRooms }}</view>
-            <view class="text-xs text-slate-200 font-medium mt-2">欠费 {{ stats.overdueRooms }} 间，待收 {{ stats.dueSoonRooms }} 间</view>
-            <view class="mt-4 h-2 rounded-full bg-white-20 overflow-hidden">
-              <view
-                class="h-2 bg-emerald-400 rounded-full"
-                :style="{ width: stats.totalRooms ? Math.round(((stats.totalRooms - stats.emptyRooms) / stats.totalRooms) * 100) + '%' : '0%' }"
-              ></view>
-            </view>
-            <view class="flex items-center justify-between text-2xs text-slate-200 font-mono mt-2">
-              <view>已入住 {{ stats.totalRooms - stats.emptyRooms }}</view>
-              <view>总房间 {{ stats.totalRooms }}</view>
-            </view>
-          </view>
-
-          <view class="p-5 rounded-2xl bg-white border border-slate-200-60 shadow-soft">
-            <view class="font-black text-slate-800">说明</view>
-            <view class="text-sm text-slate-600 font-medium leading-relaxed mt-2">
-              本应用主要用于自我记账管理，不生成催缴文案。房租与水电的收款记账在房间详情页内完成。
-            </view>
-          </view>
-        </view>
-
-        <template #footer>
-          <button class="w-full py-4 rounded-xl bg-blue-600 text-white font-bold tap-scale" @click="goBills">去账务看全局收支</button>
-          <button class="w-full py-3 rounded-xl bg-slate-100 text-slate-700 font-bold tap-scale mt-2" @click="goStructure">
-            去工作台做结构管理
-          </button>
-        </template>
-      </BottomDrawer>
+      <RoomDetailSheet
+        :open="roomSheetOpen"
+        :property-id="propertyId"
+        :block-id="blockId"
+        :room-id="selectedRoomId"
+        @close="closeRoomSheet"
+      />
     </view>
   </view>
 </template>
@@ -157,28 +132,24 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import BottomDrawer from '../../components/BottomDrawer.vue'
+import RoomDetailSheet from '../../components/RoomDetailSheet.vue'
 import { UI } from '../../ui/ui'
 import { findBlock, findProperty } from '../../data/rentStore'
-import { safeNavigateBack, safeNavigateTo, safeSwitchTab } from '../../utils/navigation'
+import { safeNavigateBack, safeNavigateTo } from '../../utils/navigation'
+import { getPageHeaderTopPadding } from '../../utils/layout'
 
 const headerTopPadding = ref(44)
 const propertyId = ref('')
 const blockId = ref('')
 const filterStatus = ref('all')
-const drawerOpen = ref(false)
+const roomSheetOpen = ref(false)
+const selectedRoomId = ref('')
 
 const property = computed(() => (propertyId.value ? findProperty(propertyId.value) : null))
 const block = computed(() => (propertyId.value && blockId.value ? findBlock(propertyId.value, blockId.value) : null))
 
 onLoad((query) => {
-  try {
-    const sys = uni.getSystemInfoSync()
-    headerTopPadding.value = Math.max(44, (sys.statusBarHeight || 20) + 12)
-  } catch {
-    headerTopPadding.value = 44
-  }
-
+  headerTopPadding.value = getPageHeaderTopPadding(44)
   propertyId.value = String(query?.propertyId || '')
   blockId.value = String(query?.blockId || '')
 })
@@ -233,23 +204,18 @@ function roomStatusDot(status) {
   }
 }
 
-function goRoom(roomId) {
-  const hit = (block.value?.floors || []).flatMap((f) => f.rooms).find((r) => r.id === roomId)
-  const target = hit?.status === 'empty' ? 'checkin' : 'detail'
-  safeNavigateTo(`/pages/room/${target}?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId}`)
+function goRoom(room) {
+  if (!room?.id) return
+  if (room.status === 'empty') {
+    safeNavigateTo(`/pages/room/checkin?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${room.id}`)
+    return
+  }
+  selectedRoomId.value = room.id
+  roomSheetOpen.value = true
 }
 
-function goStructure() {
-  drawerOpen.value = false
-  safeSwitchTab('/pages/workbench/index')
-  setTimeout(() => {
-    uni.showToast({ title: '请在工作台进入结构管理', icon: 'none' })
-  }, 80)
-}
-
-function goBills() {
-  drawerOpen.value = false
-  safeSwitchTab('/pages/bills/index')
+function closeRoomSheet() {
+  roomSheetOpen.value = false
+  selectedRoomId.value = ''
 }
 </script>
-

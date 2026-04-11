@@ -132,7 +132,7 @@
                         class="w-3 h-4 rounded-sm transition-all duration-300"
                         :class="[
                           getMiniStatusColor(room.status),
-                          isRoomHighlighted(room.status) ? 'opacity-100' : 'opacity-20 scale-90 grayscale',
+                          isHighlighted(room.status) ? 'opacity-100' : 'opacity-20 scale-90 grayscale',
                         ]"
                       ></view>
                     </view>
@@ -181,15 +181,15 @@
                         :key="room.id"
                         class="relative rounded-xl p-2 border shadow-roomcard transition-all flex flex-col justify-between room-card-compact"
                         :class="[
-                          getRoomVisuals(room.status).bg,
-                          getRoomVisuals(room.status).border,
+                          roomVisuals(room.status).bg,
+                          roomVisuals(room.status).border,
                           editMode ? 'min-h-roomcard-edit' : 'min-h-roomcard',
-                          !editMode && !isRoomHighlighted(room.status) ? 'opacity-30 grayscale' : 'opacity-100',
+                          !editMode && !isHighlighted(room.status) ? 'opacity-30 grayscale' : 'opacity-100',
                         ]"
                         @click="handleRoomClick(block.id, room)"
                       >
                         <view class="flex justify-between items-start mb-1">
-                          <text class="font-bold text-sm font-mono" :class="getRoomVisuals(room.status).text">
+                          <text class="font-bold text-sm font-mono" :class="roomVisuals(room.status).text">
                             {{ room.roomNo }}
                           </text>
                           <view
@@ -203,7 +203,7 @@
                         <view v-if="!editMode">
                           <view v-if="room.status === 'empty'" class="text-2xs font-medium text-slate-400 mt-2">空置待租</view>
                           <view v-else>
-                            <view class="text-xs font-medium truncate" :class="getRoomVisuals(room.status).text">
+                            <view class="text-xs font-medium truncate" :class="roomVisuals(room.status).text">
                               {{ room.tenant || '租客未录入' }}
                             </view>
                             <view v-if="room.status === 'overdue'" class="text-2xs text-rose-600 font-bold mt-1 inline-block">
@@ -313,87 +313,43 @@ import { onLoad } from '@dcloudio/uni-app'
 import { UI, getMiniStatusColor } from '../../ui/ui'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
 import { safeNavigateTo } from '../../utils/navigation'
+import { getPageHeaderTopPadding } from '../../utils/layout'
+import {
+  applyWorkbenchStructureChange,
+  buildWorkbenchStats,
+  countRooms,
+  createWorkbenchModalState,
+  getRoomStatusDot,
+  getRoomVisuals,
+  isRoomHighlighted,
+  openWorkbenchModal,
+  removeWorkbenchRoom,
+} from './useWorkbenchStructure'
 
-const activePropertyId = ref(properties.value[0].id)
+const activePropertyId = ref(properties.value[0]?.id || '')
 const filterStatus = ref('all')
 const editMode = ref(false)
 const headerTopPadding = ref(44)
 const inputValue = ref('')
 const uiText = {
-  newProperty: '\u002b \u65b0\u5efa\u9662\u843d',
-  newBlock: '\u65b0\u5efa\u697c\u680b',
-  newFloor: '\u002b \u52a0\u76d6\u65b0\u697c\u5c42',
-  newRoom: '\u002b \u623f\u95f4',
-  finishManage: '\u5b8c\u6210\u7ba1\u7406',
-  structureManage: '\u7ed3\u6784\u7ba1\u7406',
-  close: '\u5173\u95ed',
-  confirmAdd: '\u786e\u8ba4\u6dfb\u52a0',
-  finishIcon: '\u2713',
-  manageIcon: '\u2726',
+  newProperty: '+ 新建院落',
+  newBlock: '新建楼栋',
+  newFloor: '+ 加盖新楼层',
+  newRoom: '+ 房间',
+  finishManage: '完成管理',
+  structureManage: '结构管理',
+  confirmAdd: '确认添加',
+  finishIcon: '✓',
+  manageIcon: '✦',
 }
-const modalConfig = {
-  property: {
-    title: '\u65b0\u5efa\u9662\u843d',
-    hint: '\u5f55\u5165\u65b0\u7684\u623f\u4ea7\u6216\u9662\u843d\u540d\u79f0',
-    placeholder: '\u4f8b\u5982\uff1a\u6c5f\u5357\u522b\u9662\uff08\u9ad8\u7aef\uff09',
-    inputType: 'text',
-  },
-  block: {
-    title: '\u65b0\u5efa\u697c\u680b',
-    hint: '\u5728\u5f53\u524d\u9662\u843d\u4e0b\u65b0\u589e\u4e00\u680b\u697c',
-    placeholder: '\u4f8b\u5982\uff1a\u5317\u533a\u4e3b\u697c',
-    inputType: 'text',
-  },
-  floor: {
-    title: '\u52a0\u76d6\u65b0\u697c\u5c42',
-    hint: '\u8f93\u5165\u697c\u5c42\u53f7\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u6392\u5e8f',
-    placeholder: '\u4f8b\u5982\uff1a3',
-    inputType: 'number',
-  },
-  room: {
-    title: '\u6279\u91cf\u65b0\u589e\u623f\u95f4',
-    hint: '\u652f\u6301\u9017\u53f7\u5206\u9694\u6216\u8303\u56f4\u8f93\u5165\uff0c\u4f8b\u5982 301,302 \u6216 301-312',
-    placeholder: '\u8bf7\u8f93\u5165\u623f\u53f7\uff0c\u652f\u6301\u6279\u91cf\uff1a301,302,303 \u6216 301-312',
-    inputType: 'text',
-  },
-}
-const addModal = ref({
-  open: false,
-  type: '',
-  title: '',
-  hint: '',
-  placeholder: '',
-  inputType: 'text',
-  blockId: null,
-  floor: null,
-})
+const addModal = ref(createWorkbenchModalState())
 
 onLoad(() => {
-  try {
-    const sys = uni.getSystemInfoSync()
-    headerTopPadding.value = Math.max(44, (sys.statusBarHeight || 20) + 12)
-  } catch {
-    headerTopPadding.value = 44
-  }
+  headerTopPadding.value = getPageHeaderTopPadding(44)
 })
 
 const activeProperty = computed(() => properties.value.find((item) => item.id === activePropertyId.value))
-
-const stats = computed(() => {
-  const rooms = (activeProperty.value?.blocks || []).flatMap((block) => block.floors.flatMap((floor) => floor.rooms))
-  return {
-    totalRooms: rooms.length,
-    emptyRooms: rooms.filter((room) => room.status === 'empty').length,
-    overdueRooms: rooms.filter((room) => room.status === 'overdue').length,
-    dueSoonRooms: rooms.filter((room) => room.status === 'due_soon').length,
-  }
-})
-
-function countRooms(block, status) {
-  const rooms = block.floors.flatMap((floor) => floor.rooms)
-  if (!status) return rooms.length
-  return rooms.filter((room) => room.status === status).length
-}
+const stats = computed(() => buildWorkbenchStats(activeProperty.value))
 
 function switchProperty(propertyId) {
   activePropertyId.value = propertyId
@@ -408,53 +364,22 @@ function toggleEditMode() {
   filterStatus.value = 'all'
 }
 
-function isRoomHighlighted(status) {
-  return filterStatus.value === 'all' || filterStatus.value === status || (filterStatus.value === 'rented' && status === 'due_soon')
+function isHighlighted(status) {
+  return isRoomHighlighted(filterStatus.value, status)
 }
 
-function getRoomVisuals(status) {
-  if (editMode.value) {
-    return {
-      bg: 'bg-white',
-      border: 'border-slate-300 border-dashed',
-      text: 'text-slate-600',
-    }
-  }
-
-  switch (status) {
-    case 'rented':
-      return { bg: 'bg-white', border: 'border-slate-200', text: 'text-emerald-600' }
-    case 'empty':
-      return { bg: 'bg-white', border: 'border-slate-300 border-dashed', text: 'text-slate-400' }
-    case 'overdue':
-      return { bg: 'bg-rose-50-30', border: 'border-rose-200', text: 'text-rose-600' }
-    case 'due_soon':
-      return { bg: 'bg-amber-50-30', border: 'border-amber-200', text: 'text-amber-600' }
-    default:
-      return { bg: 'bg-white', border: 'border-slate-200', text: 'text-slate-700' }
-  }
+function roomVisuals(status) {
+  return getRoomVisuals(status, editMode.value)
 }
 
 function roomStatusDot(status) {
-  switch (status) {
-    case 'overdue':
-      return 'bg-rose-500'
-    case 'due_soon':
-      return 'bg-amber-400'
-    case 'rented':
-      return 'bg-emerald-400'
-    default:
-      return 'bg-slate-200'
-  }
+  return getRoomStatusDot(status)
 }
 
 function handleRoomClick(blockId, room) {
   if (editMode.value) return
-  if (room.status === 'empty') {
-    safeNavigateTo(`/pages/room/checkin?propertyId=${activePropertyId.value}&blockId=${blockId}&roomId=${room.id}`)
-    return
-  }
-  safeNavigateTo(`/pages/room/detail?propertyId=${activePropertyId.value}&blockId=${blockId}&roomId=${room.id}`)
+  const page = room.status === 'empty' ? 'checkin' : 'detail'
+  safeNavigateTo(`/pages/room/${page}?propertyId=${activePropertyId.value}&blockId=${blockId}&roomId=${room.id}`)
 }
 
 function goBlock(blockId) {
@@ -463,138 +388,29 @@ function goBlock(blockId) {
 }
 
 function openAddModal(type, payload = {}) {
-  const config = modalConfig[type]
-  if (!config) return
-
-  addModal.value = {
-    open: true,
-    type,
-    title: config.title,
-    hint: config.hint,
-    placeholder: config.placeholder,
-    inputType: config.inputType,
-    blockId: payload.blockId || null,
-    floor: payload.floor || null,
-  }
+  const nextModal = openWorkbenchModal(type, payload)
+  if (!nextModal) return
+  addModal.value = nextModal
   inputValue.value = ''
 }
 
 function closeAddModal() {
-  addModal.value = {
-    open: false,
-    type: '',
-    title: '',
-    hint: '',
-    placeholder: '',
-    inputType: 'text',
-    blockId: null,
-    floor: null,
-  }
+  addModal.value = createWorkbenchModalState()
   inputValue.value = ''
 }
 
-function createDefaultRoom(roomNo) {
-  return {
-    id: generateId('r'),
-    roomNo,
-    status: 'empty',
-    tenant: '',
-    rent: 1800,
-  }
-}
-
-function generateId(prefix) {
-  return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`
-}
-
 function handleAddSubmit() {
-  const value = inputValue.value.trim()
-  if (!value) {
-    uni.showToast({ title: '请输入内容', icon: 'none' })
-    return
-  }
-
   const nextProperties = cloneProperties()
-  const propertyIndex = nextProperties.findIndex((item) => item.id === activePropertyId.value)
-
-  if (addModal.value.type === 'property') {
-    const propertyId = generateId('p')
-    nextProperties.push({
-      id: propertyId,
-      name: value,
-      blocks: [
-        {
-          id: generateId('b'),
-          name: '主楼',
-          floors: [{ floor: 1, rooms: [createDefaultRoom('101')] }],
-        },
-      ],
-    })
-    activePropertyId.value = propertyId
-  }
-
-  if (propertyIndex < 0 && addModal.value.type !== 'property') {
-    uni.showToast({ title: '当前院落不存在', icon: 'none' })
+  const result = applyWorkbenchStructureChange(nextProperties, activePropertyId.value, addModal.value, inputValue.value)
+  if (result.error) {
+    uni.showToast({ title: result.error, icon: 'none' })
     return
-  }
-
-  if (addModal.value.type === 'block') {
-    nextProperties[propertyIndex].blocks.push({
-      id: generateId('b'),
-      name: value,
-      floors: [{ floor: 1, rooms: [createDefaultRoom('101')] }],
-    })
-  }
-
-  if (addModal.value.type === 'floor') {
-    const block = nextProperties[propertyIndex].blocks.find((item) => item.id === addModal.value.blockId)
-    const floorNumber = Number(value)
-    if (!block || Number.isNaN(floorNumber)) {
-      uni.showToast({ title: '楼层号无效', icon: 'none' })
-      return
-    }
-    const exists = block.floors.some((item) => item.floor === floorNumber)
-    if (exists) {
-      uni.showToast({ title: '该楼层已存在', icon: 'none' })
-      return
-    }
-    block.floors.unshift({
-      floor: floorNumber,
-      rooms: [createDefaultRoom(`${floorNumber}01`)],
-    })
-    block.floors.sort((a, b) => b.floor - a.floor)
-  }
-
-  if (addModal.value.type === 'room') {
-    const block = nextProperties[propertyIndex].blocks.find((item) => item.id === addModal.value.blockId)
-    const floorItem = block?.floors.find((item) => item.floor === addModal.value.floor)
-    if (!floorItem) {
-      uni.showToast({ title: '目标楼层不存在', icon: 'none' })
-      return
-    }
-
-    const expanded = expandRoomInputs(value)
-    if (expanded.length === 0) {
-      uni.showToast({ title: '未识别到房间号', icon: 'none' })
-      return
-    }
-
-    const existingRoomNos = new Set(floorItem.rooms.map((item) => item.roomNo))
-    let added = 0
-    for (const roomNo of expanded) {
-      if (existingRoomNos.has(roomNo)) continue
-      floorItem.rooms.push(createDefaultRoom(roomNo))
-      existingRoomNos.add(roomNo)
-      added++
-    }
-
-    if (added === 0) {
-      uni.showToast({ title: '房间已存在，无需重复添加', icon: 'none' })
-      return
-    }
   }
 
   setProperties(nextProperties)
+  if (result.nextPropertyId) {
+    activePropertyId.value = result.nextPropertyId
+  }
   closeAddModal()
   uni.showToast({ title: '添加成功', icon: 'success' })
 }
@@ -608,92 +424,12 @@ function removeRoom(blockId, floor, roomId) {
     success: (res) => {
       if (!res.confirm) return
       const nextProperties = cloneProperties()
-      const propertyIndex = nextProperties.findIndex((item) => item.id === activePropertyId.value)
-      if (propertyIndex < 0) return
+      const removed = removeWorkbenchRoom(nextProperties, activePropertyId.value, blockId, floor, roomId)
+      if (!removed) return
 
-      const block = nextProperties[propertyIndex].blocks.find((item) => item.id === blockId)
-      const floorItem = block?.floors.find((item) => item.floor === floor)
-      if (!floorItem) return
-
-      floorItem.rooms = floorItem.rooms.filter((item) => item.id !== roomId)
       setProperties(nextProperties)
       uni.showToast({ title: '房间已删除', icon: 'none' })
     },
   })
-}
-
-function expandRoomInputs(raw) {
-  const tokens = raw
-    .split(/[\s,，;；、\n\r\t]+/g)
-    .map((t) => t.trim())
-    .filter(Boolean)
-
-  const out = []
-  for (const token of tokens) {
-    out.push(...expandOneToken(token))
-  }
-
-  // Deduplicate while preserving order.
-  const seen = new Set()
-  const unique = []
-  for (const roomNo of out) {
-    if (seen.has(roomNo)) continue
-    seen.add(roomNo)
-    unique.push(roomNo)
-  }
-  return unique
-}
-
-function expandOneToken(token) {
-  // 1) ".." ranges: supports "3-01..3-12", "A101..A112", "301..312"
-  if (token.includes('..') || token.includes('…')) {
-    const parts = token.split(token.includes('..') ? '..' : '…').map((p) => p.trim())
-    if (parts.length !== 2) return [token]
-    return expandRange(parts[0], parts[1]) || [token]
-  }
-
-  // 2) "-" / "~" / "—" numeric ranges: "301-312"
-  const pureNumRange = token.match(/^(\d+)\s*[-~—]\s*(\d+)$/)
-  if (pureNumRange) {
-    const start = pureNumRange[1]
-    const end = pureNumRange[2]
-    return expandRange(start, end) || [token]
-  }
-
-  // 3) alpha-prefix ranges: "A101-A112"
-  const alphaRange = token.match(/^([A-Za-z]+)(\d+)\s*[-~—]\s*([A-Za-z]+)(\d+)$/)
-  if (alphaRange && alphaRange[1] === alphaRange[3]) {
-    const start = `${alphaRange[1]}${alphaRange[2]}`
-    const end = `${alphaRange[3]}${alphaRange[4]}`
-    return expandRange(start, end) || [token]
-  }
-
-  return [token]
-}
-
-function expandRange(start, end) {
-  const s = splitPrefixNumber(start)
-  const e = splitPrefixNumber(end)
-  if (!s || !e) return null
-  if (s.prefix !== e.prefix) return null
-
-  const a = Number(s.num)
-  const b = Number(e.num)
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return null
-  if (a === b) return [start]
-
-  const step = a < b ? 1 : -1
-  const width = Math.max(s.num.length, e.num.length)
-  const res = []
-  for (let n = a; step > 0 ? n <= b : n >= b; n += step) {
-    res.push(`${s.prefix}${String(n).padStart(width, '0')}`)
-  }
-  return res
-}
-
-function splitPrefixNumber(input) {
-  const m = String(input).trim().match(/^(.*?)(\d+)$/)
-  if (!m) return null
-  return { prefix: m[1], num: m[2] }
 }
 </script>

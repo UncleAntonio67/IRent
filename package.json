@@ -8,6 +8,8 @@
     "predev:mp-weixin": "npm run tw:build",
     "prebuild:h5": "npm run tw:build",
     "prebuild:mp-weixin": "npm run tw:build",
+    "test:domain": "node --experimental-default-type=module --test tests/domain.test.js",
+    "verify:encoding": "node scripts/verify-encoding.cjs",
     "dev:custom": "uni -p",
     "dev:h5": "uni",
     "dev:h5:ssr": "uni --ssr",

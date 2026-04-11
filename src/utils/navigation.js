@@ -56,11 +56,14 @@ function markTarget(url) {
   lastTargetUrl = normalizeUrl(url)
 }
 
-export function safeNavigateTo(url) {
+export function safeNavigateTo(target) {
+  const options = typeof target === 'string' ? { url: target } : { ...(target || {}) }
+  const url = options.url || ''
   if (isDuplicateTarget(url)) return
   markTarget(url)
   withLock((hooks) => {
     uni.navigateTo({
+      ...options,
       url,
       complete: hooks.complete,
       fail: hooks.fail,

@@ -17,16 +17,16 @@
           </view>
         </view>
 
-        <view v-if="!subPage" class="mt-4 p-6 rounded-2xl profile-hero text-white relative overflow-hidden border-none shadow-lg">
+        <view v-if="!subPage" class="mt-3 p-4 rounded-2xl profile-hero text-white relative overflow-hidden border-none shadow-lg">
           <view class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white-20"></view>
           <view class="absolute -right-2 -top-2 w-28 h-28 rounded-full bg-white-20"></view>
           <view class="absolute -right-6 -bottom-8 text-8xl font-black opacity-10 pointer-events-none select-none">我</view>
 
-          <view class="flex items-center gap-4 relative z-10">
-            <view class="w-16 h-16 bg-white-20 rounded-full flex items-center justify-center text-white font-black text-2xl border border-white-20">{{ profileInitial }}</view>
+          <view class="flex items-center gap-3 relative z-10">
+            <view class="w-12 h-12 bg-white-20 rounded-full flex items-center justify-center text-white font-black text-lg border border-white-20">{{ profileInitial }}</view>
             <view class="min-w-0">
-              <view class="text-xl font-black truncate">{{ profileName }}</view>
-              <view class="flex gap-2 mt-2 flex-wrap">
+              <view class="text-lg font-black truncate">{{ profileName }}</view>
+              <view class="flex gap-1_5 mt-1_5 flex-wrap">
                 <view class="profile-hero-chip">高级专业版</view>
                 <view class="profile-hero-chip">已实名</view>
                 <view class="profile-hero-chip">R2 存储</view>
@@ -34,92 +34,96 @@
             </view>
           </view>
 
-          <view class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white-20 relative z-10">
+          <view class="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-white-20 relative z-10">
             <view class="text-center">
-              <view class="text-2xl font-black font-mono">{{ stats.propertyCount }}</view>
+              <view class="text-xl font-black font-mono">{{ stats.propertyCount }}</view>
               <view class="text-3xs text-slate-200 font-medium mt-1">管理院落</view>
             </view>
             <view class="text-center border-l border-white-20">
-              <view class="text-2xl font-black font-mono">{{ stats.totalRooms }}</view>
+              <view class="text-xl font-black font-mono">{{ stats.totalRooms }}</view>
               <view class="text-3xs text-slate-200 font-medium mt-1">总房间</view>
             </view>
             <view class="text-center border-l border-white-20">
-              <view class="text-2xl font-black font-mono text-blue-200">{{ stats.rentedRooms }}</view>
+              <view class="text-xl font-black font-mono text-blue-200">{{ stats.rentedRooms }}</view>
               <view class="text-3xs text-slate-200 font-medium mt-1">已入住</view>
             </view>
           </view>
         </view>
       </view>
 
-      <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true">
-        <view class="p-5 stack-5" style="padding-bottom: 32rpx;">
-          <view v-if="!subPage" class="stack-5">
-            <view class="px-1">
-              <view class="text-2xs font-black tracking-wide text-slate-400">资料与档案</view>
-            </view>
+      <scroll-view :scroll-y="Boolean(subPage)" class="page-scroll" :scroll-with-animation="true">
+        <view class="p-4 stack-4" :style="{ paddingBottom: !subPage ? '16rpx' : '32rpx' }">
+          <view v-if="!subPage" class="stack-4">
             <view class="overflow-hidden surface-card" :class="UI.card">
-              <view v-for="(item, i) in menuA" :key="item.id" class="p-4 flex items-center justify-between tap-scale" :class="i !== menuA.length - 1 ? 'border-b border-slate-100' : ''" @click="openSubPage(item.id)">
+              <view v-for="(item, i) in menuA" :key="item.id" class="p-3 flex items-center justify-between tap-scale" :class="i !== menuA.length - 1 ? 'border-b border-slate-100' : ''" @click="openSubPage(item.id)">
                 <view class="flex items-center gap-3 min-w-0">
-                  <view class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shadow-soft" :class="item.bg">
+                  <view class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-soft" :class="item.bg">
                     <text :class="item.color">{{ item.icon }}</text>
                   </view>
                   <view class="min-w-0">
                     <view class="font-bold text-slate-800 text-sm truncate">{{ item.label }}</view>
-                    <view class="text-2xs text-slate-400 mt-1 truncate">{{ item.desc }}</view>
+                    <view class="text-3xs text-slate-400 mt-0_5 truncate">{{ item.desc }}</view>
                   </view>
                 </view>
                 <view class="text-slate-300 font-black">›</view>
               </view>
             </view>
 
-            <view class="px-1">
-              <view class="text-2xs font-black tracking-wide text-slate-400">设置与导出</view>
-            </view>
             <view class="overflow-hidden surface-card" :class="UI.card">
-              <view v-for="(item, i) in menuB" :key="item.id" class="p-4 flex items-center justify-between tap-scale" :class="i !== menuB.length - 1 ? 'border-b border-slate-100' : ''" @click="openSubPage(item.id)">
+              <view v-for="(item, i) in menuB" :key="item.id" class="p-3 flex items-center justify-between tap-scale" :class="i !== menuB.length - 1 ? 'border-b border-slate-100' : ''" @click="openSubPage(item.id)">
                 <view class="flex items-center gap-3 min-w-0">
-                  <view class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shadow-soft" :class="item.bg">
+                  <view class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-soft" :class="item.bg">
                     <text :class="item.color">{{ item.icon }}</text>
                   </view>
                   <view class="min-w-0">
                     <view class="font-bold text-slate-800 text-sm truncate">{{ item.label }}</view>
-                    <view class="text-2xs text-slate-400 mt-1 truncate">{{ item.desc }}</view>
+                    <view class="text-3xs text-slate-400 mt-0_5 truncate">{{ item.desc }}</view>
                   </view>
                 </view>
                 <view class="text-slate-300 font-black">›</view>
               </view>
             </view>
 
-            <view class="pt-2 pb-6">
-              <button class="w-full py-3 rounded-xl btn-slate font-bold tap-scale mb-3" @click="resetDemo">重置演示数据</button>
-              <button class="w-full py-3 rounded-xl btn-soft text-rose-600 font-bold tap-scale" @click="logout">安全退出登录</button>
+            <view class="grid grid-cols-2 gap-2 pt-1">
+              <button class="w-full py-2_5 rounded-xl btn-slate text-sm font-bold tap-scale" @click="resetDemo">重置演示数据</button>
+              <button class="w-full py-2_5 rounded-xl btn-soft text-rose-600 text-sm font-bold tap-scale" @click="logout">退出登录</button>
             </view>
           </view>
 
           <view v-else-if="subPage === 'allDocuments'" class="stack-4">
-            <view class="relative">
-              <view class="absolute left-4 w-7 h-7 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center font-black text-xs" style="top: 50%; transform: translateY(-50%);">搜</view>
-              <input v-model="docSearch" type="text" class="w-full pl-12 pr-4 py-3 rounded-2xl input-soft font-medium text-slate-800" placeholder="搜索姓名 / 房号 / 手机号" />
+            <view class="flex items-center gap-2">
+              <view class="flex-1 profile-search-field">
+                <input
+                  v-model="docSearchDraft"
+                  type="text"
+                  confirm-type="search"
+                  @confirm="applyDocSearch"
+                  class="w-full text-xs font-medium text-slate-700 profile-search-input"
+                  placeholder="搜索姓名、房号或手机号"
+                  placeholder-class="profile-search-placeholder"
+                />
+              </view>
+              <button class="rounded-xl btn-blue text-xs font-bold tap-scale profile-search-button" @click="applyDocSearch">查询</button>
             </view>
 
             <view v-if="filteredDocs.length === 0" class="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 border-dashed text-slate-400 font-medium text-sm">暂无匹配的档案记录</view>
 
             <view v-else class="stack-3">
-              <view v-for="doc in filteredDocs" :key="doc.id" class="p-4 rounded-2xl surface-card">
-                <view class="flex justify-between items-center mb-3 border-b border-slate-100 pb-2 gap-3">
+              <view v-for="doc in filteredDocs" :key="doc.id" class="p-3 rounded-xl surface-card">
+                <view class="flex justify-between items-center mb-2 border-b border-slate-100 pb-2 gap-3">
                   <view class="min-w-0">
                     <view class="font-black text-slate-800 text-sm truncate">{{ doc.roomNo }} · {{ doc.tenant || '未录入租客' }}</view>
                     <view class="text-2xs text-slate-400 mt-0_5 truncate">{{ doc.propertyName }} - {{ doc.blockName }}</view>
                   </view>
                   <view class="text-xs text-slate-500 font-mono shrink-0">{{ doc.phone || '-' }}</view>
                 </view>
-                <view class="flex gap-2 mb-3">
+                <view class="flex gap-2 mb-2">
                   <view class="px-2 py-1 rounded-lg text-3xs font-black border" :class="doc.hasIdCardPic ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200'">{{ doc.hasIdCardPic ? '身份证已归档' : '身份证缺失' }}</view>
                   <view class="px-2 py-1 rounded-lg text-3xs font-black border" :class="doc.hasContract ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200'">{{ doc.hasContract ? '合同已归档' : '合同缺失' }}</view>
                 </view>
                 <view class="flex gap-2">
-                  <button class="flex-1 py-2 rounded-xl text-xs font-black tap-scale" :class="doc.hasIdCardPic ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasIdCardPic" @click="openAttachment('idCard', doc)">{{ doc.hasIdCardPic ? '查看身份证' : '暂无证件' }}</button>
-                  <button class="flex-1 py-2 rounded-xl text-xs font-black tap-scale" :class="doc.hasContract ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasContract" @click="openAttachment('contract', doc)">{{ doc.hasContract ? '查看电子合同' : '暂无合同' }}</button>
+                  <button class="flex-1 py-1_5 rounded-xl text-xs font-black tap-scale" :class="doc.hasIdCardPic ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasIdCardPic" @click="openAttachment('idCard', doc)">{{ doc.hasIdCardPic ? '查看身份证' : '暂无证件' }}</button>
+                  <button class="flex-1 py-1_5 rounded-xl text-xs font-black tap-scale" :class="doc.hasContract ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasContract" @click="openAttachment('contract', doc)">{{ doc.hasContract ? '查看电子合同' : '暂无合同' }}</button>
                 </view>
               </view>
             </view>
@@ -289,6 +293,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { properties, globalConfig, resetDemoProperties } from '../../data/rentStore'
 import { UI } from '../../ui/ui'
 import BottomDrawer from '../../components/BottomDrawer.vue'
+import { getPageHeaderTopPadding } from '../../utils/layout'
 
 const headerTopPadding = ref(44)
 const subPage = ref('')
@@ -300,6 +305,7 @@ const form = ref({
   electricPriceDefault: String(globalConfig.value.electricPriceDefault),
 })
 
+const docSearchDraft = ref('')
 const docSearch = ref('')
 const reminderForm = ref({ advance: true, overdue: true, warnThreeDays: false })
 const contractTemplates = [
@@ -351,12 +357,7 @@ const pageSubtitle = computed(() => {
 })
 
 onLoad(() => {
-  try {
-    const sys = uni.getSystemInfoSync()
-    headerTopPadding.value = Math.max(44, (sys.statusBarHeight || 20) + 12)
-  } catch {
-    headerTopPadding.value = 44
-  }
+  headerTopPadding.value = getPageHeaderTopPadding(44)
 
   try {
     const stored = uni.getStorageSync('global_config_v1')
@@ -415,6 +416,10 @@ const filteredDocs = computed(() => {
   if (!q) return allDocs.value
   return allDocs.value.filter((d) => String(d.tenant || '').includes(q) || String(d.roomNo || '').includes(q) || String(d.phone || '').includes(q))
 })
+
+function applyDocSearch() {
+  docSearch.value = String(docSearchDraft.value || '').trim()
+}
 
 function saveConfig() {
   const water = Number(form.value.waterPriceDefault)
@@ -477,6 +482,7 @@ function resetDemo() {
     success: (res) => {
       if (!res.confirm) return
       resetDemoProperties()
+      docSearchDraft.value = ''
       docSearch.value = ''
       subPage.value = ''
       uni.showToast({ title: '已重置', icon: 'success' })
@@ -484,3 +490,38 @@ function resetDemo() {
   })
 }
 </script>
+
+<style>
+.profile-search-field {
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.75rem;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  min-height: 28px;
+}
+
+.profile-search-input {
+  min-height: 14px;
+  line-height: 14px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.profile-search-placeholder {
+  color: #94a3b8;
+}
+
+.profile-search-button {
+  min-height: 28px;
+  min-width: 64px;
+  padding: 0 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+</style>
