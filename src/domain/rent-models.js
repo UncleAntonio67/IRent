@@ -155,6 +155,12 @@ export function normalizeRoom(room = {}) {
     electricPrice: Number(room.electricPrice || 1.2) || 1.2,
     gasPrice: Number(room.gasPrice || 3.8) || 3.8,
     heatingPrice: Number(room.heatingPrice || 0) || 0,
+    utilityChargeConfig: {
+      water: room.utilityChargeConfig?.water || 'separate',
+      electric: room.utilityChargeConfig?.electric || 'separate',
+      gas: room.utilityChargeConfig?.gas || 'separate',
+      heating: room.utilityChargeConfig?.heating || 'separate',
+    },
     bills: Array.isArray(room.bills) ? room.bills : [],
     collections: Array.isArray(room.collections) ? room.collections.map(normalizeCollectionRecord) : [],
     meterReadings: Array.isArray(room.meterReadings) ? room.meterReadings : [],

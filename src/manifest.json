@@ -49,11 +49,11 @@
     /* 快应用特有相关 */
     "quickapp" : {},
     /* 小程序特有相关 */
-    "mp-weixin" : {
-        "appid" : "",
-        "setting" : {
-            "urlCheck" : false
-        },
+	"mp-weixin" : {
+		"appid" : "wx3b036fde186b4ce3",
+		"setting" : {
+			"urlCheck" : false
+		},
         "usingComponents" : true
     },
     "mp-alipay" : {

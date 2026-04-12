@@ -125,6 +125,15 @@
         :room-id="selectedRoomId"
         @close="closeRoomSheet"
       />
+      <CheckInSheet
+        :open="checkInSheetOpen"
+        :property-id="propertyId"
+        :block-id="blockId"
+        :room-id="selectedRoomId"
+        @close="closeCheckInSheet"
+        @checked-in="handleCheckedIn"
+        @request-detail="handleCheckInRequestDetail"
+      />
     </view>
   </view>
 </template>
@@ -133,9 +142,10 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import RoomDetailSheet from '../../components/RoomDetailSheet.vue'
+import CheckInSheet from '../../components/CheckInSheet.vue'
 import { UI } from '../../ui/ui'
 import { findBlock, findProperty } from '../../data/rentStore'
-import { safeNavigateBack, safeNavigateTo } from '../../utils/navigation'
+import { safeNavigateBack } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 
 const headerTopPadding = ref(44)
@@ -143,6 +153,7 @@ const propertyId = ref('')
 const blockId = ref('')
 const filterStatus = ref('all')
 const roomSheetOpen = ref(false)
+const checkInSheetOpen = ref(false)
 const selectedRoomId = ref('')
 
 const property = computed(() => (propertyId.value ? findProperty(propertyId.value) : null))
@@ -207,7 +218,8 @@ function roomStatusDot(status) {
 function goRoom(room) {
   if (!room?.id) return
   if (room.status === 'empty') {
-    safeNavigateTo(`/pages/room/checkin?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${room.id}`)
+    selectedRoomId.value = room.id
+    checkInSheetOpen.value = true
     return
   }
   selectedRoomId.value = room.id
@@ -217,5 +229,19 @@ function goRoom(room) {
 function closeRoomSheet() {
   roomSheetOpen.value = false
   selectedRoomId.value = ''
+}
+
+function closeCheckInSheet() {
+  checkInSheetOpen.value = false
+  selectedRoomId.value = ''
+}
+
+function handleCheckedIn() {
+  checkInSheetOpen.value = false
+}
+
+function handleCheckInRequestDetail() {
+  checkInSheetOpen.value = false
+  roomSheetOpen.value = true
 }
 </script>

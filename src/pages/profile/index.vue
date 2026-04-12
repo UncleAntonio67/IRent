@@ -11,21 +11,21 @@
               </view>
             </button>
             <view class="min-w-0">
-              <view class="font-black text-slate-900 text-base truncate">{{ pageTitle }}</view>
+              <view class="font-semibold text-slate-900 text-base truncate">{{ pageTitle }}</view>
               <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">{{ pageSubtitle }}</view>
             </view>
           </view>
         </view>
 
-        <view v-if="!subPage" class="mt-3 p-4 rounded-2xl profile-hero text-white relative overflow-hidden border-none shadow-lg">
+        <view v-if="!subPage" class="mt-3 p-4 rounded-2xl profile-hero text-white relative overflow-hidden border border-white-20 shadow-soft">
           <view class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white-20"></view>
           <view class="absolute -right-2 -top-2 w-28 h-28 rounded-full bg-white-20"></view>
-          <view class="absolute -right-6 -bottom-8 text-8xl font-black opacity-10 pointer-events-none select-none">我</view>
+          <view class="absolute -right-6 -bottom-8 text-8xl font-semibold opacity-10 pointer-events-none select-none">我</view>
 
           <view class="flex items-center gap-3 relative z-10">
-            <view class="w-12 h-12 bg-white-20 rounded-full flex items-center justify-center text-white font-black text-lg border border-white-20">{{ profileInitial }}</view>
+            <view class="w-12 h-12 bg-white-20 rounded-full flex items-center justify-center text-white font-semibold text-lg border border-white-20">{{ profileInitial }}</view>
             <view class="min-w-0">
-              <view class="text-lg font-black truncate">{{ profileName }}</view>
+              <view class="text-lg font-semibold truncate">{{ profileName }}</view>
               <view class="flex gap-1_5 mt-1_5 flex-wrap">
                 <view class="profile-hero-chip">高级专业版</view>
                 <view class="profile-hero-chip">已实名</view>
@@ -36,15 +36,15 @@
 
           <view class="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-white-20 relative z-10">
             <view class="text-center">
-              <view class="text-xl font-black font-mono">{{ stats.propertyCount }}</view>
+              <view class="text-xl font-semibold font-mono">{{ stats.propertyCount }}</view>
               <view class="text-3xs text-slate-200 font-medium mt-1">管理院落</view>
             </view>
             <view class="text-center border-l border-white-20">
-              <view class="text-xl font-black font-mono">{{ stats.totalRooms }}</view>
+              <view class="text-xl font-semibold font-mono">{{ stats.totalRooms }}</view>
               <view class="text-3xs text-slate-200 font-medium mt-1">总房间</view>
             </view>
             <view class="text-center border-l border-white-20">
-              <view class="text-xl font-black font-mono text-blue-200">{{ stats.rentedRooms }}</view>
+              <view class="text-xl font-semibold font-mono text-blue-200">{{ stats.rentedRooms }}</view>
               <view class="text-3xs text-slate-200 font-medium mt-1">已入住</view>
             </view>
           </view>
@@ -57,36 +57,36 @@
             <view class="overflow-hidden surface-card" :class="UI.card">
               <view v-for="(item, i) in menuA" :key="item.id" class="p-3 flex items-center justify-between tap-scale" :class="i !== menuA.length - 1 ? 'border-b border-slate-100' : ''" @click="openSubPage(item.id)">
                 <view class="flex items-center gap-3 min-w-0">
-                  <view class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-soft" :class="item.bg">
+                  <view class="w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-xs shadow-soft" :class="item.bg">
                     <text :class="item.color">{{ item.icon }}</text>
                   </view>
                   <view class="min-w-0">
-                    <view class="font-bold text-slate-800 text-sm truncate">{{ item.label }}</view>
+                    <view class="font-semibold text-slate-800 text-sm truncate">{{ item.label }}</view>
                     <view class="text-3xs text-slate-400 mt-0_5 truncate">{{ item.desc }}</view>
                   </view>
                 </view>
-                <view class="text-slate-300 font-black">›</view>
+                <view class="text-slate-300 font-semibold">›</view>
               </view>
             </view>
 
             <view class="overflow-hidden surface-card" :class="UI.card">
               <view v-for="(item, i) in menuB" :key="item.id" class="p-3 flex items-center justify-between tap-scale" :class="i !== menuB.length - 1 ? 'border-b border-slate-100' : ''" @click="openSubPage(item.id)">
                 <view class="flex items-center gap-3 min-w-0">
-                  <view class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-soft" :class="item.bg">
+                  <view class="w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-xs shadow-soft" :class="item.bg">
                     <text :class="item.color">{{ item.icon }}</text>
                   </view>
                   <view class="min-w-0">
-                    <view class="font-bold text-slate-800 text-sm truncate">{{ item.label }}</view>
+                    <view class="font-semibold text-slate-800 text-sm truncate">{{ item.label }}</view>
                     <view class="text-3xs text-slate-400 mt-0_5 truncate">{{ item.desc }}</view>
                   </view>
                 </view>
-                <view class="text-slate-300 font-black">›</view>
+                <view class="text-slate-300 font-semibold">›</view>
               </view>
             </view>
 
             <view class="grid grid-cols-2 gap-2 pt-1">
-              <button class="w-full py-2_5 rounded-xl btn-slate text-sm font-bold tap-scale" @click="resetDemo">重置演示数据</button>
-              <button class="w-full py-2_5 rounded-xl btn-soft text-rose-600 text-sm font-bold tap-scale" @click="logout">退出登录</button>
+              <button class="w-full py-2_5 rounded-xl btn-slate text-sm font-semibold tap-scale" @click="resetDemo">重置演示数据</button>
+              <button class="w-full py-2_5 rounded-xl btn-soft text-rose-600 text-sm font-semibold tap-scale" @click="logout">退出登录</button>
             </view>
           </view>
 
@@ -103,7 +103,7 @@
                   placeholder-class="profile-search-placeholder"
                 />
               </view>
-              <button class="rounded-xl btn-blue text-xs font-bold tap-scale profile-search-button" @click="applyDocSearch">查询</button>
+              <button class="rounded-xl btn-blue text-xs font-semibold tap-scale profile-search-button" @click="applyDocSearch">查询</button>
             </view>
 
             <view v-if="filteredDocs.length === 0" class="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 border-dashed text-slate-400 font-medium text-sm">暂无匹配的档案记录</view>
@@ -112,18 +112,18 @@
               <view v-for="doc in filteredDocs" :key="doc.id" class="p-3 rounded-xl surface-card">
                 <view class="flex justify-between items-center mb-2 border-b border-slate-100 pb-2 gap-3">
                   <view class="min-w-0">
-                    <view class="font-black text-slate-800 text-sm truncate">{{ doc.roomNo }} · {{ doc.tenant || '未录入租客' }}</view>
+                    <view class="font-semibold text-slate-800 text-sm truncate">{{ doc.roomNo }} · {{ doc.tenant || '未录入租客' }}</view>
                     <view class="text-2xs text-slate-400 mt-0_5 truncate">{{ doc.propertyName }} - {{ doc.blockName }}</view>
                   </view>
                   <view class="text-xs text-slate-500 font-mono shrink-0">{{ doc.phone || '-' }}</view>
                 </view>
                 <view class="flex gap-2 mb-2">
-                  <view class="px-2 py-1 rounded-lg text-3xs font-black border" :class="doc.hasIdCardPic ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200'">{{ doc.hasIdCardPic ? '身份证已归档' : '身份证缺失' }}</view>
-                  <view class="px-2 py-1 rounded-lg text-3xs font-black border" :class="doc.hasContract ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200'">{{ doc.hasContract ? '合同已归档' : '合同缺失' }}</view>
+                  <view class="px-2 py-1 rounded-lg text-3xs font-semibold border" :class="doc.hasIdCardPic ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200'">{{ doc.hasIdCardPic ? '身份证已归档' : '身份证缺失' }}</view>
+                  <view class="px-2 py-1 rounded-lg text-3xs font-semibold border" :class="doc.hasContract ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-400 border-slate-200'">{{ doc.hasContract ? '合同已归档' : '合同缺失' }}</view>
                 </view>
                 <view class="flex gap-2">
-                  <button class="flex-1 py-1_5 rounded-xl text-xs font-black tap-scale" :class="doc.hasIdCardPic ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasIdCardPic" @click="openAttachment('idCard', doc)">{{ doc.hasIdCardPic ? '查看身份证' : '暂无证件' }}</button>
-                  <button class="flex-1 py-1_5 rounded-xl text-xs font-black tap-scale" :class="doc.hasContract ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasContract" @click="openAttachment('contract', doc)">{{ doc.hasContract ? '查看电子合同' : '暂无合同' }}</button>
+                  <button class="flex-1 py-1_5 rounded-xl text-xs font-semibold tap-scale" :class="doc.hasIdCardPic ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasIdCardPic" @click="openAttachment('idCard', doc)">{{ doc.hasIdCardPic ? '查看身份证' : '暂无证件' }}</button>
+                  <button class="flex-1 py-1_5 rounded-xl text-xs font-semibold tap-scale" :class="doc.hasContract ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' : 'bg-slate-50 text-slate-400 border border-slate-200'" :disabled="!doc.hasContract" @click="openAttachment('contract', doc)">{{ doc.hasContract ? '查看电子合同' : '暂无合同' }}</button>
                 </view>
               </view>
             </view>
@@ -132,13 +132,13 @@
           <view v-else-if="subPage === 'utilityTemplate'" class="stack-4">
             <view class="p-5 rounded-2xl bg-orange-50 border border-orange-200">
               <view class="flex items-start gap-3">
-                <view class="w-9 h-9 rounded-xl bg-white text-orange-500 flex items-center justify-center font-black shadow-soft shrink-0">水</view>
+                <view class="w-9 h-9 rounded-xl bg-white text-orange-500 flex items-center justify-center font-semibold shadow-soft shrink-0">水</view>
                 <view class="text-sm text-orange-800 font-medium leading-relaxed">设置全局默认水电单价。新建房源时默认采用这套模板，房间层级仍可单独覆盖。</view>
               </view>
             </view>
 
             <view class="p-5 rounded-2xl surface-card">
-              <view class="font-black text-slate-900">默认水电单价模板</view>
+              <view class="font-semibold text-slate-900">默认水电单价模板</view>
               <view class="grid grid-cols-2 gap-3 mt-4">
                 <view class="p-4 rounded-2xl surface-muted">
                   <view class="text-xs text-slate-500 font-bold">水费（元/吨）</view>
@@ -154,8 +154,8 @@
           </view>
 
           <view v-else-if="subPage === 'contractLibrary'" class="stack-4">
-            <button class="w-full py-6 rounded-2xl bg-white border-2 border-indigo-200 border-dashed text-indigo-600 font-black tap-scale flex flex-col items-center justify-center gap-2" @click="toastSoon">
-              <view class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xl">合</view>
+            <button class="w-full py-6 rounded-2xl bg-white border-2 border-indigo-200 border-dashed text-indigo-600 font-semibold tap-scale flex flex-col items-center justify-center gap-2" @click="toastSoon">
+              <view class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-semibold text-xl">合</view>
               上传新的合同模板扫描件
             </button>
 
@@ -166,13 +166,13 @@
               <view>
                 <view v-for="(tpl, i) in contractTemplates" :key="tpl.id" class="p-4 flex items-center justify-between gap-3" :class="i !== contractTemplates.length - 1 ? 'border-b border-slate-100' : ''">
                   <view class="flex items-center gap-3 min-w-0">
-                    <view class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-sm shrink-0">文</view>
+                    <view class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-semibold text-sm shrink-0">文</view>
                     <view class="min-w-0">
-                      <view class="font-black text-slate-800 text-sm truncate">{{ tpl.title }}</view>
+                      <view class="font-semibold text-slate-800 text-sm truncate">{{ tpl.title }}</view>
                       <view class="text-2xs text-slate-400 font-medium mt-1">最近使用 {{ tpl.lastUsed }}</view>
                     </view>
                   </view>
-                  <button class="px-3 py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-black border border-blue-200 tap-scale" @click="openTemplatePreview(tpl)">预览</button>
+                  <button class="px-3 py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-semibold border border-blue-200 tap-scale" @click="openTemplatePreview(tpl)">预览</button>
                 </view>
               </view>
             </view>
@@ -181,7 +181,7 @@
           <view v-else-if="subPage === 'autoReminder'" class="stack-4">
             <view class="p-5 rounded-2xl bg-amber-50 border border-amber-200">
               <view class="flex items-start gap-3">
-                <view class="w-9 h-9 rounded-xl bg-white text-amber-500 flex items-center justify-center font-black shadow-soft shrink-0">提</view>
+                <view class="w-9 h-9 rounded-xl bg-white text-amber-500 flex items-center justify-center font-semibold shadow-soft shrink-0">提</view>
                 <view class="text-sm text-amber-800 font-medium leading-relaxed">当前只做自我提醒管理，不生成催缴文案，也不向微信外部推送消息。</view>
               </view>
             </view>
@@ -189,7 +189,7 @@
             <view class="p-5 rounded-2xl surface-card stack-5">
               <view class="flex justify-between items-center gap-3">
                 <view class="min-w-0">
-                  <view class="font-black text-slate-800 text-base">到期前 3 天提醒</view>
+                  <view class="font-semibold text-slate-800 text-base">到期前 3 天提醒</view>
                   <view class="text-xs text-slate-400 font-medium mt-1">提醒自己提前准备收款</view>
                 </view>
                 <view class="w-12 h-7 rounded-full p-1 transition-colors shrink-0" :class="reminderForm.advance ? 'bg-amber-500' : 'bg-slate-200'" @click="reminderForm.advance = !reminderForm.advance"><view class="w-5 h-5 bg-white rounded-full transition-transform shadow-soft" :class="reminderForm.advance ? 'translate-x-5' : 'translate-x-0'"></view></view>
@@ -199,7 +199,7 @@
 
               <view class="flex justify-between items-center gap-3">
                 <view class="min-w-0">
-                  <view class="font-black text-slate-800 text-base">到期当天提醒</view>
+                  <view class="font-semibold text-slate-800 text-base">到期当天提醒</view>
                   <view class="text-xs text-slate-400 font-medium mt-1">账单到期当天再次提示</view>
                 </view>
                 <view class="w-12 h-7 rounded-full p-1 transition-colors shrink-0" :class="reminderForm.overdue ? 'bg-rose-500' : 'bg-slate-200'" @click="reminderForm.overdue = !reminderForm.overdue"><view class="w-5 h-5 bg-white rounded-full transition-transform shadow-soft" :class="reminderForm.overdue ? 'translate-x-5' : 'translate-x-0'"></view></view>
@@ -209,7 +209,7 @@
 
               <view class="flex justify-between items-center gap-3">
                 <view class="min-w-0">
-                  <view class="font-black text-slate-800 text-base">逾期 3 天标记</view>
+                  <view class="font-semibold text-slate-800 text-base">逾期 3 天标记</view>
                   <view class="text-xs text-slate-400 font-medium mt-1">用于标记需要重点跟进的房间</view>
                 </view>
                 <view class="w-12 h-7 rounded-full p-1 transition-colors shrink-0" :class="reminderForm.warnThreeDays ? 'bg-rose-600' : 'bg-slate-200'" @click="reminderForm.warnThreeDays = !reminderForm.warnThreeDays"><view class="w-5 h-5 bg-white rounded-full transition-transform shadow-soft" :class="reminderForm.warnThreeDays ? 'translate-x-5' : 'translate-x-0'"></view></view>
@@ -221,14 +221,14 @@
           <view v-else-if="subPage === 'exportReport'" class="stack-4">
             <view class="p-5 rounded-2xl bg-emerald-50 border border-emerald-200">
               <view class="flex items-center gap-3">
-                <view class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-500 font-black text-base border border-emerald-100 shadow-soft shrink-0">表</view>
+                <view class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-500 font-semibold text-base border border-emerald-100 shadow-soft shrink-0">表</view>
                 <view class="text-sm text-emerald-800 font-medium leading-relaxed">支持导出账单与租客明细为 Excel 文件，用于本地留档。当前页面先保留导出入口和范围设置。</view>
               </view>
             </view>
 
             <view class="p-5 rounded-2xl surface-card stack-4">
               <view>
-                <view class="text-sm font-black text-slate-800">导出范围</view>
+                <view class="text-sm font-semibold text-slate-800">导出范围</view>
                 <view class="text-xs text-slate-400 font-medium mt-1">当前版本先展示导出配置 UI</view>
               </view>
               <view class="p-4 rounded-2xl surface-muted">
@@ -249,7 +249,7 @@
 
           <view v-else class="stack-4">
             <view class="p-5 rounded-2xl surface-card">
-              <view class="font-black text-slate-900">该功能下一步完善</view>
+              <view class="font-semibold text-slate-900">该功能下一步完善</view>
               <view class="text-sm text-slate-600 font-medium leading-relaxed mt-2">当前优先保证房态、记账、档案和历史追溯的闭环稳定，后续再补更完整的业务能力。</view>
             </view>
           </view>
@@ -257,32 +257,32 @@
       </scroll-view>
 
       <view v-if="subPage === 'utilityTemplate'" class="absolute inset-x-0 bottom-0 p-5 bg-white border-t border-slate-200-60 shadow-top-soft">
-        <button class="w-full py-4 rounded-xl btn-blue font-bold tap-scale" @click="saveConfig">保存并应用全局设置</button>
+        <button class="w-full py-4 rounded-xl btn-blue font-semibold tap-scale" @click="saveConfig">保存并应用全局设置</button>
       </view>
 
       <view v-if="subPage === 'autoReminder'" class="absolute inset-x-0 bottom-0 p-5 bg-white border-t border-slate-200-60 shadow-top-soft">
-        <button class="w-full py-4 rounded-xl btn-blue font-bold tap-scale" @click="saveReminder">保存提醒设置</button>
+        <button class="w-full py-4 rounded-xl btn-blue font-semibold tap-scale" @click="saveReminder">保存提醒设置</button>
       </view>
 
       <view v-if="subPage === 'exportReport'" class="absolute inset-x-0 bottom-0 p-5 bg-white border-t border-slate-200-60 shadow-top-soft">
-        <button class="w-full py-4 rounded-xl btn-emerald font-bold tap-scale" @click="toastSoon">生成并导出 Excel</button>
+        <button class="w-full py-4 rounded-xl btn-emerald font-semibold tap-scale" @click="toastSoon">生成并导出 Excel</button>
       </view>
 
-      <BottomDrawer :open="attachmentOpen" title="档案预览" subtitle="这里预览文件占位图，后续可接入 R2 真实文件" @close="closeAttachment">
+      <BaseCenteredModal :open="attachmentOpen" title="档案预览" subtitle="这里预览文件占位图，后续可接入 R2 真实文件" body-class="stack-3" @close="closeAttachment">
         <view v-if="attachmentInfo" class="stack-3">
           <view class="p-4 rounded-2xl surface-muted">
-            <view class="text-xs text-slate-500 font-bold">对象</view>
-            <view class="text-base font-black text-slate-900 mt-2">{{ attachmentInfo.title }}</view>
+            <view class="text-xs text-slate-500 font-semibold">对象</view>
+            <view class="text-base font-semibold text-slate-900 mt-2">{{ attachmentInfo.title }}</view>
             <view v-if="attachmentInfo.subtitle" class="text-xs text-slate-500 font-mono mt-2">{{ attachmentInfo.subtitle }}</view>
           </view>
 
           <view class="p-4 rounded-2xl surface-card">
-            <view class="text-xs text-slate-500 font-bold">预览</view>
-            <view class="mt-3 h-44 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold">文件预览占位</view>
+            <view class="text-xs text-slate-500 font-semibold">预览</view>
+            <view class="mt-3 h-44 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-semibold">文件预览占位</view>
             <view class="text-2xs text-slate-400 font-medium mt-3">当前仅保留结构与入口，真实文件后续保存到对象存储并做鉴权访问。</view>
           </view>
         </view>
-      </BottomDrawer>
+      </BaseCenteredModal>
     </view>
   </view>
 </template>
@@ -292,7 +292,7 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { properties, globalConfig, resetDemoProperties } from '../../data/rentStore'
 import { UI } from '../../ui/ui'
-import BottomDrawer from '../../components/BottomDrawer.vue'
+import BaseCenteredModal from '../../components/BaseCenteredModal.vue'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 
 const headerTopPadding = ref(44)
@@ -492,6 +492,22 @@ function resetDemo() {
 </script>
 
 <style>
+.profile-hero {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 28%),
+    linear-gradient(180deg, #2953c7 0%, #3f6ee8 100%);
+}
+
+.profile-hero-chip {
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .profile-search-field {
   padding: 0.25rem 0.625rem;
   border-radius: 0.75rem;

@@ -3,28 +3,26 @@
     <view class="mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
       <view class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 relative shrink-0 sticky-header z-20 shadow-soft" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view>
-          <view class="font-black text-slate-900 text-base">账务流水</view>
+          <view class="font-semibold text-slate-900 text-base">账务流水</view>
           <view class="text-xs text-slate-400 font-medium mt-0_5">按类型、房号和租客快速查询已收记录</view>
         </view>
 
-        <view class="mt-4 p-4 rounded-2xl bills-hero text-white relative overflow-hidden shadow-lg">
-          <view class="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-white-20"></view>
-          <view class="absolute -right-4 -bottom-8 w-20 h-20 rounded-full bg-white-20"></view>
+        <view class="mt-4 p-4 rounded-2xl bills-hero relative overflow-hidden shadow-soft border border-slate-200-60">
           <view class="relative z-10">
-            <view class="text-blue-100 text-2xs font-medium">累计实收</view>
-            <view class="text-3xl font-black font-mono tracking-tight mt-1">¥{{ fmtMoney(billStats.paidTotal) }}</view>
-            <view class="flex items-center gap-4 mt-3 pt-3 border-t border-white-20">
+            <view class="text-slate-500 text-2xs font-medium">累计实收</view>
+            <view class="text-2xl font-semibold font-mono tracking-tight mt-1 text-slate-900">¥{{ fmtMoney(billStats.paidTotal) }}</view>
+            <view class="flex items-center gap-4 mt-3 pt-3 border-t border-slate-200-60">
               <view class="min-w-0">
-                <view class="text-blue-100 text-3xs font-medium">房租</view>
-                <view class="font-mono font-black text-xs mt-1">¥{{ fmtMoney(billStats.rentPaid) }}</view>
+                <view class="text-slate-400 text-3xs font-medium">房租</view>
+                <view class="font-mono font-semibold text-xs mt-1 text-slate-700">¥{{ fmtMoney(billStats.rentPaid) }}</view>
               </view>
               <view class="min-w-0">
-                <view class="text-blue-100 text-3xs font-medium">水电</view>
-                <view class="font-mono font-black text-xs mt-1">¥{{ fmtMoney(billStats.utilsPaid) }}</view>
+                <view class="text-slate-400 text-3xs font-medium">水电</view>
+                <view class="font-mono font-semibold text-xs mt-1 text-slate-700">¥{{ fmtMoney(billStats.utilsPaid) }}</view>
               </view>
               <view class="min-w-0">
-                <view class="text-blue-100 text-3xs font-medium">灵活</view>
-                <view class="font-mono font-black text-xs mt-1">¥{{ fmtMoney(billStats.customPaid) }}</view>
+                <view class="text-slate-400 text-3xs font-medium">灵活</view>
+                <view class="font-mono font-semibold text-xs mt-1 text-slate-700">¥{{ fmtMoney(billStats.customPaid) }}</view>
               </view>
             </view>
           </view>
@@ -55,7 +53,7 @@
               <view class="relative bills-type-cell">
                 <view class="bills-filter-field tap-scale" @click="toggleTypeMenu">
                   <view class="text-xs font-medium text-slate-700 truncate">{{ currentTypeLabel }}</view>
-                  <view class="text-xs text-slate-300 font-bold shrink-0">▼</view>
+              <view class="text-xs text-slate-300 font-medium shrink-0">▼</view>
                 </view>
 
                 <view v-if="typeMenuOpen" class="bills-type-menu">
@@ -73,22 +71,22 @@
 
               <view class="bills-date-cell bills-filter-field tap-scale" @click="openDateDrawer">
                 <view class="text-xs font-medium text-slate-700 truncate">{{ dateSummaryText }}</view>
-                <view class="text-xs text-slate-300 font-bold shrink-0">▼</view>
+                <view class="text-xs text-slate-300 font-medium shrink-0">▼</view>
               </view>
 
-              <button class="rounded-xl btn-blue text-xs font-bold tap-scale bills-query-button" @click="applySearch">
+              <button class="rounded-xl btn-blue text-xs font-semibold tap-scale bills-query-button" @click="applySearch">
                 查询
               </button>
             </view>
           </view>
 
           <view v-if="items.length === 0" class="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 border-dashed text-slate-400 font-medium text-sm">
-            <view class="w-12 h-12 mx-auto rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300 font-black text-lg mb-3">账</view>
+            <view class="w-12 h-12 mx-auto rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300 font-semibold text-lg mb-3">账</view>
             当前筛选下暂无历史流水
           </view>
 
             <view v-else class="rounded-xl bg-white border border-slate-200-60 shadow-soft overflow-hidden bills-history-card">
-              <view class="px-3 py-2 bg-slate-50 border-b border-slate-200-60 flex items-center justify-between text-3xs font-black tracking-wide text-slate-500 uppercase">
+              <view class="px-3 py-2 bg-slate-50 border-b border-slate-200-60 flex items-center justify-between text-3xs font-semibold tracking-wide text-slate-500 uppercase">
                 <view class="bills-section-title">历史流水</view>
                 <view class="flex items-center gap-3 normal-case tracking-normal">
                   <button class="bills-sort-button" :class="sortKey === 'date' ? 'bills-sort-button-active' : ''" @click="toggleSort('date')">
@@ -102,29 +100,26 @@
             <view
               v-for="item in items"
               :key="item.key"
-              class="px-3 py-2_5 flex items-center gap-3"
+              class="px-3 py-3 flex items-center gap-3"
               :class="item.key !== items[items.length - 1].key ? 'border-b border-slate-100' : ''"
             >
               <view class="min-w-0 w-20 shrink-0">
-                <view class="font-black text-slate-900 text-sm truncate">{{ item.roomNo }}</view>
+                <view class="font-medium text-slate-900 text-sm truncate">{{ item.roomNo }}</view>
                 <view class="text-2xs text-slate-500 truncate mt-0_5">{{ item.tenant || '未录入租客' }}</view>
               </view>
 
               <view class="min-w-0 flex-1">
-                <view class="flex items-center gap-1_5 min-w-0">
-                  <view class="text-3xs font-black px-2 py-1 rounded-full border shrink-0" :class="typeTag(item.kind)">{{ typeText(item.kind) }}</view>
-                </view>
-                <view class="text-xs font-bold text-slate-700 truncate mt-0_5">{{ item.title }}</view>
-                <view class="text-3xs text-slate-400 font-mono truncate mt-0_5">{{ fmtDate(item.payDate || item.dueDate) }}</view>
+                <view class="text-xs font-medium text-slate-700 truncate">{{ item.title }}</view>
+                <view class="text-2xs text-slate-400 font-mono truncate mt-1">{{ fmtDate(item.payDate || item.dueDate) }}</view>
               </view>
 
               <view class="shrink-0 flex flex-col items-end gap-1">
-                <view class="font-black font-mono text-sm leading-none text-emerald-600">+ ¥{{ fmtMoney(item.amount) }}</view>
+                <view class="font-mono text-sm leading-none text-emerald-600 font-medium">+ ¥{{ fmtMoney(item.amount) }}</view>
                 <view class="flex items-center gap-2">
-                  <button v-if="item.receiptPic" class="text-3xs font-black text-blue-600 tap-scale" @click="openReceipt(item)">
+                  <button v-if="item.receiptPic" class="text-2xs font-medium text-blue-600 tap-scale" @click="openReceipt(item)">
                     凭证
                   </button>
-                  <button class="text-3xs font-black text-slate-600 tap-scale" @click="goRoom(item)">
+                  <button class="text-2xs font-medium text-slate-600 tap-scale" @click="goRoom(item)">
                     房间
                   </button>
                 </view>
@@ -137,13 +132,13 @@
         </view>
       </scroll-view>
 
-      <BottomDrawer :open="dateDrawerOpen" title="设置日期范围" subtitle="支持快捷范围和手动输入 YYYY-MM-DD" @close="closeDateDrawer">
+      <DateSelectionModal :open="dateDrawerOpen" title="设置日期范围" subtitle="支持快捷范围和手动输入 YYYY-MM-DD" @close="closeDateDrawer">
         <view class="stack-3">
           <view class="grid grid-cols-4 gap-2">
             <button
               v-for="option in dateQuickOptions"
               :key="option.value"
-              class="px-2 py-2 rounded-xl text-xs font-bold border"
+                class="px-2 py-2 rounded-xl text-xs font-semibold border"
               :class="option.value === activeQuickDate ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-200'"
               @click="applyQuickDate(option.value)"
             >
@@ -153,27 +148,27 @@
 
           <view class="stack-2">
             <view class="bills-search-field">
-              <view class="text-xs font-bold text-slate-500">开始日期</view>
+              <view class="text-xs font-semibold text-slate-500">开始日期</view>
               <input v-model="startDateDraft" type="text" class="w-full text-xs font-medium text-slate-700 bill-search-input mt-0_5" placeholder="YYYY-MM-DD" placeholder-class="bill-search-placeholder" />
             </view>
             <view class="bills-search-field">
-              <view class="text-xs font-bold text-slate-500">结束日期</view>
+              <view class="text-xs font-semibold text-slate-500">结束日期</view>
               <input v-model="endDateDraft" type="text" class="w-full text-xs font-medium text-slate-700 bill-search-input mt-0_5" placeholder="YYYY-MM-DD" placeholder-class="bill-search-placeholder" />
             </view>
           </view>
 
           <view class="flex items-center gap-2">
-            <button class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-bold" @click="clearDateDraft">清空</button>
-            <button class="flex-1 py-3 rounded-xl btn-blue text-sm font-bold" @click="confirmDateDrawer">确定</button>
+            <button class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold" @click="clearDateDraft">清空</button>
+            <button class="flex-1 py-3 rounded-xl btn-blue text-sm font-semibold" @click="confirmDateDrawer">确定</button>
           </view>
         </view>
-      </BottomDrawer>
+      </DateSelectionModal>
 
-      <BottomDrawer :open="receiptOpen" title="支付凭证" subtitle="这里展示当前流水对应的凭证截图位置（模拟）" @close="closeReceipt">
+      <BaseCenteredModal :open="receiptOpen" title="支付凭证" subtitle="这里展示当前流水对应的凭证截图位置（模拟）" body-class="stack-3" @close="closeReceipt">
         <view v-if="receiptItem" class="stack-3">
           <view class="p-4 rounded-2xl surface-muted">
-            <view class="text-xs text-slate-500 font-bold">流水信息</view>
-            <view class="text-base font-black text-slate-900 mt-2">{{ receiptItem.roomNo }} {{ receiptItem.title }}</view>
+            <view class="text-xs text-slate-500 font-semibold">流水信息</view>
+            <view class="text-base font-semibold text-slate-900 mt-2">{{ receiptItem.roomNo }} {{ receiptItem.title }}</view>
             <view class="text-xs text-slate-500 font-mono mt-2">
               金额 ¥{{ fmtMoney(receiptItem.amount) }}
               <text class="mx-2 text-slate-200">|</text>
@@ -182,12 +177,12 @@
           </view>
 
           <view class="p-4 rounded-2xl surface-card">
-            <view class="text-xs text-slate-500 font-bold">凭证截图</view>
-            <view class="mt-3 h-44 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold">截图预览占位</view>
+            <view class="text-xs text-slate-500 font-semibold">凭证截图</view>
+            <view class="mt-3 h-44 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-semibold">截图预览占位</view>
             <view class="text-2xs text-slate-400 font-medium mt-3">目前仅展示留存入口。后续接入 Cloudflare R2 后可展示真实文件。</view>
           </view>
         </view>
-      </BottomDrawer>
+      </BaseCenteredModal>
     </view>
   </view>
 </template>
@@ -195,7 +190,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import BottomDrawer from '../../components/BottomDrawer.vue'
+import BaseCenteredModal from '../../components/BaseCenteredModal.vue'
+import DateSelectionModal from '../../components/DateSelectionModal.vue'
 import { properties } from '../../data/rentStore'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
@@ -516,6 +512,12 @@ function closeReceipt() {
 </script>
 
 <style>
+.bills-hero {
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+}
+
 .bills-toolbar {
   background:
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 24%),
@@ -525,7 +527,7 @@ function closeReceipt() {
 .bills-section-title {
   color: #94a3b8;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
 }
 
@@ -641,7 +643,7 @@ function closeReceipt() {
   background: transparent;
   color: #64748b;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   min-height: auto;
 }

@@ -13,6 +13,50 @@ function sum(items, accessor) {
   return Math.round(items.reduce((total, item) => total + accessor(item), 0) * 100) / 100
 }
 
+export function checkoutRoomWithSettlement(room, payload, { now }) {
+  const refundAmount = Number(payload.refund || 0) || 0
+  const archivedCollections = Array.isArray(room.collections) ? [...room.collections] : []
+  const archivedBills = Array.isArray(room.bills) ? [...room.bills] : []
+  const archivedMeterReadings = Array.isArray(room.meterReadings) ? [...room.meterReadings] : []
+  const archivedPaymentSchedule = Array.isArray(room.paymentSchedule) ? [...room.paymentSchedule] : []
+
+  checkoutRoom(room, payload, { now })
+
+  const completedLease = (room.occupancies || []).find(
+    (occupancy) => occupancy.kind === OCCUPANCY_KIND.LEASE && occupancy.status === OCCUPANCY_STATUS.COMPLETED
+  )
+
+  if (completedLease) {
+    completedLease.archive = {
+      bills: archivedBills,
+      meterReadings: archivedMeterReadings,
+      paymentSchedule: archivedPaymentSchedule,
+      collections: archivedCollections,
+      settlement: {
+        refund: refundAmount > 0
+          ? {
+              id: generateId('refund'),
+              title: '押金退还',
+              amount: Number(refundAmount.toFixed(2)),
+              paidAt: now,
+              note: '退租押金退款',
+            }
+          : null,
+      },
+    }
+    completedLease.remark = completedLease.remark || '退租归档'
+  }
+
+  if (refundAmount > 0) {
+    room.history.unshift({
+      id: generateId('h'),
+      type: 'deposit_refund',
+      date: now,
+      remark: `押金退款：￥${Number(refundAmount.toFixed(2))}`,
+    })
+  }
+}
+
 function progress(paid, expected) {
   if (!expected) return 0
   return Math.min(100, Math.max(0, Math.round((paid / expected) * 100)))
@@ -502,7 +546,7 @@ export function uploadRoomAttachment(room, type, { now }) {
   return room.attachmentFiles[type]
 }
 
-export function checkInRoom(room, payload, { now, paymentSchedule, attachments }) {
+export function checkInRoom(room, payload, { now, paymentSchedule, attachments, initialCollectionAmount, initialReceiptPicked, initialDepositAmount, initialDepositReceiptPicked }) {
   const nowDate = now.slice(0, 10)
 
   const lastIdle = (room.occupancies || []).find(
@@ -535,22 +579,40 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments }
   room.paymentSchedule = paymentSchedule
   ensureCollections(room)
   if (room.paymentSchedule.length > 0) {
-    room.paymentSchedule[0].paidAmount = room.paymentSchedule[0].expectedAmount
-    room.paymentSchedule[0].coveredAmount = room.paymentSchedule[0].expectedAmount
-    room.paymentSchedule[0].status = PAYMENT_STATUS.PAID
-    room.paymentSchedule[0].payDate = now
-    room.paymentSchedule[0].receiptPic = true
+    const firstTerm = room.paymentSchedule[0]
+    const expectedAmount = Number(firstTerm.expectedAmount || 0)
+    const chargedAmount = Math.max(0, Math.min(expectedAmount, Number(initialCollectionAmount || expectedAmount)))
+    firstTerm.paidAmount = chargedAmount
+    firstTerm.coveredAmount = chargedAmount
+    firstTerm.status = chargedAmount >= expectedAmount ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.UNPAID
+    firstTerm.payDate = now
+    firstTerm.receiptPic = Boolean(initialReceiptPicked)
     room.collections.unshift({
       id: generateId('col'),
       kind: BILL_TYPE.RENT,
-      title: `房租 第${room.paymentSchedule[0].term}期`,
-      amount: Number(room.paymentSchedule[0].expectedAmount || 0),
+      title: `房租 第${firstTerm.term}期`,
+      amount: Number(chargedAmount.toFixed(2)),
       paidAt: now,
-      receiptPic: true,
-      termIds: [room.paymentSchedule[0].id],
+      receiptPic: Boolean(initialReceiptPicked),
+      termIds: [firstTerm.id],
       billId: '',
       note: '入住首期收款',
-      coverageLabel: `覆盖第 ${room.paymentSchedule[0].term} 期`,
+      coverageLabel: `覆盖第 ${firstTerm.term} 期`,
+    })
+  }
+  const depositAmount = Number(initialDepositAmount || 0)
+  if (Number.isFinite(depositAmount) && depositAmount > 0) {
+    room.collections.unshift({
+      id: generateId('col'),
+      kind: BILL_TYPE.CUSTOM,
+      title: '押金收取',
+      amount: Number(depositAmount.toFixed(2)),
+      paidAt: now,
+      receiptPic: Boolean(initialDepositReceiptPicked),
+      termIds: [],
+      billId: '',
+      note: '入住押金收款',
+      coverageLabel: '押金',
     })
   }
 
@@ -562,12 +624,24 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments }
   room.paymentCycle = payload.paymentCycle
   room.leaseStart = payload.leaseStart
   room.leaseEnd = payload.leaseEnd
+  room.utilityChargeConfig = {
+    water: payload.utilityChargeConfig?.water || 'separate',
+    electric: payload.utilityChargeConfig?.electric || 'separate',
+    gas: payload.utilityChargeConfig?.gas || 'separate',
+    heating: payload.utilityChargeConfig?.heating || 'separate',
+  }
+  room.lastWater = Number.isFinite(Number(payload.waterBase)) ? Number(payload.waterBase) : Number(room.lastWater || 0)
+  room.lastElectric = Number.isFinite(Number(payload.electricBase)) ? Number(payload.electricBase) : Number(room.lastElectric || 0)
   room.hasIdCardPic = true
   room.hasContract = true
   room.attachmentFiles = attachments
   room.status = ROOM_STATUS.RENTED
 
-  const firstPaymentAmount = Number((payload.rent * payload.paymentCycle).toFixed(2))
+  const firstPaymentAmount = Number(
+    Number.isFinite(Number(initialCollectionAmount))
+      ? Number(initialCollectionAmount)
+      : Number((payload.rent * payload.paymentCycle).toFixed(2))
+  )
   room.history.unshift({
     id: generateId('h'),
     type: 'checkin',
