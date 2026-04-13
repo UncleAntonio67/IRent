@@ -393,7 +393,7 @@ import MeterEntryModal from './MeterEntryModal.vue'
 import CheckoutSettlementModal from './CheckoutSettlementModal.vue'
 import EditRoomInfoModal from './EditRoomInfoModal.vue'
 import ActionFooterRow from './ActionFooterRow.vue'
-import { safeRedirectTo } from '../utils/navigation'
+import { safeNavigateTo } from '../utils/navigation'
 import { getDrawerHeaderTopPadding } from '../utils/layout'
 import { cloneProperties, findBlock, findProperty, findRoomWithFloor, generatePaymentSchedule, setProperties } from '../data/rentStore'
 import { formatShortDate, getPaymentCycleLabel } from '../domain/rent-models'
@@ -514,7 +514,7 @@ function nowString() { const d = new Date(); const p = (v) => String(v).padStart
 function pickReceipt() { receiptPicked.value = true; uni.showToast({ title: '已选择凭证（模拟）', icon: 'none' }) }
 function findRoomDraft(nextProperties) { return createRoomTreeMutator(nextProperties, propertyId.value, blockId.value, roomId.value) }
 function updateRoomDraft(mutator) { const nextProperties = cloneProperties(); const hit = findRoomDraft(nextProperties); if (!hit) return false; const changed = mutator(hit.room, hit, nextProperties); if (changed === false) return false; setProperties(nextProperties); return true }
-function goCheckIn() { safeRedirectTo(`/pages/room/checkin?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`) }
+function goCheckIn() { safeNavigateTo(`/pages/room/checkin?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`) }
 function openEditModal() { if (!room.value) return; editForm.value = { tenant: room.value.tenant || '', phone: room.value.phone || '', rent: String(room.value.rent ?? ''), deposit: String(room.value.deposit ?? ''), paymentCycle: String(room.value.paymentCycle ?? ''), leaseStart: room.value.leaseStart || '', leaseEnd: room.value.leaseEnd || '' }; editOpen.value = true }
 function openRoomPhotoPreview(photo) { if (!room.value || !photo) return; attachmentPreview.value = { type: 'roomPhoto', name: photo.name || '房屋照片', uploadedAt: photo.uploadedAt || '', previewText: photo.remark || '房屋照片预览占位。', tenant: room.value.tenant || '当前无租客', roomNo: room.value.roomNo || '' }; attachmentPreviewOpen.value = true }
 function handleRoomPhotoUpload() { let uploadedPhoto = null; const changed = updateRoomDraft((draftRoom) => { uploadedPhoto = uploadRoomPhoto(draftRoom, { now: nowString() }) }); if (!changed || !uploadedPhoto) return; openRoomPhotoPreview(uploadedPhoto) }

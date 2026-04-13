@@ -1,11 +1,13 @@
 let navLock = false
 let navTimer = null
+let hardReleaseTimer = null
 let lastNavAt = 0
 let lastTargetUrl = ''
 
-const MIN_NAV_INTERVAL = 250
-const DEFAULT_RELEASE_DELAY = 450
-const FAIL_RELEASE_DELAY = 250
+const MIN_NAV_INTERVAL = 400
+const DEFAULT_RELEASE_DELAY = 700
+const FAIL_RELEASE_DELAY = 300
+const HARD_RELEASE_DELAY = 1800
 
 function now() {
   return Date.now()
@@ -14,6 +16,10 @@ function now() {
 function releaseLock(delay = DEFAULT_RELEASE_DELAY) {
   if (navTimer) {
     clearTimeout(navTimer)
+  }
+  if (hardReleaseTimer) {
+    clearTimeout(hardReleaseTimer)
+    hardReleaseTimer = null
   }
   navTimer = setTimeout(() => {
     navLock = false
@@ -27,9 +33,16 @@ function withLock(run) {
   if (navLock) return
   navLock = true
   lastNavAt = now()
+  if (hardReleaseTimer) {
+    clearTimeout(hardReleaseTimer)
+  }
+  hardReleaseTimer = setTimeout(() => {
+    navLock = false
+    hardReleaseTimer = null
+  }, HARD_RELEASE_DELAY)
   try {
     run({
-      complete: () => releaseLock(),
+      success: () => releaseLock(),
       fail: () => releaseLock(FAIL_RELEASE_DELAY),
     })
   } catch (error) {
@@ -65,7 +78,7 @@ export function safeNavigateTo(target) {
     uni.navigateTo({
       ...options,
       url,
-      complete: hooks.complete,
+      success: hooks.success,
       fail: hooks.fail,
     })
   })
@@ -78,7 +91,7 @@ export function safeNavigateBack(options = {}) {
     withLock((hooks) => {
       uni.navigateBack({
         delta,
-        complete: hooks.complete,
+        success: hooks.success,
         fail: hooks.fail,
       })
     })
@@ -98,7 +111,7 @@ export function safeRedirectTo(url) {
   withLock((hooks) => {
     uni.redirectTo({
       url,
-      complete: hooks.complete,
+      success: hooks.success,
       fail: hooks.fail,
     })
   })
@@ -110,7 +123,7 @@ export function safeSwitchTab(url) {
   withLock((hooks) => {
     uni.switchTab({
       url,
-      complete: hooks.complete,
+      success: hooks.success,
       fail: hooks.fail,
     })
   })
@@ -123,5 +136,9 @@ export function resetNavigationLock() {
   if (navTimer) {
     clearTimeout(navTimer)
     navTimer = null
+  }
+  if (hardReleaseTimer) {
+    clearTimeout(hardReleaseTimer)
+    hardReleaseTimer = null
   }
 }

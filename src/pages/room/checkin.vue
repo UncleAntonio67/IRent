@@ -14,7 +14,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import CheckInSheet from '../../components/CheckInSheet.vue'
-import { safeNavigateBack, safeRedirectTo } from '../../utils/navigation'
+import { safeNavigateBack, safeNavigateTo } from '../../utils/navigation'
 
 const propertyId = ref('')
 const blockId = ref('')
@@ -31,7 +31,7 @@ function closeSelf() {
 }
 
 function goRoomDetail() {
-  safeRedirectTo(`/pages/room/detail?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`)
+  safeNavigateTo(`/pages/room/detail?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`)
 }
 
 function handleCheckedIn() {
