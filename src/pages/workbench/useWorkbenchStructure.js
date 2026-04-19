@@ -3,26 +3,26 @@ import { createDefaultRoom, generateId } from '../../domain/rent-models'
 export const WORKBENCH_MODAL_CONFIG = {
   property: {
     title: '新建院落',
-    hint: '录入新的房产或院落名称',
+    hint: '录入新的房产项目或院落名称。',
     placeholder: '例如：江南别院（高端）',
     inputType: 'text',
   },
   block: {
     title: '新建楼栋',
-    hint: '在当前院落下新增一栋楼',
+    hint: '在当前院落下新增一栋楼。',
     placeholder: '例如：北区主楼',
     inputType: 'text',
   },
   floor: {
-    title: '加盖新楼层',
-    hint: '输入楼层号，系统会自动排序',
-    placeholder: '例如：3',
+    title: '新增楼层',
+    hint: '输入楼层号，系统会自动排序。',
+    placeholder: '例如：6',
     inputType: 'number',
   },
   room: {
     title: '批量新增房间',
-    hint: '支持逗号分隔或范围输入，例如 301,302 或 301-312',
-    placeholder: '请输入房号，支持批量：301,302,303 或 301-312',
+    hint: '支持逗号分隔或范围输入，例如 301,302 或 301-312。',
+    placeholder: '请输入房号，例如 301,302,303 或 301-312',
     inputType: 'text',
   },
 }
@@ -37,6 +37,17 @@ export function createWorkbenchModalState() {
     inputType: 'text',
     blockId: null,
     floor: null,
+  }
+}
+
+export function createQuickBuildState() {
+  return {
+    open: false,
+    blockName: '',
+    floorCount: '6',
+    roomsPerFloor: '8',
+    topFloor: '',
+    roomStart: '1',
   }
 }
 
@@ -194,6 +205,47 @@ export function applyWorkbenchStructureChange(nextProperties, activePropertyId, 
   return { nextProperties }
 }
 
+export function applyQuickBuild(nextProperties, activePropertyId, payload) {
+  const property = nextProperties.find((item) => item.id === activePropertyId)
+  if (!property) return { error: '当前院落不存在' }
+
+  const blockName = String(payload.blockName || '').trim()
+  const floorCount = Number(payload.floorCount || 0)
+  const roomsPerFloor = Number(payload.roomsPerFloor || 0)
+  const topFloor = Number(payload.topFloor || payload.floorCount || 0)
+  const roomStart = Number(payload.roomStart || 1)
+
+  if (!blockName) return { error: '请填写楼栋名称' }
+  if (!Number.isInteger(floorCount) || floorCount <= 0) return { error: '请填写有效楼层数' }
+  if (!Number.isInteger(roomsPerFloor) || roomsPerFloor <= 0) return { error: '请填写每层房间数' }
+  if (!Number.isInteger(topFloor) || topFloor <= 0) return { error: '请填写顶层楼层号' }
+  if (!Number.isInteger(roomStart) || roomStart <= 0) return { error: '请填写起始房号' }
+
+  if (property.blocks.some((item) => item.name === blockName)) {
+    return { error: '同名楼栋已存在' }
+  }
+
+  const floors = []
+  for (let offset = 0; offset < floorCount; offset += 1) {
+    const floor = topFloor - offset
+    if (floor <= 0) return { error: '楼层号不能小于 1' }
+    const rooms = []
+    for (let index = 0; index < roomsPerFloor; index += 1) {
+      const roomNo = `${floor}${String(roomStart + index).padStart(2, '0')}`
+      rooms.push(createDefaultRoom(roomNo))
+    }
+    floors.push({ floor, rooms })
+  }
+
+  property.blocks.push({
+    id: generateId('b'),
+    name: blockName,
+    floors,
+  })
+
+  return { nextProperties }
+}
+
 export function removeWorkbenchRoom(nextProperties, activePropertyId, blockId, floor, roomId) {
   const propertyIndex = nextProperties.findIndex((item) => item.id === activePropertyId)
   if (propertyIndex < 0) return false
@@ -206,9 +258,22 @@ export function removeWorkbenchRoom(nextProperties, activePropertyId, blockId, f
   return true
 }
 
+export function removeWorkbenchBlock(nextProperties, activePropertyId, blockId) {
+  const property = nextProperties.find((item) => item.id === activePropertyId)
+  if (!property) return false
+  property.blocks = (property.blocks || []).filter((item) => item.id !== blockId)
+  return true
+}
+
+export function removeWorkbenchProperty(nextProperties, activePropertyId) {
+  const next = nextProperties.filter((item) => item.id !== activePropertyId)
+  if (next.length === nextProperties.length) return { removed: false, nextPropertyId: activePropertyId }
+  return { removed: true, nextPropertyId: next[0]?.id || '' }
+}
+
 export function expandRoomInputs(raw) {
   const tokens = String(raw || '')
-    .split(/[\s,，;；、\n\r\t]+/g)
+    .split(/[\s,，；、\n\r\t]+/g)
     .map((token) => token.trim())
     .filter(Boolean)
 
@@ -226,18 +291,18 @@ export function expandRoomInputs(raw) {
 }
 
 function expandOneToken(token) {
-  if (token.includes('..') || token.includes('…')) {
-    const parts = token.split(token.includes('..') ? '..' : '…').map((item) => item.trim())
+  if (token.includes('..') || token.includes('—')) {
+    const parts = token.split(token.includes('..') ? '..' : '—').map((item) => item.trim())
     if (parts.length !== 2) return [token]
     return expandRange(parts[0], parts[1]) || [token]
   }
 
-  const pureNumRange = token.match(/^(\d+)\s*[-~—]\s*(\d+)$/)
+  const pureNumRange = token.match(/^(\d+)\s*[-~－]\s*(\d+)$/)
   if (pureNumRange) {
     return expandRange(pureNumRange[1], pureNumRange[2]) || [token]
   }
 
-  const alphaRange = token.match(/^([A-Za-z]+)(\d+)\s*[-~—]\s*([A-Za-z]+)(\d+)$/)
+  const alphaRange = token.match(/^([A-Za-z]+)(\d+)\s*[-~－]\s*([A-Za-z]+)(\d+)$/)
   if (alphaRange && alphaRange[1] === alphaRange[3]) {
     return expandRange(`${alphaRange[1]}${alphaRange[2]}`, `${alphaRange[3]}${alphaRange[4]}`) || [token]
   }

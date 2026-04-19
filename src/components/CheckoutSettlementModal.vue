@@ -79,14 +79,14 @@ const emit = defineEmits(['close', 'confirm', 'update:refund'])
 .checkout-status-label,
 .checkout-field-label {
   font-size: 24rpx;
-  font-weight: 800;
-  color: #334155;
+  font-weight: 600;
+  color: #475569;
 }
 
 .checkout-status-main {
   margin-top: 14rpx;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 700;
   color: #0f172a;
 }
 

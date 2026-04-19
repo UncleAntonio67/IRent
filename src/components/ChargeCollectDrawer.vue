@@ -71,7 +71,7 @@ const props = defineProps({
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
   heroLabel: { type: String, default: '应收总额' },
-  heroBadge: { type: String, default: '待收费' },
+  heroBadge: { type: String, default: '待收中' },
   heroAmount: { type: [String, Number], default: '' },
   leftLabel: { type: String, default: '已收金额' },
   leftValue: { type: String, default: '' },
@@ -81,7 +81,7 @@ const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
   placeholder: { type: String, default: '0.00' },
   receiptPicked: { type: Boolean, default: false },
-  receiptFileName: { type: String, default: 'receipt_mock_001.jpg' },
+  receiptFileName: { type: String, default: '未上传凭证' },
   receiptPendingText: { type: String, default: '支持 JPG、PNG 或 PDF' },
   confirmLabel: { type: String, default: '确认收款' },
   confirmDisabled: { type: Boolean, default: false },
@@ -136,15 +136,15 @@ const heroToneClass = computed(() => (props.heroTone === 'amber' ? 'charge-drawe
 
 .charge-drawer-hero-label {
   font-size: 20rpx;
-  font-weight: 700;
-  color: rgba(219, 234, 254, 0.95);
+  font-weight: 500;
+  color: rgba(219, 234, 254, 0.85);
 }
 
 .charge-drawer-hero-badge {
   padding: 6rpx 14rpx;
   border-radius: 12rpx;
   font-size: 16rpx;
-  font-weight: 700;
+  font-weight: 600;
   color: #eff6ff;
   background: rgba(255, 255, 255, 0.18);
 }
@@ -153,7 +153,7 @@ const heroToneClass = computed(() => (props.heroTone === 'amber' ? 'charge-drawe
   margin-top: 14rpx;
   font-size: 46rpx;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 800;
   position: relative;
   z-index: 1;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;
@@ -179,7 +179,7 @@ const heroToneClass = computed(() => (props.heroTone === 'amber' ? 'charge-drawe
 .charge-drawer-hero-sub-value {
   margin-top: 6rpx;
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
@@ -193,8 +193,8 @@ const heroToneClass = computed(() => (props.heroTone === 'amber' ? 'charge-drawe
 
 .charge-drawer-label {
   font-size: 24rpx;
-  font-weight: 800;
-  color: #334155;
+  font-weight: 600;
+  color: #475569;
 }
 
 .charge-drawer-entry-row {
@@ -246,7 +246,7 @@ const heroToneClass = computed(() => (props.heroTone === 'amber' ? 'charge-drawe
   background: #eff6ff;
   color: #2563eb;
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -260,25 +260,26 @@ const heroToneClass = computed(() => (props.heroTone === 'amber' ? 'charge-drawe
 
 .charge-drawer-inline-status {
   margin-top: 10rpx;
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #94a3b8;
 }
 
 .charge-drawer-inline-status-done {
-  color: #047857;
+  color: #059669;
 }
 
 .charge-drawer-helper {
-  margin-top: 8rpx;
+  margin-top: 10rpx;
   font-size: 20rpx;
   color: #94a3b8;
 }
 
 .charge-drawer-confirm-badge {
+  margin-left: 10rpx;
   padding: 4rpx 10rpx;
-  border-radius: 10rpx;
+  border-radius: 9999rpx;
   background: rgba(255, 255, 255, 0.18);
-  font-size: 18rpx;
+  font-size: 16rpx;
   font-weight: 700;
 }
 </style>

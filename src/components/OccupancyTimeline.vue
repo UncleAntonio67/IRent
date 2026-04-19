@@ -18,7 +18,7 @@
                 <view class="text-sm font-semibold text-slate-900 truncate">{{ occ.tenant || '未记录租客' }}</view>
                 <view class="text-2xs text-slate-500 font-medium mt-1">{{ formatRange(occ) }}</view>
               </view>
-              <view class="text-2xs font-bold px-3 py-1 rounded-full border shrink-0" :class="tagClass(occ)">
+              <view class="text-2xs font-semibold px-3 py-1 rounded-full border shrink-0" :class="tagClass(occ)">
                 {{ occ.status === 'active' ? '当前' : '历史' }}
               </view>
             </view>
@@ -30,11 +30,11 @@
               </view>
               <view class="p-2 rounded-xl bg-white-80 border border-slate-200-60">
                 <view class="text-2xs text-slate-500 font-medium">租金总额</view>
-                <view class="text-xs font-medium text-slate-900 font-mono mt-1">￥{{ occ.rentTotal || 0 }}</view>
+                <view class="text-xs font-semibold text-slate-900 font-mono mt-1">￥{{ occ.rentTotal || 0 }}</view>
               </view>
               <view class="p-2 rounded-xl bg-white-80 border border-slate-200-60">
                 <view class="text-2xs text-slate-500 font-medium">附加费</view>
-                <view class="text-xs font-medium text-slate-900 font-mono mt-1">￥{{ occ.extraTotal || 0 }}</view>
+                <view class="text-xs font-semibold text-slate-900 font-mono mt-1">￥{{ occ.extraTotal || 0 }}</view>
               </view>
             </view>
           </view>

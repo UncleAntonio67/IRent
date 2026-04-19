@@ -1,4 +1,4 @@
-import {
+﻿import {
   BILL_TYPE,
   OCCUPANCY_KIND,
   OCCUPANCY_STATUS,
@@ -11,50 +11,6 @@ const UTILITY_BILL_TYPES = [BILL_TYPE.WATER, BILL_TYPE.ELECTRIC, BILL_TYPE.GAS, 
 
 function sum(items, accessor) {
   return Math.round(items.reduce((total, item) => total + accessor(item), 0) * 100) / 100
-}
-
-export function checkoutRoomWithSettlement(room, payload, { now }) {
-  const refundAmount = Number(payload.refund || 0) || 0
-  const archivedCollections = Array.isArray(room.collections) ? [...room.collections] : []
-  const archivedBills = Array.isArray(room.bills) ? [...room.bills] : []
-  const archivedMeterReadings = Array.isArray(room.meterReadings) ? [...room.meterReadings] : []
-  const archivedPaymentSchedule = Array.isArray(room.paymentSchedule) ? [...room.paymentSchedule] : []
-
-  checkoutRoom(room, payload, { now })
-
-  const completedLease = (room.occupancies || []).find(
-    (occupancy) => occupancy.kind === OCCUPANCY_KIND.LEASE && occupancy.status === OCCUPANCY_STATUS.COMPLETED
-  )
-
-  if (completedLease) {
-    completedLease.archive = {
-      bills: archivedBills,
-      meterReadings: archivedMeterReadings,
-      paymentSchedule: archivedPaymentSchedule,
-      collections: archivedCollections,
-      settlement: {
-        refund: refundAmount > 0
-          ? {
-              id: generateId('refund'),
-              title: '押金退还',
-              amount: Number(refundAmount.toFixed(2)),
-              paidAt: now,
-              note: '退租押金退款',
-            }
-          : null,
-      },
-    }
-    completedLease.remark = completedLease.remark || '退租归档'
-  }
-
-  if (refundAmount > 0) {
-    room.history.unshift({
-      id: generateId('h'),
-      type: 'deposit_refund',
-      date: now,
-      remark: `押金退款：￥${Number(refundAmount.toFixed(2))}`,
-    })
-  }
 }
 
 function progress(paid, expected) {
@@ -70,6 +26,71 @@ function ensureCollections(room) {
 function ensureRoomPhotos(room) {
   room.roomPhotos = Array.isArray(room.roomPhotos) ? room.roomPhotos : []
   return room.roomPhotos
+}
+
+function toAmount(value) {
+  const amount = Number(value || 0)
+  return Number.isFinite(amount) ? Number(amount.toFixed(2)) : 0
+}
+
+function buildLegacyRentCollections(paymentSchedule) {
+  return paymentSchedule
+    .filter((term) => Number(term.paidAmount || 0) > 0)
+    .map((term) => ({
+      id: `legacy_${term.id}`,
+      kind: BILL_TYPE.RENT,
+      title: `房租 第${term.term}期`,
+      amount: Number(term.paidAmount || 0),
+      paidAt: term.payDate || '',
+      receiptPic: Boolean(term.receiptPic),
+      termIds: [term.id],
+      billId: '',
+      note: '历史补录收款',
+      coverageLabel: `覆盖第${term.term}期`,
+    }))
+}
+
+export function checkoutRoomWithSettlement(room, payload, { now }) {
+  const refundAmount = Number(payload.refund || 0) || 0
+  const archivedCollections = Array.isArray(room.collections) ? [...room.collections] : []
+  const archivedBills = Array.isArray(room.bills) ? [...room.bills] : []
+  const archivedMeterReadings = Array.isArray(room.meterReadings) ? [...room.meterReadings] : []
+  const archivedPaymentSchedule = Array.isArray(room.paymentSchedule) ? [...room.paymentSchedule] : []
+
+  checkoutRoom(room, payload, { now })
+
+  const completedLease = (room.occupancies || []).find(
+    (occupancy) => occupancy.kind === OCCUPANCY_KIND.LEASE && occupancy.status === OCCUPANCY_STATUS.COMPLETED
+  )
+  if (!completedLease) return
+
+  completedLease.archive = {
+    bills: archivedBills,
+    meterReadings: archivedMeterReadings,
+    paymentSchedule: archivedPaymentSchedule,
+    collections: archivedCollections,
+    settlement: {
+      refund: refundAmount > 0
+        ? {
+            id: generateId('refund'),
+            title: '押金退还',
+            amount: Number(refundAmount.toFixed(2)),
+            paidAt: now,
+            note: '退租押金退款',
+          }
+        : null,
+    },
+  }
+  completedLease.remark = completedLease.remark || '退租归档'
+
+  if (refundAmount > 0) {
+    room.history.unshift({
+      id: generateId('h'),
+      type: 'deposit_refund',
+      date: now,
+      remark: `押金退款：￥${Number(refundAmount.toFixed(2))}`,
+    })
+  }
 }
 
 export function createRoomTreeMutator(nextProperties, propertyId, blockId, roomId) {
@@ -93,24 +114,9 @@ export function computeCollectionSummary(room) {
   const utilityBills = (room?.bills || []).filter((bill) => UTILITY_BILL_TYPES.includes(bill.type))
   const customBills = (room?.bills || []).filter((bill) => bill.type === BILL_TYPE.CUSTOM)
 
-  const legacyRentCollections = paymentSchedule
-    .filter((term) => Number(term.paidAmount || 0) > 0)
-    .map((term) => ({
-      id: `legacy_${term.id}`,
-      kind: BILL_TYPE.RENT,
-      title: `房租 第${term.term}期`,
-      amount: Number(term.paidAmount || 0),
-      paidAt: term.payDate || '',
-      receiptPic: Boolean(term.receiptPic),
-      termIds: [term.id],
-      billId: '',
-      note: 'legacy',
-      coverageLabel: `覆盖第 ${term.term} 期`,
-    }))
-
   const rentCollectionSource = collections.some((item) => item.kind === BILL_TYPE.RENT)
     ? collections.filter((item) => item.kind === BILL_TYPE.RENT)
-    : legacyRentCollections
+    : buildLegacyRentCollections(paymentSchedule)
 
   const rentExpected = sum(paymentSchedule, (term) => Number(term.expectedAmount || 0))
   const rentPaid = sum(rentCollectionSource, (item) => Number(item.amount || 0))
@@ -120,17 +126,11 @@ export function computeCollectionSummary(room) {
   ).length
 
   const utilityExpected = sum(utilityBills, (bill) => Number(bill.amount || 0))
-  const utilityPaid = sum(
-    collections.filter((item) => UTILITY_BILL_TYPES.includes(item.kind)),
-    (item) => Number(item.amount || 0)
-  )
+  const utilityPaid = sum(collections.filter((item) => UTILITY_BILL_TYPES.includes(item.kind)), (item) => Number(item.amount || 0))
   const utilityOutstandingCount = utilityBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID).length
 
   const customExpected = sum(customBills, (bill) => Number(bill.amount || 0))
-  const customPaid = sum(
-    collections.filter((item) => item.kind === BILL_TYPE.CUSTOM),
-    (item) => Number(item.amount || 0)
-  )
+  const customPaid = sum(collections.filter((item) => item.kind === BILL_TYPE.CUSTOM), (item) => Number(item.amount || 0))
   const customOutstandingCount = customBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID).length
 
   const totalExpected = Math.round((rentExpected + utilityExpected + customExpected) * 100) / 100
@@ -162,14 +162,8 @@ export function computeCollectionSummary(room) {
         .slice()
         .sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || ''))),
       byType: UTILITY_BILL_TYPES.map((type) => {
-        const expected = sum(
-          utilityBills.filter((bill) => bill.type === type),
-          (bill) => Number(bill.amount || 0)
-        )
-        const paid = sum(
-          collections.filter((item) => item.kind === type),
-          (item) => Number(item.amount || 0)
-        )
+        const expected = sum(utilityBills.filter((bill) => bill.type === type), (bill) => Number(bill.amount || 0))
+        const paid = sum(collections.filter((item) => item.kind === type), (item) => Number(item.amount || 0))
         return {
           type,
           expected,
@@ -237,7 +231,9 @@ export function buildAttachmentFile(type, { tenant = '租客', roomNo = '房间'
       name: `${tenant}_id_card.jpg`,
       uploadedAt: now,
       source: 'mock',
-      previewText: '身份证正反面影像（模拟）',
+      filePath: '',
+      url: '',
+      previewText: '身份证正反面影像',
     }
   }
 
@@ -245,23 +241,29 @@ export function buildAttachmentFile(type, { tenant = '租客', roomNo = '房间'
     name: `${roomNo}_lease_contract.pdf`,
     uploadedAt: now,
     source: 'mock',
-    previewText: '电子租赁合同归档文件（模拟）',
+    filePath: '',
+    url: '',
+    previewText: '电子租赁合同归档文件',
   }
 }
 
-export function buildRoomPhotoFile(room, { now, remark = '' } = {}) {
+export function buildRoomPhotoFile(room, { now, remark = '', file = null } = {}) {
   return {
     id: generateId('photo'),
-    name: `${room?.roomNo || 'room'}_photo_${Date.now()}.jpg`,
+    name: file?.name || `${room?.roomNo || 'room'}_photo_${Date.now()}.jpg`,
     uploadedAt: now,
-    source: 'mock',
-    previewText: '房屋照片预览（模拟）',
+    source: file?.source || 'mock',
+    previewText: '房屋照片预览',
+    filePath: file?.filePath || file?.url || '',
+    url: file?.url || file?.filePath || '',
+    size: Number(file?.size || 0) || 0,
+    mimeType: file?.mimeType || '',
     remark,
   }
 }
 
-export function uploadRoomPhoto(room, { now, remark = '' } = {}) {
-  const next = buildRoomPhotoFile(room, { now, remark })
+export function uploadRoomPhoto(room, { now, remark = '', file = null } = {}) {
+  const next = buildRoomPhotoFile(room, { now, remark, file })
   ensureRoomPhotos(room).unshift(next)
   room.history.unshift({
     id: generateId('h'),
@@ -272,7 +274,7 @@ export function uploadRoomPhoto(room, { now, remark = '' } = {}) {
   return next
 }
 
-export function markPaymentTermPaid(room, termId, { now, receiptPicked, amount, note = '' }) {
+export function markPaymentTermPaid(room, termId, { now, receiptPicked, receiptFile = null, amount, note = '' }) {
   const term = (room.paymentSchedule || []).find((item) => item.id === termId)
   if (!term) return false
 
@@ -288,6 +290,7 @@ export function markPaymentTermPaid(room, termId, { now, receiptPicked, amount, 
   term.paidAmount = nextCoveredAmount
   term.payDate = now
   term.receiptPic = Boolean(receiptPicked)
+  term.receiptFile = receiptFile || null
   term.status = nextCoveredAmount >= Number(term.expectedAmount || 0) ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.UNPAID
 
   ensureCollections(room).unshift({
@@ -297,17 +300,18 @@ export function markPaymentTermPaid(room, termId, { now, receiptPicked, amount, 
     amount: Number(paidAmount.toFixed(2)),
     paidAt: now,
     receiptPic: Boolean(receiptPicked),
+    receiptFile: receiptFile || null,
     termIds: [term.id],
     billId: '',
     note,
-    coverageLabel: `覆盖第 ${term.term} 期`,
+    coverageLabel: `覆盖第${term.term}期`,
   })
 
   room.history.unshift({
     id: generateId('h'),
     type: 'rent_writeoff',
     date: now,
-    remark: `记收房租：第 ${term.term} 期，￥${Number(paidAmount.toFixed(2))}`,
+    remark: `记收房租：第${term.term}期，￥${Number(paidAmount.toFixed(2))}`,
   })
   return true
 }
@@ -345,7 +349,7 @@ export function addHeatingBill(room, { title = '供暖费', amount, dueDate, now
   })
 }
 
-export function recordRentCollection(room, { amount, note = '', now, receiptPicked = false }) {
+export function recordRentCollection(room, { amount, note = '', now, receiptPicked = false, receiptFile = null }) {
   const paidAmount = Number(amount || 0)
   if (!Number.isFinite(paidAmount) || paidAmount <= 0) return false
 
@@ -364,6 +368,7 @@ export function recordRentCollection(room, { amount, note = '', now, receiptPick
     term.paidAmount = nextCovered
     term.payDate = now
     term.receiptPic = Boolean(receiptPicked)
+    term.receiptFile = receiptFile || term.receiptFile || null
     term.status = nextCovered >= expected ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.UNPAID
     coveredTermIds.push(term.id)
     remaining = Number((remaining - applied).toFixed(2))
@@ -377,6 +382,7 @@ export function recordRentCollection(room, { amount, note = '', now, receiptPick
     amount: Number(paidAmount.toFixed(2)),
     paidAt: now,
     receiptPic: Boolean(receiptPicked),
+    receiptFile: receiptFile || null,
     termIds: coveredTermIds,
     billId: '',
     note,
@@ -392,7 +398,7 @@ export function recordRentCollection(room, { amount, note = '', now, receiptPick
   return true
 }
 
-export function recordDirectUtilityCollection(room, { type = BILL_TYPE.WATER, amount, title = '', note = '', now, receiptPicked = false }) {
+export function recordDirectUtilityCollection(room, { type = BILL_TYPE.WATER, amount, title = '', note = '', now, receiptPicked = false, receiptFile = null }) {
   const paidAmount = Number(amount || 0)
   if (!Number.isFinite(paidAmount) || paidAmount <= 0) return false
 
@@ -407,6 +413,7 @@ export function recordDirectUtilityCollection(room, { type = BILL_TYPE.WATER, am
     dueDate: now.slice(0, 10),
     payDate: now,
     receiptPic: Boolean(receiptPicked),
+    receiptFile: receiptFile || null,
   })
 
   ensureCollections(room).unshift({
@@ -416,6 +423,7 @@ export function recordDirectUtilityCollection(room, { type = BILL_TYPE.WATER, am
     amount: Number(paidAmount.toFixed(2)),
     paidAt: now,
     receiptPic: Boolean(receiptPicked),
+    receiptFile: receiptFile || null,
     termIds: [],
     billId,
     note,
@@ -425,12 +433,12 @@ export function recordDirectUtilityCollection(room, { type = BILL_TYPE.WATER, am
     id: generateId('h'),
     type: 'utility_collect',
     date: now,
-    remark: `直接收费：${resolvedTitle}，￥${Number(paidAmount.toFixed(2))}${note ? `，${note}` : ''}`,
+    remark: `直接收费用：${resolvedTitle}，￥${Number(paidAmount.toFixed(2))}${note ? `，${note}` : ''}`,
   })
   return true
 }
 
-export function markBillPaid(room, billId, { now, receiptPicked, amount, note = '' }) {
+export function markBillPaid(room, billId, { now, receiptPicked, receiptFile = null, amount, note = '' }) {
   const bill = (room.bills || []).find((item) => item.id === billId)
   if (!bill || bill.status === PAYMENT_STATUS.PAID) return false
 
@@ -440,6 +448,7 @@ export function markBillPaid(room, billId, { now, receiptPicked, amount, note = 
   bill.status = PAYMENT_STATUS.PAID
   bill.payDate = now
   bill.receiptPic = Boolean(receiptPicked)
+  bill.receiptFile = receiptFile || null
 
   ensureCollections(room).unshift({
     id: generateId('col'),
@@ -448,6 +457,7 @@ export function markBillPaid(room, billId, { now, receiptPicked, amount, note = 
     amount: Number(paidAmount.toFixed(2)),
     paidAt: now,
     receiptPic: Boolean(receiptPicked),
+    receiptFile: receiptFile || null,
     termIds: [],
     billId: bill.id,
     note,
@@ -503,7 +513,7 @@ export function createUtilitiesBillFromMeter(room, meterCalc, { now }) {
   if (meterCalc.gasCost > 0) {
     createdBills.push({
       id: generateId('bill'),
-      title: `${nowDate} 天然气费`,
+      title: `${nowDate} 燃气费`,
       type: BILL_TYPE.GAS,
       amount: meterCalc.gasCost,
       status: PAYMENT_STATUS.UNPAID,
@@ -521,16 +531,16 @@ export function createUtilitiesBillFromMeter(room, meterCalc, { now }) {
     id: generateId('h'),
     type: 'meter',
     date: now,
-    remark: `录入抄表并生成费用：水 ￥${meterCalc.waterCost}，电 ￥${meterCalc.electricCost}，气 ￥${meterCalc.gasCost}，合计 ￥${meterCalc.total}`,
+    remark: `录入抄表并生成费用：水￥${meterCalc.waterCost}，电￥${meterCalc.electricCost}，气￥${meterCalc.gasCost}，合计￥${meterCalc.total}`,
   })
 }
 
-export function uploadRoomAttachment(room, type, { now }) {
+export function uploadRoomAttachment(room, type, { now, file = null }) {
   if (type === 'idCard') room.hasIdCardPic = true
   if (type === 'contract') room.hasContract = true
 
   room.attachmentFiles = room.attachmentFiles || { idCard: null, contract: null }
-  room.attachmentFiles[type] = buildAttachmentFile(type, {
+  room.attachmentFiles[type] = file || buildAttachmentFile(type, {
     tenant: room.tenant || '租客',
     roomNo: room.roomNo || '房间',
     now,
@@ -540,13 +550,13 @@ export function uploadRoomAttachment(room, type, { now }) {
     id: generateId('h'),
     type: type === 'idCard' ? 'upload_id' : 'upload_contract',
     date: now,
-    remark: type === 'idCard' ? '上传身份证照片（模拟）' : '上传合同扫描件（模拟）',
+    remark: type === 'idCard' ? '已上传身份证照片' : '已上传合同资料',
   })
 
   return room.attachmentFiles[type]
 }
 
-export function checkInRoom(room, payload, { now, paymentSchedule, attachments, initialCollectionAmount, initialReceiptPicked, initialDepositAmount, initialDepositReceiptPicked }) {
+export function checkInRoom(room, payload, { now, paymentSchedule, attachments, initialCollectionAmount, initialReceiptPicked, initialReceiptFile = null, initialDepositAmount, initialDepositReceiptPicked, initialDepositReceiptFile = null }) {
   const nowDate = now.slice(0, 10)
 
   const lastIdle = (room.occupancies || []).find(
@@ -571,7 +581,7 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments, 
     rent: payload.rent,
     deposit: payload.deposit,
     paymentCycle: payload.paymentCycle,
-    remark: '办理入住（模拟）',
+    remark: '办理入住',
     archive: null,
   })
   room.activeOccupancyId = occupancyId
@@ -587,19 +597,22 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments, 
     firstTerm.status = chargedAmount >= expectedAmount ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.UNPAID
     firstTerm.payDate = now
     firstTerm.receiptPic = Boolean(initialReceiptPicked)
+    firstTerm.receiptFile = initialReceiptFile || null
     room.collections.unshift({
       id: generateId('col'),
       kind: BILL_TYPE.RENT,
-      title: `房租 第${firstTerm.term}期`,
+      title: `首期房租（第 ${firstTerm.term} 期）`,
       amount: Number(chargedAmount.toFixed(2)),
       paidAt: now,
       receiptPic: Boolean(initialReceiptPicked),
+      receiptFile: initialReceiptFile || null,
       termIds: [firstTerm.id],
       billId: '',
-      note: '入住首期收款',
+      note: '办理入住首期收款',
       coverageLabel: `覆盖第 ${firstTerm.term} 期`,
     })
   }
+
   const depositAmount = Number(initialDepositAmount || 0)
   if (Number.isFinite(depositAmount) && depositAmount > 0) {
     room.collections.unshift({
@@ -609,9 +622,10 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments, 
       amount: Number(depositAmount.toFixed(2)),
       paidAt: now,
       receiptPic: Boolean(initialDepositReceiptPicked),
+      receiptFile: initialDepositReceiptFile || null,
       termIds: [],
       billId: '',
-      note: '入住押金收款',
+      note: '办理入住押金收取',
       coverageLabel: '押金',
     })
   }
@@ -637,22 +651,20 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments, 
   room.attachmentFiles = attachments
   room.status = ROOM_STATUS.RENTED
 
-  const firstPaymentAmount = Number(
-    Number.isFinite(Number(initialCollectionAmount))
-      ? Number(initialCollectionAmount)
-      : Number((payload.rent * payload.paymentCycle).toFixed(2))
-  )
+  const firstPaymentAmount = Number.isFinite(Number(initialCollectionAmount))
+    ? Number(initialCollectionAmount)
+    : Number((payload.rent * payload.paymentCycle).toFixed(2))
   room.history.unshift({
     id: generateId('h'),
     type: 'checkin',
     date: now,
-    remark: `办理入住并确认收款：${room.tenant}，首期 ￥${firstPaymentAmount}`,
+    remark: `办理入住：${room.tenant}，首期收款 ${firstPaymentAmount} 元`,
   })
 }
 
 export function checkoutRoom(room, payload, { now }) {
   const nowDate = now.slice(0, 10)
-  const previousTenant = room.tenant || '未知租客'
+  const previousTenant = room.tenant || '上一任租客'
 
   room.occupancies = Array.isArray(room.occupancies) ? room.occupancies : []
   const activeOccupancy = room.occupancies.find((occupancy) => occupancy.status === OCCUPANCY_STATUS.ACTIVE) || null
@@ -665,7 +677,7 @@ export function checkoutRoom(room, payload, { now }) {
       paymentSchedule: room.paymentSchedule || [],
       collections: room.collections || [],
     }
-    activeOccupancy.remark = activeOccupancy.remark || '退租归档'
+    activeOccupancy.remark = activeOccupancy.remark || '已完成退租归档'
   }
 
   room.activeOccupancyId = ''
@@ -675,7 +687,7 @@ export function checkoutRoom(room, payload, { now }) {
     status: OCCUPANCY_STATUS.IDLE,
     startDate: nowDate,
     endDate: '',
-    remark: '退租后空置',
+    remark: '进入空置期',
     archive: null,
   })
 
@@ -697,6 +709,6 @@ export function checkoutRoom(room, payload, { now }) {
     id: generateId('h'),
     type: 'checkout',
     date: now,
-    remark: `办理退租：${previousTenant}，押金应退 ￥${payload.refund}，读数 水 ${payload.water} / 电 ${payload.electric}${payload.gas !== undefined ? ` / 气 ${payload.gas}` : ''}`,
+    remark: `办理退租：${previousTenant}，退押金 ${payload.refund} 元，结清表数 ${payload.water} / ${payload.electric}${payload.gas !== undefined ? ` / ${payload.gas}` : ''}`,
   })
 }

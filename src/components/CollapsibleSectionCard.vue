@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <view class="p-3 rounded-2xl surface-card">
     <button class="w-full flex items-center justify-between bg-transparent p-0 pr-2 text-left tap-scale" @click="emit('toggle')">
       <view :class="titleClass">{{ title }}</view>
       <view class="flex items-center justify-end gap-2 shrink-0 collapse-indicator">
-        <view class="text-2xs text-slate-400 font-bold">{{ expanded ? collapseLabel : expandLabel }}</view>
+        <view class="text-2xs text-slate-500 font-semibold">{{ expanded ? collapseLabel : expandLabel }}</view>
         <view class="collapse-chevron" :class="expanded ? 'collapse-chevron-open' : ''"></view>
       </view>
     </button>
@@ -19,7 +19,7 @@ defineProps({
   expanded: { type: Boolean, default: true },
   expandLabel: { type: String, default: '展开' },
   collapseLabel: { type: String, default: '收起' },
-  titleClass: { type: String, default: 'text-base font-black text-slate-900' },
+  titleClass: { type: String, default: 'text-sm font-bold text-slate-800' },
   bodyClass: { type: String, default: 'mt-3' },
 })
 
@@ -45,3 +45,4 @@ const emit = defineEmits(['toggle'])
   min-width: 96rpx;
 }
 </style>
+

@@ -3,9 +3,19 @@
     <view class="meter-entry-grid">
       <view class="meter-entry-card">
         <view class="meter-entry-label">水表</view>
-        <input :value="water" type="number" class="meter-entry-input" placeholder="输入读数" @input="emit('update:water', $event.detail.value)" />
+        <input
+          :value="water"
+          type="number"
+          class="meter-entry-input"
+          placeholder="输入读数"
+          @input="emit('update:water', $event.detail.value)"
+        />
         <view class="meter-entry-actions">
-          <button class="meter-upload-button tap-scale" :class="waterPhotoPicked ? 'meter-upload-button-done' : ''" @click="emit('pick-water-photo')">
+          <button
+            class="meter-upload-button tap-scale"
+            :class="waterPhotoPicked ? 'meter-upload-button-done' : ''"
+            @click="emit('pick-water-photo')"
+          >
             {{ waterPhotoPicked ? '已上传' : '上传照片' }}
           </button>
         </view>
@@ -13,9 +23,19 @@
 
       <view class="meter-entry-card">
         <view class="meter-entry-label">电表</view>
-        <input :value="electric" type="number" class="meter-entry-input" placeholder="输入读数" @input="emit('update:electric', $event.detail.value)" />
+        <input
+          :value="electric"
+          type="number"
+          class="meter-entry-input"
+          placeholder="输入读数"
+          @input="emit('update:electric', $event.detail.value)"
+        />
         <view class="meter-entry-actions">
-          <button class="meter-upload-button tap-scale" :class="electricPhotoPicked ? 'meter-upload-button-done' : ''" @click="emit('pick-electric-photo')">
+          <button
+            class="meter-upload-button tap-scale"
+            :class="electricPhotoPicked ? 'meter-upload-button-done' : ''"
+            @click="emit('pick-electric-photo')"
+          >
             {{ electricPhotoPicked ? '已上传' : '上传照片' }}
           </button>
         </view>
@@ -35,7 +55,7 @@ import BaseCenteredModal from './BaseCenteredModal.vue'
 defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: '录入水电表' },
-  subtitle: { type: String, default: '' },
+  subtitle: { type: String, default: '输入本期水表、电表读数，可分别上传照片' },
   water: { type: [String, Number], default: '' },
   electric: { type: [String, Number], default: '' },
   waterPhotoPicked: { type: Boolean, default: false },
@@ -62,8 +82,8 @@ const emit = defineEmits(['close', 'confirm', 'update:water', 'update:electric',
 
 .meter-entry-label {
   font-size: 24rpx;
-  font-weight: 800;
-  color: #334155;
+  font-weight: 600;
+  color: #475569;
 }
 
 .meter-entry-input {
@@ -93,7 +113,7 @@ const emit = defineEmits(['close', 'confirm', 'update:water', 'update:electric',
   background: #eff6ff;
   color: #2563eb;
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;

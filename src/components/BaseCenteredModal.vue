@@ -48,7 +48,7 @@ const emit = defineEmits(['close'])
   align-items: center;
   justify-content: center;
   padding: 28rpx;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .base-modal-panel {
@@ -69,8 +69,8 @@ const emit = defineEmits(['close'])
 }
 
 .base-modal-grab {
-  width: 72rpx;
-  height: 8rpx;
+  width: 56rpx;
+  height: 6rpx;
   border-radius: 9999rpx;
   background: #e2e8f0;
   margin: 0 auto;
@@ -85,9 +85,9 @@ const emit = defineEmits(['close'])
 }
 
 .base-modal-title {
-  font-size: 38rpx;
-  line-height: 1.2;
-  font-weight: 900;
+  font-size: 34rpx;
+  line-height: 1.25;
+  font-weight: 700;
   color: #0f172a;
 }
 
@@ -95,6 +95,7 @@ const emit = defineEmits(['close'])
   margin-top: 6rpx;
   font-size: 24rpx;
   color: #94a3b8;
+  font-weight: 400;
 }
 
 .base-modal-body {

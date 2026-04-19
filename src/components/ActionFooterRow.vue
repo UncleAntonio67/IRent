@@ -36,7 +36,7 @@ const emit = defineEmits(['secondary', 'primary'])
 <style>
 .action-footer-row {
   display: flex;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .action-footer-row-single {
@@ -50,7 +50,7 @@ const emit = defineEmits(['secondary', 'primary'])
   background: #ffffff;
   border: 1rpx solid rgba(226, 232, 240, 0.95);
   color: #475569;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 700;
   line-height: 1;
   min-height: 78rpx;
@@ -65,7 +65,7 @@ const emit = defineEmits(['secondary', 'primary'])
   border-radius: 9999rpx;
   background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: #ffffff;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 800;
   line-height: 1;
   display: flex;

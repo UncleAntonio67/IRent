@@ -3,26 +3,26 @@
     <view class="mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
       <view class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 relative shrink-0 sticky-header z-20 shadow-soft" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view>
-          <view class="font-semibold text-slate-900 text-base">账务流水</view>
+          <view class="font-black text-slate-900 text-lg">账务流水</view>
           <view class="text-xs text-slate-400 font-medium mt-0_5">按类型、房号和租客快速查询已收记录</view>
         </view>
 
-        <view class="mt-4 p-4 rounded-2xl bills-hero relative overflow-hidden shadow-soft border border-slate-200-60">
+        <view class="mt-4 p-4 rounded-2xl bills-hero relative overflow-hidden shadow-soft border border-blue-200-60">
           <view class="relative z-10">
-            <view class="text-slate-500 text-2xs font-medium">累计实收</view>
-            <view class="text-2xl font-semibold font-mono tracking-tight mt-1 text-slate-900">¥{{ fmtMoney(billStats.paidTotal) }}</view>
-            <view class="flex items-center gap-4 mt-3 pt-3 border-t border-slate-200-60">
+            <view class="hero-sublabel font-semibold">累计实收</view>
+            <view class="text-2xl font-black font-mono tracking-tight mt-1 text-white">¥{{ fmtMoney(billStats.paidTotal) }}</view>
+            <view class="flex items-center gap-4 mt-3 pt-3 border-t border-white-20">
               <view class="min-w-0">
-                <view class="text-slate-400 text-3xs font-medium">房租</view>
-                <view class="font-mono font-semibold text-xs mt-1 text-slate-700">¥{{ fmtMoney(billStats.rentPaid) }}</view>
+                <view class="hero-sublabel font-semibold">房租</view>
+                <view class="font-mono font-bold text-xs mt-1 text-white">¥{{ fmtMoney(billStats.rentPaid) }}</view>
               </view>
               <view class="min-w-0">
-                <view class="text-slate-400 text-3xs font-medium">水电</view>
-                <view class="font-mono font-semibold text-xs mt-1 text-slate-700">¥{{ fmtMoney(billStats.utilsPaid) }}</view>
+                <view class="hero-sublabel font-semibold">水电</view>
+                <view class="font-mono font-bold text-xs mt-1 text-white">¥{{ fmtMoney(billStats.utilsPaid) }}</view>
               </view>
               <view class="min-w-0">
-                <view class="text-slate-400 text-3xs font-medium">灵活</view>
-                <view class="font-mono font-semibold text-xs mt-1 text-slate-700">¥{{ fmtMoney(billStats.customPaid) }}</view>
+                <view class="hero-sublabel font-semibold">灵活</view>
+                <view class="font-mono font-bold text-xs mt-1 text-white">¥{{ fmtMoney(billStats.customPaid) }}</view>
               </view>
             </view>
           </view>
@@ -33,7 +33,7 @@
         <view class="p-5 stack-3" style="padding-bottom: 32rpx;">
           <view class="p-3 rounded-2xl surface-card stack-2 bills-toolbar">
             <view class="flex items-center justify-between gap-3">
-            <view class="bills-section-title">查询条件</view>
+            <view class="bills-section-title font-bold">查询条件</view>
               <view class="text-2xs text-slate-400 font-medium">{{ items.length }} 条结果</view>
             </view>
 
@@ -87,7 +87,7 @@
 
             <view v-else class="rounded-xl bg-white border border-slate-200-60 shadow-soft overflow-hidden bills-history-card">
               <view class="px-3 py-2 bg-slate-50 border-b border-slate-200-60 flex items-center justify-between text-3xs font-semibold tracking-wide text-slate-500 uppercase">
-                <view class="bills-section-title">历史流水</view>
+                <view class="bills-section-title font-bold">历史流水</view>
                 <view class="flex items-center gap-3 normal-case tracking-normal">
                   <button class="bills-sort-button" :class="sortKey === 'date' ? 'bills-sort-button-active' : ''" @click="toggleSort('date')">
                     时间{{ sortKey === 'date' ? (sortOrder === 'desc' ? '↓' : '↑') : '' }}
@@ -104,17 +104,17 @@
               :class="item.key !== items[items.length - 1].key ? 'border-b border-slate-100' : ''"
             >
               <view class="min-w-0 w-20 shrink-0">
-                <view class="font-medium text-slate-900 text-sm truncate">{{ item.roomNo }}</view>
+                <view class="font-bold text-slate-900 text-sm truncate">{{ item.roomNo }}</view>
                 <view class="text-2xs text-slate-500 truncate mt-0_5">{{ item.tenant || '未录入租客' }}</view>
               </view>
 
               <view class="min-w-0 flex-1">
-                <view class="text-xs font-medium text-slate-700 truncate">{{ item.title }}</view>
+                <view class="text-xs font-semibold text-slate-700 truncate">{{ item.title }}</view>
                 <view class="text-2xs text-slate-400 font-mono truncate mt-1">{{ fmtDate(item.payDate || item.dueDate) }}</view>
               </view>
 
               <view class="shrink-0 flex flex-col items-end gap-1">
-                <view class="font-mono text-sm leading-none text-emerald-600 font-medium">+ ¥{{ fmtMoney(item.amount) }}</view>
+                <view class="font-mono text-sm leading-none text-emerald-700 font-bold">+ ¥{{ fmtMoney(item.amount) }}</view>
                 <view class="flex items-center gap-2">
                   <button v-if="item.receiptPic" class="text-2xs font-medium text-blue-600 tap-scale" @click="openReceipt(item)">
                     凭证
@@ -164,7 +164,7 @@
         </view>
       </DateSelectionModal>
 
-      <BaseCenteredModal :open="receiptOpen" title="支付凭证" subtitle="这里展示当前流水对应的凭证截图位置（模拟）" body-class="stack-3" @close="closeReceipt">
+      <BaseCenteredModal :open="receiptOpen" title="支付凭证" subtitle="查看当前流水对应的收款凭证" body-class="stack-3" @close="closeReceipt">
         <view v-if="receiptItem" class="stack-3">
           <view class="p-4 rounded-2xl surface-muted">
             <view class="text-xs text-slate-500 font-semibold">流水信息</view>
@@ -178,8 +178,8 @@
 
           <view class="p-4 rounded-2xl surface-card">
             <view class="text-xs text-slate-500 font-semibold">凭证截图</view>
-            <view class="mt-3 h-44 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-semibold">截图预览占位</view>
-            <view class="text-2xs text-slate-400 font-medium mt-3">目前仅展示留存入口。后续接入 Cloudflare R2 后可展示真实文件。</view>
+            <image v-if="receiptItem.receiptFile?.filePath || receiptItem.receiptFile?.url" :src="receiptItem.receiptFile?.filePath || receiptItem.receiptFile?.url" mode="aspectFit" class="mt-3 h-44 w-full rounded-2xl bg-slate-50 border border-slate-200" @click="previewReceipt" />
+            <view v-else class="mt-3 h-44 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-semibold">暂无凭证图片</view>
           </view>
         </view>
       </BaseCenteredModal>
@@ -195,6 +195,7 @@ import DateSelectionModal from '../../components/DateSelectionModal.vue'
 import { properties } from '../../data/rentStore'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
+import { previewChosenImage } from '../../utils/media'
 
 const headerTopPadding = ref(44)
 const typeTab = ref('all')
@@ -264,6 +265,7 @@ const entries = computed(() => {
               dueDate: term.dueDate,
               payDate: term.payDate || '',
               receiptPic: Boolean(term.receiptPic),
+              receiptFile: term.receiptFile || null,
             })
           }
 
@@ -283,6 +285,7 @@ const entries = computed(() => {
               dueDate: bill.dueDate,
               payDate: bill.payDate || '',
               receiptPic: Boolean(bill.receiptPic),
+              receiptFile: bill.receiptFile || null,
             })
           }
         }
@@ -509,13 +512,19 @@ function closeReceipt() {
   receiptOpen.value = false
   receiptItem.value = null
 }
+
+function previewReceipt() {
+  if (receiptItem.value?.receiptFile) {
+    previewChosenImage(receiptItem.value.receiptFile)
+  }
+}
 </script>
 
 <style>
 .bills-hero {
   background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, #3059d6 0%, #4574ea 100%);
 }
 
 .bills-toolbar {
@@ -527,8 +536,8 @@ function closeReceipt() {
 .bills-section-title {
   color: #94a3b8;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .bills-searchbar {

@@ -45,8 +45,12 @@ export function normalizeAttachmentFile(file, fallbackName) {
   return {
     name: file.name || fallbackName || 'unnamed_file',
     uploadedAt: file.uploadedAt || '',
-    source: file.source || 'mock',
+    source: file.source || 'local',
     previewText: file.previewText || '',
+    filePath: file.filePath || file.url || '',
+    url: file.url || file.filePath || '',
+    size: Number(file.size || 0) || 0,
+    mimeType: file.mimeType || '',
   }
 }
 
@@ -56,8 +60,12 @@ export function normalizeRoomPhoto(photo, index = 0) {
     id: photo.id || generateId('photo'),
     name: photo.name || `room_photo_${index + 1}.jpg`,
     uploadedAt: photo.uploadedAt || '',
-    source: photo.source || 'mock',
+    source: photo.source || 'local',
     previewText: photo.previewText || '',
+    filePath: photo.filePath || photo.url || '',
+    url: photo.url || photo.filePath || '',
+    size: Number(photo.size || 0) || 0,
+    mimeType: photo.mimeType || '',
     remark: photo.remark || '',
   }
 }
@@ -74,6 +82,7 @@ export function normalizeCollectionRecord(record = {}) {
     billId: record.billId || '',
     note: record.note || '',
     coverageLabel: record.coverageLabel || '',
+    receiptFile: normalizeAttachmentFile(record.receiptFile, 'receipt.jpg'),
   }
 }
 
@@ -110,6 +119,7 @@ export function normalizePaymentTerm(term = {}) {
     coveredAmount: Number(term.coveredAmount || term.paidAmount || 0) || 0,
     payDate: term.payDate || '',
     receiptPic: Boolean(term.receiptPic),
+    receiptFile: normalizeAttachmentFile(term.receiptFile, 'receipt.jpg'),
     status: term.status || PAYMENT_STATUS.UNPAID,
   }
 }
