@@ -1,17 +1,17 @@
 ﻿<template>
   <view class="h-screen bg-slate-50 text-slate-800">
     <view class="mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
-      <view class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 relative shrink-0 sticky-header z-20 shadow-soft" :style="{ paddingTop: headerTopPadding + 'px' }">
+      <view class="bg-white-80 px-5 pb-3 relative shrink-0 sticky-header z-20 shadow-soft" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view>
           <view class="font-black text-slate-900 text-lg">账务流水</view>
           <view class="text-xs text-slate-400 font-medium mt-0_5">按类型、房号和租客快速查询已收记录</view>
         </view>
 
-        <view class="mt-4 p-4 rounded-2xl bills-hero relative overflow-hidden shadow-soft border border-blue-200-60">
+        <view class="mt-4 p-4 rounded-2xl bills-hero relative overflow-hidden shadow-soft">
           <view class="relative z-10">
             <view class="hero-sublabel font-semibold">累计实收</view>
             <view class="text-2xl font-black font-mono tracking-tight mt-1 text-white">¥{{ fmtMoney(billStats.paidTotal) }}</view>
-            <view class="flex items-center gap-4 mt-3 pt-3 border-t border-white-20">
+            <view class="flex items-center gap-4 mt-3 pt-3">
               <view class="min-w-0">
                 <view class="hero-sublabel font-semibold">房租</view>
                 <view class="font-mono font-bold text-xs mt-1 text-white">¥{{ fmtMoney(billStats.rentPaid) }}</view>
@@ -30,7 +30,33 @@
       </view>
 
       <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true">
-        <view class="p-5 stack-3" style="padding-bottom: 32rpx;">
+        <view class="p-5 stack-3" style="padding-bottom: 176rpx;">
+          <view v-if="billsRefreshing" class="loading-pill loading-pill-blue">
+            <view class="loading-pill-dots">
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+            </view>
+            <text class="loading-pill-text">正在同步最新账务数据…</text>
+          </view>
+          <view v-if="syncSummary.count > 0" class="loading-pill loading-pill-slate">
+            <view class="loading-pill-dots">
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+            </view>
+            <text class="loading-pill-text">待同步 {{ syncSummary.count }} 条本地变更</text>
+          </view>
+          <view v-if="syncSummary.count > 0 || syncSummary.failedCount > 0 || syncSummary.lastError" class="text-3xs text-slate-400 -mt-2">
+            当前模式：{{ syncModeLabel }}
+          </view>
+          <view v-if="syncSummary.failedCount > 0 || syncSummary.lastError" class="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
+            <view class="text-2xs font-semibold text-amber-700">
+              {{ syncSummary.failedCount > 0 ? `待重试 ${syncSummary.failedCount} 条` : '备份待处理' }}
+              <text v-if="syncPendingTypeText"> · {{ syncPendingTypeText }}</text>
+            </view>
+            <view class="text-3xs text-amber-600 mt-1">可前往“我的 > 云端备份中心”统一处理。</view>
+          </view>
           <view class="p-3 rounded-2xl surface-card stack-2 bills-toolbar">
             <view class="flex items-center justify-between gap-3">
             <view class="bills-section-title font-bold">查询条件</view>
@@ -74,9 +100,9 @@
                 <view class="text-xs text-slate-300 font-medium shrink-0">▼</view>
               </view>
 
-              <button class="rounded-xl btn-blue text-xs font-semibold tap-scale bills-query-button" @click="applySearch">
+              <view class="rounded-xl btn-blue text-xs font-semibold tap-scale bills-query-button" @click="applySearch">
                 查询
-              </button>
+              </view>
             </view>
           </view>
 
@@ -85,27 +111,26 @@
             当前筛选下暂无历史流水
           </view>
 
-            <view v-else class="rounded-xl bg-white border border-slate-200-60 shadow-soft overflow-hidden bills-history-card">
-              <view class="px-3 py-2 bg-slate-50 border-b border-slate-200-60 flex items-center justify-between text-3xs font-semibold tracking-wide text-slate-500 uppercase">
+            <view v-else class="rounded-xl bg-white shadow-soft overflow-hidden bills-history-card">
+              <view class="px-3 py-2 bg-slate-50 flex items-center justify-between text-3xs font-semibold tracking-wide text-slate-500 uppercase">
                 <view class="bills-section-title font-bold">历史流水</view>
                 <view class="flex items-center gap-3 normal-case tracking-normal">
-                  <button class="bills-sort-button" :class="sortKey === 'date' ? 'bills-sort-button-active' : ''" @click="toggleSort('date')">
+                  <view class="bills-sort-button" :class="sortKey === 'date' ? 'bills-sort-button-active' : ''" @click="toggleSort('date')">
                     时间{{ sortKey === 'date' ? (sortOrder === 'desc' ? '↓' : '↑') : '' }}
-                  </button>
-                  <button class="bills-sort-button" :class="sortKey === 'amount' ? 'bills-sort-button-active' : ''" @click="toggleSort('amount')">
+                  </view>
+                  <view class="bills-sort-button" :class="sortKey === 'amount' ? 'bills-sort-button-active' : ''" @click="toggleSort('amount')">
                     金额{{ sortKey === 'amount' ? (sortOrder === 'desc' ? '↓' : '↑') : '' }}
-                  </button>
+                  </view>
                 </view>
               </view>
             <view
               v-for="item in items"
               :key="item.key"
-              class="px-3 py-3 flex items-center gap-3"
-              :class="item.key !== items[items.length - 1].key ? 'border-b border-slate-100' : ''"
+              class="bills-history-row px-3 py-3 flex items-center gap-3"
             >
               <view class="min-w-0 w-20 shrink-0">
                 <view class="font-bold text-slate-900 text-sm truncate">{{ item.roomNo }}</view>
-                <view class="text-2xs text-slate-500 truncate mt-0_5">{{ item.tenant || '未录入租客' }}</view>
+                <view class="text-2xs text-slate-500 truncate mt-0_5">{{ item.tenant || '未填写租客' }}</view>
               </view>
 
               <view class="min-w-0 flex-1">
@@ -116,12 +141,12 @@
               <view class="shrink-0 flex flex-col items-end gap-1">
                 <view class="font-mono text-sm leading-none text-emerald-700 font-bold">+ ¥{{ fmtMoney(item.amount) }}</view>
                 <view class="flex items-center gap-2">
-                  <button v-if="item.receiptPic" class="text-2xs font-medium text-blue-600 tap-scale" @click="openReceipt(item)">
+                  <view v-if="item.receiptPic" class="bills-row-action text-2xs font-medium text-blue-600 tap-scale" @click="openReceipt(item)">
                     凭证
-                  </button>
-                  <button class="text-2xs font-medium text-slate-600 tap-scale" @click="goRoom(item)">
+                  </view>
+                  <view class="bills-row-action text-2xs font-medium text-slate-600 tap-scale" @click="goRoom(item)">
                     房间
-                  </button>
+                  </view>
                 </view>
               </view>
             </view>
@@ -178,7 +203,7 @@
 
           <view class="p-4 rounded-2xl surface-card">
             <view class="text-xs text-slate-500 font-semibold">凭证截图</view>
-            <image v-if="receiptItem.receiptFile?.filePath || receiptItem.receiptFile?.url" :src="receiptItem.receiptFile?.filePath || receiptItem.receiptFile?.url" mode="aspectFit" class="mt-3 h-44 w-full rounded-2xl bg-slate-50 border border-slate-200" @click="previewReceipt" />
+            <image v-if="resolveReceiptSrc(receiptItem.receiptFile)" :src="resolveReceiptSrc(receiptItem.receiptFile)" mode="aspectFit" class="mt-3 h-44 w-full rounded-2xl bg-slate-50 border border-slate-200" @click="previewReceipt" />
             <view v-else class="mt-3 h-44 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-semibold">暂无凭证图片</view>
           </view>
         </view>
@@ -188,14 +213,18 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { computed, ref, watch } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import BaseCenteredModal from '../../components/BaseCenteredModal.vue'
 import DateSelectionModal from '../../components/DateSelectionModal.vue'
-import { properties } from '../../data/rentStore'
+import { properties, setProperties } from '../../data/rentStore'
+import { getCachedBillEntriesSnapshot, refreshBillEntriesSnapshot } from '../../data/billSnapshots.js'
+import { fetchPropertiesTree, getCachedPropertiesTree, isPropertiesTreeFresh } from '../../api/properties'
+import { getPendingSyncSummary } from '../../data/syncQueue.js'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
-import { previewChosenImage } from '../../utils/media'
+import { previewChosenImage, resolveOfflineImageSrc } from '../../utils/media'
+import { hasCloudApiBaseUrl } from '../../config/cloud'
 
 const headerTopPadding = ref(44)
 const typeTab = ref('all')
@@ -212,6 +241,16 @@ const typeMenuOpen = ref(false)
 const dateDrawerOpen = ref(false)
 const receiptOpen = ref(false)
 const receiptItem = ref(null)
+const cachedEntries = ref(getCachedBillEntriesSnapshot().entries)
+const billsRefreshing = ref(false)
+const syncSummary = ref(getPendingSyncSummary())
+const syncPendingTypeText = computed(() => {
+  const counts = syncSummary.value?.pendingTypeCounts || {}
+  const firstKey = Object.keys(counts).find((key) => Number(counts[key] || 0) > 0)
+  if (!firstKey) return ''
+  return `${syncTaskTypeLabel(firstKey)} ${Number(counts[firstKey] || 0)}`
+})
+const syncModeLabel = computed(() => syncSummary.value?.syncMode === 'manual' ? '仅手动同步' : '自动同步')
 
 const typeOptions = [
   { label: '全部', value: 'all' },
@@ -229,7 +268,32 @@ const dateQuickOptions = [
 
 onLoad(() => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
+  const cachedTree = getCachedPropertiesTree()
+  if (Array.isArray(cachedTree) && cachedTree.length) {
+    setProperties(cachedTree)
+  }
+  cachedEntries.value = getCachedBillEntriesSnapshot().entries
+  syncSummary.value = getPendingSyncSummary()
+  void syncCloudProperties()
 })
+
+onShow(() => {
+  cachedEntries.value = getCachedBillEntriesSnapshot().entries
+  syncSummary.value = getPendingSyncSummary()
+})
+
+async function syncCloudProperties() {
+  if (!hasCloudApiBaseUrl()) return
+  billsRefreshing.value = true
+  try {
+    const next = await fetchPropertiesTree()
+    if (Array.isArray(next)) {
+      setProperties(next)
+    }
+  } catch {} finally {
+    billsRefreshing.value = false
+  }
+}
 
 function fmtDate(iso) {
   const s = String(iso || '').trim()
@@ -243,58 +307,15 @@ function fmtMoney(n) {
   return v.toFixed(2)
 }
 
-const entries = computed(() => {
-  const out = []
-  for (const p of properties.value) {
-    for (const b of p.blocks || []) {
-      for (const f of b.floors || []) {
-        for (const r of f.rooms || []) {
-          for (const term of r.paymentSchedule || []) {
-            const isPaid = term.status === 'paid' && Number(term.paidAmount || 0) >= Number(term.expectedAmount || 0)
-            if (!isPaid) continue
-            out.push({
-              key: `rent_${p.id}_${b.id}_${r.id}_${term.id}`,
-              kind: 'rent',
-              propertyId: p.id,
-              blockId: b.id,
-              roomId: r.id,
-              roomNo: r.roomNo,
-              tenant: r.tenant,
-              title: `房租 第${term.term}期`,
-              amount: Number(term.expectedAmount || 0) || 0,
-              dueDate: term.dueDate,
-              payDate: term.payDate || '',
-              receiptPic: Boolean(term.receiptPic),
-              receiptFile: term.receiptFile || null,
-            })
-          }
+watch(
+  properties,
+  (nextProperties) => {
+    cachedEntries.value = refreshBillEntriesSnapshot(nextProperties).entries
+  },
+  { immediate: true, deep: true }
+)
 
-          for (const bill of r.bills || []) {
-            if (bill.status !== 'paid') continue
-            if (bill.type === 'rent') continue
-            out.push({
-              key: `bill_${p.id}_${b.id}_${r.id}_${bill.id}`,
-              kind: bill.type || 'custom',
-              propertyId: p.id,
-              blockId: b.id,
-              roomId: r.id,
-              roomNo: r.roomNo,
-              tenant: r.tenant,
-              title: bill.title || '费用',
-              amount: Number(bill.amount || 0) || 0,
-              dueDate: bill.dueDate,
-              payDate: bill.payDate || '',
-              receiptPic: Boolean(bill.receiptPic),
-              receiptFile: bill.receiptFile || null,
-            })
-          }
-        }
-      }
-    }
-  }
-  out.sort((a, b) => String(b.payDate || '').localeCompare(String(a.payDate || '')))
-  return out
-})
+const entries = computed(() => cachedEntries.value)
 
 const items = computed(() => {
   let list = entries.value.slice()
@@ -518,6 +539,31 @@ function previewReceipt() {
     previewChosenImage(receiptItem.value.receiptFile)
   }
 }
+function resolveReceiptSrc(file) { return resolveOfflineImageSrc(file) }
+
+function syncTaskTypeLabel(type) {
+  return {
+    'properties.treeSync': '结构',
+    'room.checkin': '入住',
+    'room.rentCollection': '房租',
+    'room.utilityCollection': '附加费',
+    'room.meterReading': '抄表',
+    'room.checkout': '退租',
+    'attachment.upload': '附件',
+  }[String(type || '')] || '同步'
+}
+
+function formatSyncError(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (raw.includes('WEEKLY_SYNC_WAITING_FOR_WIFI')) return '当前网络不适合备份，已延后'
+  if (raw.includes('timeout')) return '网络超时，等待稍后重试'
+  if (raw.includes('request:fail')) return '网络请求失败，等待稍后重试'
+  if (raw.includes('401')) return '云端未授权，需要重新建立会话'
+  if (raw.includes('404')) return '云端接口暂不可用，请稍后重试'
+  if (raw.includes('UPLOAD_FAILED')) return '文件上传失败，等待稍后重试'
+  return raw
+}
 </script>
 
 <style>
@@ -642,6 +688,18 @@ function previewReceipt() {
 
 .bills-history-card {
   padding-bottom: 8px;
+}
+
+.bills-history-row + .bills-history-row {
+  margin-top: 2px;
+}
+
+.bills-row-action {
+  min-height: 30rpx;
+  padding: 0 4rpx;
+  display: flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .bills-sort-button {

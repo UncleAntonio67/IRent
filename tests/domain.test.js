@@ -7,6 +7,7 @@ import {
   computeMeterCharge,
   recordDirectUtilityCollection,
   recordRentCollection,
+  checkInRoom,
   checkoutRoom,
 } from '../src/domain/rent-room-service.js'
 
@@ -166,4 +167,26 @@ test('checkoutRoom archives collections and clears active room business data', (
   assert.equal(room.bills.length, 0)
   assert.equal(room.lastWater, 130)
   assert.equal(room.lastElectric, 340)
+})
+
+test('checkInRoom keeps optional attachments absent and records configured charges', () => {
+  const room = normalizeRoom({ roomNo: 'A101', status: ROOM_STATUS.EMPTY })
+  const schedule = [{ id: 'term_1', term: 1, expectedAmount: 6000, paidAmount: 0, coveredAmount: 0, status: PAYMENT_STATUS.UNPAID }]
+
+  checkInRoom(room, {
+    tenant: '王女士', phone: '13800138000', idCard: '', rent: 2000, deposit: 2000, paymentCycle: 3,
+    leaseStart: '2026-07-01', leaseEnd: '2026-09-30', utilityChargeConfig: { water: 'separate' }, waterBase: 10, electricBase: 20,
+  }, {
+    now: '2026-07-01 09:00', paymentSchedule: schedule, attachments: { idCard: null, contract: null },
+    initialCollectionAmount: 6000, initialReceiptPicked: false, initialDepositAmount: 2000, initialDepositReceiptPicked: false,
+  })
+
+  assert.equal(room.status, ROOM_STATUS.RENTED)
+  assert.equal(room.tenant, '王女士')
+  assert.equal(room.hasIdCardPic, false)
+  assert.equal(room.hasContract, false)
+  assert.equal(room.paymentSchedule[0].status, PAYMENT_STATUS.PAID)
+  assert.equal(room.paymentSchedule[0].receiptPic, false)
+  assert.equal(room.collections.length, 2)
+  assert.equal(room.collections.every((item) => item.receiptPic === false), true)
 })

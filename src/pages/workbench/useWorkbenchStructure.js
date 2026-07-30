@@ -16,7 +16,7 @@ export const WORKBENCH_MODAL_CONFIG = {
   floor: {
     title: '新增楼层',
     hint: '输入楼层号，系统会自动排序。',
-    placeholder: '例如：6',
+    placeholder: '例如：3',
     inputType: 'number',
   },
   room: {
@@ -194,7 +194,7 @@ export function applyWorkbenchStructureChange(nextProperties, activePropertyId, 
       if (existing.has(roomNo)) continue
       floorItem.rooms.push(createDefaultRoom(roomNo))
       existing.add(roomNo)
-      added++
+      added += 1
     }
 
     if (added === 0) {

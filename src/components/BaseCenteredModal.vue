@@ -65,7 +65,6 @@ const emit = defineEmits(['close'])
 
 .base-modal-head {
   padding: 12rpx 20rpx 10rpx;
-  border-bottom: 1rpx solid rgba(226, 232, 240, 0.72);
 }
 
 .base-modal-grab {
@@ -105,7 +104,6 @@ const emit = defineEmits(['close'])
 
 .base-modal-footer {
   padding: 12rpx 20rpx 18rpx;
-  border-top: 1rpx solid rgba(226, 232, 240, 0.72);
   background: #ffffff;
 }
 

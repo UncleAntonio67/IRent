@@ -37,7 +37,7 @@ function buildLegacyRentCollections(paymentSchedule) {
   return paymentSchedule
     .filter((term) => Number(term.paidAmount || 0) > 0)
     .map((term) => ({
-      id: `legacy_${term.id}`,
+      id: `history_${term.id}`,
       kind: BILL_TYPE.RENT,
       title: `房租 第${term.term}期`,
       amount: Number(term.paidAmount || 0),
@@ -230,7 +230,7 @@ export function buildAttachmentFile(type, { tenant = '租客', roomNo = '房间'
     return {
       name: `${tenant}_id_card.jpg`,
       uploadedAt: now,
-      source: 'mock',
+      source: 'local',
       filePath: '',
       url: '',
       previewText: '身份证正反面影像',
@@ -240,7 +240,7 @@ export function buildAttachmentFile(type, { tenant = '租客', roomNo = '房间'
   return {
     name: `${roomNo}_lease_contract.pdf`,
     uploadedAt: now,
-    source: 'mock',
+    source: 'local',
     filePath: '',
     url: '',
     previewText: '电子租赁合同归档文件',
@@ -252,7 +252,7 @@ export function buildRoomPhotoFile(room, { now, remark = '', file = null } = {})
     id: generateId('photo'),
     name: file?.name || `${room?.roomNo || 'room'}_photo_${Date.now()}.jpg`,
     uploadedAt: now,
-    source: file?.source || 'mock',
+    source: file?.source || 'local',
     previewText: '房屋照片预览',
     filePath: file?.filePath || file?.url || '',
     url: file?.url || file?.filePath || '',
@@ -646,9 +646,9 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments, 
   }
   room.lastWater = Number.isFinite(Number(payload.waterBase)) ? Number(payload.waterBase) : Number(room.lastWater || 0)
   room.lastElectric = Number.isFinite(Number(payload.electricBase)) ? Number(payload.electricBase) : Number(room.lastElectric || 0)
-  room.hasIdCardPic = true
-  room.hasContract = true
-  room.attachmentFiles = attachments
+  room.hasIdCardPic = Boolean(attachments?.idCard)
+  room.hasContract = Boolean(attachments?.contract)
+  room.attachmentFiles = attachments || { idCard: null, contract: null }
   room.status = ROOM_STATUS.RENTED
 
   const firstPaymentAmount = Number.isFinite(Number(initialCollectionAmount))

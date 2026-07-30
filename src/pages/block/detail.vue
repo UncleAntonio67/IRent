@@ -2,17 +2,17 @@
   <view class="h-screen bg-slate-50 text-slate-800">
     <view class="mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
       <view
-        class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 relative shrink-0 sticky-header z-20 shadow-soft"
+        class="bg-white-80 px-5 pb-3 relative shrink-0 sticky-header z-20 shadow-soft"
         :style="{ paddingTop: headerTopPadding + 'px' }"
       >
         <view class="flex items-center justify-between gap-3">
           <view class="flex items-center gap-3 min-w-0">
-            <button class="nav-icon-button tap-scale" @click="goBack">
+            <view class="nav-icon-button tap-scale" @click="goBack">
               <view class="icon-back">
                 <view class="icon-back-line icon-back-line-top"></view>
                 <view class="icon-back-line icon-back-line-bottom"></view>
               </view>
-            </button>
+            </view>
             <view class="min-w-0">
               <view class="font-black text-slate-900 text-base truncate">{{ block?.name || '楼栋详情' }}</view>
               <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">
@@ -26,45 +26,45 @@
 
         <scroll-view scroll-x class="mt-4" show-scrollbar="false">
           <view class="flex gap-2 pb-1">
-            <button
-              class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
+            <view
+              class="block-filter-control whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
               :class="filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'"
               @click="setFilter('all')"
             >
               全部
-            </button>
-            <button
-              class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
+            </view>
+            <view
+              class="block-filter-control whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
               :class="filterStatus === 'overdue' ? 'bg-rose-500 text-white shadow-md' : 'bg-rose-50 text-rose-600'"
               @click="setFilter('overdue')"
             >
               <view class="size-1_5 rounded-full" :class="filterStatus === 'overdue' ? 'bg-white' : 'bg-rose-500'"></view>
               欠费 {{ stats.overdueRooms }}
-            </button>
-            <button
-              class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
+            </view>
+            <view
+              class="block-filter-control whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
               :class="filterStatus === 'due_soon' ? 'bg-amber-500 text-white shadow-md' : 'bg-amber-50 text-amber-600'"
               @click="setFilter('due_soon')"
             >
               <view class="size-1_5 rounded-full" :class="filterStatus === 'due_soon' ? 'bg-white' : 'bg-amber-500'"></view>
               待收 {{ stats.dueSoonRooms }}
-            </button>
-            <button
-              class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
+            </view>
+            <view
+              class="block-filter-control whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
               :class="filterStatus === 'rented' ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600'"
               @click="setFilter('rented')"
             >
               <view class="size-1_5 rounded-full" :class="filterStatus === 'rented' ? 'bg-white' : 'bg-emerald-500'"></view>
               已租
-            </button>
-            <button
-              class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
+            </view>
+            <view
+              class="block-filter-control whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1"
               :class="filterStatus === 'empty' ? 'bg-slate-500 text-white' : 'bg-slate-100 text-slate-500'"
               @click="setFilter('empty')"
             >
               <view class="size-1_5 rounded-full" :class="filterStatus === 'empty' ? 'bg-white' : 'bg-slate-400'"></view>
               空置
-            </button>
+            </view>
           </view>
         </scroll-view>
       </view>
@@ -77,17 +77,21 @@
         </view>
 
         <view v-else class="p-5 stack-5">
-          <view v-for="floorItem in block.floors" :key="floorItem.floor" class="overflow-hidden" :class="UI.card">
-            <view class="bg-slate-50-50 px-4 py-3 flex items-center justify-between border-b border-slate-100">
+          <view
+            v-for="floorItem in block.floors"
+            :key="floorItem.floor"
+            class="floor-section overflow-hidden"
+          >
+            <view class="floor-section-header px-4 py-3 flex items-center justify-between">
               <view class="font-black text-slate-700 text-sm">F {{ floorItem.floor }}</view>
               <view class="text-2xs text-slate-400 font-bold">共 {{ floorItem.rooms.length }} 间</view>
             </view>
 
-            <view class="p-4 grid grid-cols-3 gap-3 bg-slate-50-50">
+            <view class="floor-section-grid p-4 grid grid-cols-3 gap-3">
               <view
                 v-for="room in floorItem.rooms"
                 :key="room.id"
-                class="relative rounded-xl p-3 border shadow-roomcard transition-all flex flex-col justify-between min-h-roomcard tap-scale"
+                class="room-tile relative rounded-xl p-3 transition-all flex flex-col justify-between min-h-roomcard tap-scale"
                 :class="[
                   getRoomVisuals(room.status).bg,
                   getRoomVisuals(room.status).border,
@@ -106,7 +110,7 @@
                   <view v-if="room.status === 'empty'" class="text-2xs font-medium text-slate-400 mt-2">空置待租</view>
                   <view v-else>
                     <view class="text-xs font-medium truncate" :class="getRoomVisuals(room.status).text">
-                      {{ room.tenant || '租客未录入' }}
+                      {{ room.tenant || '未填写租客' }}
                     </view>
                     <view v-if="room.status === 'overdue'" class="text-2xs text-rose-600 font-bold mt-1 inline-block">欠费待收</view>
                     <view v-else class="text-2xs text-slate-500 font-mono mt-1 opacity-70">￥{{ room.rent || 0 }}/期</view>
@@ -139,12 +143,13 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import RoomDetailSheet from '../../components/RoomDetailSheet.vue'
 import CheckInSheet from '../../components/CheckInSheet.vue'
-import { UI } from '../../ui/ui'
-import { findBlock, findProperty } from '../../data/rentStore'
+import { findBlock, findProperty, setProperties } from '../../data/rentStore'
+import { getCachedPropertiesTree } from '../../api/properties'
+import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateBack } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 
@@ -163,10 +168,19 @@ onLoad((query) => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
   propertyId.value = String(query?.propertyId || '')
   blockId.value = String(query?.blockId || '')
+  const cachedTree = getCachedPropertiesTree()
+  if (Array.isArray(cachedTree) && cachedTree.length) {
+    setProperties(cachedTree)
+  }
+  warmVisibleRoomCache()
 })
 
+function warmVisibleRoomCache() {
+  prefetchRoomDetails(visibleRoomIdsForPrefetch.value, 8)
+}
+
 const stats = computed(() => {
-  const rooms = (block.value?.floors || []).flatMap((f) => f.rooms)
+  const rooms = (block.value?.floors || []).flatMap((floor) => floor.rooms)
   return {
     totalRooms: rooms.length,
     emptyRooms: rooms.filter((room) => room.status === 'empty').length,
@@ -175,12 +189,18 @@ const stats = computed(() => {
   }
 })
 
+const visibleRoomIdsForPrefetch = computed(() => {
+  const rooms = (block.value?.floors || []).flatMap((floorItem) => floorItem.rooms || [])
+  return rooms.filter((room) => isRoomHighlighted(room.status)).map((room) => room.id).slice(0, 8)
+})
+
 function goBack() {
   safeNavigateBack({ fallbackUrl: '/pages/workbench/index', fallbackType: 'switchTab' })
 }
 
 function setFilter(status) {
   filterStatus.value = status
+  warmVisibleRoomCache()
 }
 
 function isRoomHighlighted(status) {
@@ -217,12 +237,11 @@ function roomStatusDot(status) {
 
 function goRoom(room) {
   if (!room?.id) return
+  selectedRoomId.value = room.id
   if (room.status === 'empty') {
-    selectedRoomId.value = room.id
     checkInSheetOpen.value = true
     return
   }
-  selectedRoomId.value = room.id
   roomSheetOpen.value = true
 }
 
@@ -244,4 +263,38 @@ function handleCheckInRequestDetail() {
   checkInSheetOpen.value = false
   roomSheetOpen.value = true
 }
+
+watch(() => block.value?.id, () => {
+  warmVisibleRoomCache()
+})
 </script>
+
+<style>
+.floor-section {
+  background: #ffffff;
+  border: 1rpx solid #edf1f5;
+  border-radius: 32rpx;
+  box-shadow: 0 12rpx 30rpx rgba(15, 23, 42, 0.045);
+}
+
+.floor-section-header {
+  background: #ffffff;
+}
+
+.floor-section-grid {
+  background: #f8fafc;
+}
+
+.room-tile {
+  border-width: 1rpx;
+  border-style: solid;
+  box-shadow: 0 6rpx 14rpx rgba(15, 23, 42, 0.035);
+}
+
+.block-filter-control {
+  min-height: 56rpx;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+}
+</style>

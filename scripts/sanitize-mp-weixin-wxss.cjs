@@ -19,6 +19,14 @@ for (const target of targets) {
   content = content
     .replace(/page::after\{[\s\S]*?page\{--status-bar-height/g, 'page{--status-bar-height')
     .replace(/\[data-c-h="true"\]\{[^}]*\}/g, '')
+    .replace(/\.divide-y>:[^}]+\}/g, '')
+    .replace(/\.divide-slate-100>:[^}]+\}/g, '')
+    .replace(/button:after\{[^}]*\}/g, '')
+    .replace(/\.loading-pill-dot:nth-child\(\d+\)\{[^}]*\}/g, '')
+    .replace(/::before\{[^}]*\}/g, '')
+    .replace(/::after\{[^}]*\}/g, '')
+    .replace(/:before\{[^}]*\}/g, '')
+    .replace(/:after\{[^}]*\}/g, '')
 
   fs.writeFileSync(filePath, content, 'utf8')
   console.log(`Sanitized ${filePath}`)

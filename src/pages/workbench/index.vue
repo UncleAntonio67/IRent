@@ -1,7 +1,7 @@
 ﻿<template>
   <view class="min-h-screen bg-slate-50 text-slate-800">
     <view class="mx-auto max-w-md min-h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
-      <view class="bg-white-80 border-b px-5 pb-3 relative shrink-0 border-slate-200-60 z-20 shadow-soft sticky-header" :style="{ paddingTop: headerTopPadding + 'px' }">
+      <view class="bg-white-80 px-5 pb-3 relative shrink-0 z-20 shadow-soft sticky-header" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view class="flex items-center gap-3">
           <view class="w-11 h-11 rounded-2xl flex items-center justify-center border shadow-soft" :class="editMode ? 'bg-amber-50 border-amber-100 text-amber-500' : 'bg-blue-50-50 border-blue-100 text-blue-600'">
             <text class="text-sm font-bold">房</text>
@@ -44,6 +44,32 @@
 
       <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true">
         <view class="p-5 stack-5" style="padding-bottom: 168rpx;">
+          <view v-if="workbenchRefreshing" class="loading-pill loading-pill-blue">
+            <view class="loading-pill-dots">
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+            </view>
+            <text class="loading-pill-text">正在同步最新房源数据…</text>
+          </view>
+          <view v-if="syncSummary.count > 0" class="loading-pill loading-pill-slate">
+            <view class="loading-pill-dots">
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+              <view class="loading-pill-dot"></view>
+            </view>
+            <text class="loading-pill-text">待同步 {{ syncSummary.count }} 条本地变更</text>
+          </view>
+          <view v-if="syncSummary.count > 0 || syncSummary.failedCount > 0 || syncSummary.lastError" class="text-3xs text-slate-400 -mt-3">
+            当前模式：{{ syncModeLabel }}
+          </view>
+          <view v-if="syncSummary.failedCount > 0 || syncSummary.lastError" class="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
+            <view class="text-2xs font-semibold text-amber-700">
+              {{ syncSummary.failedCount > 0 ? `待重试 ${syncSummary.failedCount} 条` : '备份待处理' }}
+              <text v-if="syncPendingTypeText"> · {{ syncPendingTypeText }}</text>
+            </view>
+            <view class="text-3xs text-amber-600 mt-1">可前往“我的 > 云端备份中心”统一处理。</view>
+          </view>
           <view v-if="activeProperty" class="relative mt-2">
             <view v-if="!editMode" class="stack-4 animate-in fade-in duration-300">
               <view
@@ -53,7 +79,7 @@
                 :class="UI.card"
                 @click="goBlock(block.id)"
               >
-                <view class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                <view class="flex justify-between items-center mb-4 pb-3">
                   <view class="flex items-center gap-3">
                     <view class="w-10 h-10 bg-blue-50-50 rounded-xl flex items-center justify-center text-blue-600">
                       <text class="text-sm font-bold">楼</text>
@@ -87,7 +113,7 @@
 
             <view v-else class="stack-6 animate-in fade-in duration-300">
               <view v-for="block in activeProperty.blocks" :key="block.id" class="overflow-hidden relative" :class="UI.card">
-                <view class="bg-slate-100-50 px-4 py-3 flex items-center justify-between border-b border-slate-100">
+                <view class="bg-slate-100-50 px-4 py-3 flex items-center justify-between">
                   <view class="font-bold text-slate-700 text-sm">{{ block.name }}</view>
                   <button class="px-3 py-1_5 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200 tap-scale" @click.stop="removeBlock(block.id)">删除楼栋</button>
                 </view>
@@ -100,7 +126,7 @@
 
                 <view v-else>
                   <view v-for="(floorItem, floorIndex) in block.floors" :key="floorItem.floor" class="flex flex-col" :class="floorIndex > 0 ? 'border-t border-slate-100' : ''">
-                    <view class="bg-slate-50-50 px-4 py-2 flex items-center justify-between border-b border-slate-100">
+                    <view class="bg-slate-50-50 px-4 py-2 flex items-center justify-between">
                       <text class="font-medium text-slate-400 text-xs">F {{ floorItem.floor }}</text>
                     </view>
 
@@ -115,7 +141,7 @@
                           <text class="font-bold text-xs font-mono" :class="roomVisuals(room.status).text">{{ room.roomNo }}</text>
                           <view class="delete-corner-button" @click.stop="removeRoom(block.id, floorItem.floor, room.id)"><text>x</text></view>
                         </view>
-                        <view class="text-2xs font-medium text-slate-400 mt-2 truncate">{{ room.tenant || '租客未录入' }}</view>
+                        <view class="text-2xs font-medium text-slate-400 mt-2 truncate">{{ room.tenant || '未填写租客' }}</view>
                       </view>
 
                       <view class="room-create-tile" @click.stop="openAddModal('room', { blockId: block.id, floor: floorItem.floor })">
@@ -214,11 +240,16 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { UI, getMiniStatusColor } from '../../ui/ui'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
+import { canManageTenantData } from '../../data/authStore'
+import { fetchPropertiesTree, getCachedPropertiesTree, isPropertiesTreeFresh } from '../../api/properties'
+import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
+import { canUseCloudBackup, hasCloudApiBaseUrl } from '../../config/cloud'
+import { enqueueSyncTask, getPendingSyncSummary } from '../../data/syncQueue.js'
 import {
   applyQuickBuild,
   applyWorkbenchStructureChange,
@@ -242,6 +273,15 @@ const headerTopPadding = ref(44)
 const inputValue = ref('')
 const addModal = ref(createWorkbenchModalState())
 const quickBuildModal = ref(createQuickBuildState())
+const workbenchRefreshing = ref(false)
+const syncSummary = ref(getPendingSyncSummary())
+const syncPendingTypeText = computed(() => {
+  const counts = syncSummary.value?.pendingTypeCounts || {}
+  const firstKey = Object.keys(counts).find((key) => Number(counts[key] || 0) > 0)
+  if (!firstKey) return ''
+  return `${syncTaskTypeLabel(firstKey)} ${Number(counts[firstKey] || 0)}`
+})
+const syncModeLabel = computed(() => syncSummary.value?.syncMode === 'manual' ? '仅手动同步' : '自动同步')
 
 const uiText = {
   finishManage: '完成管理',
@@ -261,7 +301,39 @@ const filterOptions = [
 
 onLoad(() => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
+  if (hasCloudApiBaseUrl()) {
+    const cachedTree = getCachedPropertiesTree()
+    if (Array.isArray(cachedTree) && cachedTree.length) {
+      setProperties(cachedTree)
+    }
+  }
+  syncSummary.value = getPendingSyncSummary()
+  warmVisibleRoomCache()
+  void syncCloudProperties()
 })
+
+onShow(() => {
+  syncSummary.value = getPendingSyncSummary()
+})
+
+async function syncCloudProperties() {
+  if (!hasCloudApiBaseUrl()) return
+  workbenchRefreshing.value = true
+  try {
+    const next = await fetchPropertiesTree()
+    if (Array.isArray(next) && next.length) {
+      setProperties(next)
+      warmVisibleRoomCache()
+    }
+  } catch {} finally {
+    workbenchRefreshing.value = false
+  }
+}
+
+function warmVisibleRoomCache() {
+  if (editMode.value) return
+  prefetchRoomDetails(visibleRoomIdsForPrefetch.value, 8)
+}
 
 watch(properties, (next) => {
   if (!next.some((item) => item.id === activePropertyId.value)) {
@@ -271,13 +343,23 @@ watch(properties, (next) => {
 
 const activeProperty = computed(() => properties.value.find((item) => item.id === activePropertyId.value))
 const stats = computed(() => buildWorkbenchStats(activeProperty.value))
+const visibleRoomIdsForPrefetch = computed(() => {
+  const blocks = activeProperty.value?.blocks || []
+  return blocks
+    .flatMap((block) => (block.floors || []).flatMap((floorItem) => floorItem.rooms || []))
+    .filter((room) => isHighlighted(room.status))
+    .map((room) => room.id)
+    .slice(0, 8)
+})
 
 function switchProperty(propertyId) {
   activePropertyId.value = propertyId
+  warmVisibleRoomCache()
 }
 
 function setFilter(status) {
   filterStatus.value = status
+  warmVisibleRoomCache()
 }
 
 function toggleEditMode() {
@@ -324,6 +406,10 @@ function openQuickBuildModal() {
   quickBuildModal.value = { ...createQuickBuildState(), open: true }
 }
 
+watch(() => activeProperty.value?.id, () => {
+  warmVisibleRoomCache()
+})
+
 function closeQuickBuildModal() {
   quickBuildModal.value = createQuickBuildState()
 }
@@ -337,6 +423,13 @@ function handleAddSubmit() {
   }
 
   setProperties(nextProperties)
+  if (canUseCloudBackup()) {
+    enqueueSyncTask({
+      type: 'properties.treeSync',
+      payload: { tree: nextProperties },
+    })
+    syncSummary.value = getPendingSyncSummary()
+  }
   if (result.nextPropertyId) {
     activePropertyId.value = result.nextPropertyId
   }
@@ -352,6 +445,13 @@ function submitQuickBuild() {
     return
   }
   setProperties(nextProperties)
+  if (canUseCloudBackup()) {
+    enqueueSyncTask({
+      type: 'properties.treeSync',
+      payload: { tree: nextProperties },
+    })
+    syncSummary.value = getPendingSyncSummary()
+  }
   closeQuickBuildModal()
   uni.showToast({ title: '已快速构建楼栋', icon: 'success' })
 }
@@ -368,6 +468,13 @@ function removeRoom(blockId, floor, roomId) {
       const removed = removeWorkbenchRoom(nextProperties, activePropertyId.value, blockId, floor, roomId)
       if (!removed) return
       setProperties(nextProperties)
+      if (canUseCloudBackup()) {
+        enqueueSyncTask({
+          type: 'properties.treeSync',
+          payload: { tree: nextProperties },
+        })
+        syncSummary.value = getPendingSyncSummary()
+      }
       uni.showToast({ title: '房间已删除', icon: 'none' })
     },
   })
@@ -385,6 +492,13 @@ function removeBlock(blockId) {
       const removed = removeWorkbenchBlock(nextProperties, activePropertyId.value, blockId)
       if (!removed) return
       setProperties(nextProperties)
+      if (canUseCloudBackup()) {
+        enqueueSyncTask({
+          type: 'properties.treeSync',
+          payload: { tree: nextProperties },
+        })
+        syncSummary.value = getPendingSyncSummary()
+      }
       uni.showToast({ title: '楼栋已删除', icon: 'none' })
     },
   })
@@ -407,9 +521,40 @@ function removeCurrentProperty() {
       if (!result.removed) return
       setProperties(nextProperties)
       activePropertyId.value = result.nextPropertyId
+      if (canUseCloudBackup()) {
+        enqueueSyncTask({
+          type: 'properties.treeSync',
+          payload: { tree: nextProperties },
+        })
+        syncSummary.value = getPendingSyncSummary()
+      }
       uni.showToast({ title: '院落已删除', icon: 'none' })
     },
   })
+}
+
+function syncTaskTypeLabel(type) {
+  return {
+    'properties.treeSync': '结构',
+    'room.checkin': '入住',
+    'room.rentCollection': '房租',
+    'room.utilityCollection': '附加费',
+    'room.meterReading': '抄表',
+    'room.checkout': '退租',
+    'attachment.upload': '附件',
+  }[String(type || '')] || '同步'
+}
+
+function formatSyncError(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (raw.includes('WEEKLY_SYNC_WAITING_FOR_WIFI')) return '当前网络不适合备份，已延后'
+  if (raw.includes('timeout')) return '网络超时，等待稍后重试'
+  if (raw.includes('request:fail')) return '网络请求失败，等待稍后重试'
+  if (raw.includes('401')) return '云端未授权，需要重新建立会话'
+  if (raw.includes('404')) return '云端接口暂不可用，请稍后重试'
+  if (raw.includes('UPLOAD_FAILED')) return '文件上传失败，等待稍后重试'
+  return raw
 }
 </script>
 

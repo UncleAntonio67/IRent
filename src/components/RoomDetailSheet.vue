@@ -1,49 +1,74 @@
 ﻿<template>
   <view v-if="open" class="fixed inset-0 z-50 bg-slate-900-50 flex items-end justify-center" @click="emit('close')">
     <view class="w-full max-w-md drawer-page-panel sheet-font-boost flex flex-col bg-slate-50 rounded-t-3xl shadow-2xl relative overflow-hidden" @click.stop>
-      <view class="bg-white-80 border-b px-5 pb-3 border-slate-200-60 shrink-0" :style="{ paddingTop: headerTopPadding + 'px' }">
+      <view class="bg-white-80 px-5 pb-3 shrink-0" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view class="flex justify-center"><view class="w-10 h-1 rounded-full bg-slate-300 mt-1"></view></view>
         <view class="flex items-center justify-between gap-3 mt-2">
           <view class="flex items-center gap-3 min-w-0">
-            <button class="nav-icon-button tap-scale" @click="emit('close')">
+            <view class="nav-icon-button tap-scale" @click="emit('close')">
               <view class="icon-close"><view class="icon-close-line"></view><view class="icon-close-line icon-close-line-second"></view></view>
-            </button>
+            </view>
             <view class="min-w-0">
               <view class="font-black text-slate-900 text-lg font-mono truncate">{{ room?.roomNo || '房间' }}</view>
               <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">{{ roomLocationText }}</view>
             </view>
           </view>
-          <button v-if="room && room.status !== 'empty'" class="nav-icon-button tap-scale" @click="openEditModal">
+          <view v-if="room && room.status !== 'empty'" class="nav-icon-button tap-scale" @click="openEditModal">
             <view class="icon-edit">
               <view class="icon-edit-body"></view>
               <view class="icon-edit-tip"></view>
             </view>
-          </button>
+          </view>
         </view>
         <view class="mt-3">
           <view class="p-1 surface-muted rounded-2xl flex gap-1">
-            <button class="flex-1 py-2 rounded-xl text-sm font-bold tap-scale" :class="tab === 'current' ? 'bg-white text-slate-900 shadow-soft' : 'bg-transparent text-slate-500'" @click="tab = 'current'">当前情况</button>
-            <button class="flex-1 py-2 rounded-xl text-sm font-bold tap-scale" :class="tab === 'history' ? 'bg-white text-slate-900 shadow-soft' : 'bg-transparent text-slate-500'" @click="tab = 'history'">历史入住</button>
+            <view class="flex-1 py-2 rounded-xl text-sm font-bold tap-scale text-center" :class="tab === 'current' ? 'bg-white text-slate-900 shadow-soft' : 'bg-transparent text-slate-500'" @click="tab = 'current'">当前情况</view>
+            <view class="flex-1 py-2 rounded-xl text-sm font-bold tap-scale text-center" :class="tab === 'history' ? 'bg-white text-slate-900 shadow-soft' : 'bg-transparent text-slate-500'" @click="tab = 'history'">历史入住</view>
           </view>
         </view>
       </view>
 
       <scroll-view scroll-y class="drawer-scroll-area" :scroll-with-animation="true" enable-flex>
         <view v-if="!room" class="px-5 pt-3 pb-5">
-          <view class="p-4 rounded-2xl surface-card"><view class="text-sm text-slate-600 font-medium">房间不存在或参数缺失。</view></view>
-        </view>
-
-        <view v-else class="px-5 pt-3 pb-5">
-          <view v-if="tab === 'history'" class="stack-3">
-            <view class="p-4 rounded-2xl surface-card">
-              <view class="flex items-center justify-between"><view class="font-bold text-slate-800 text-sm">历史入住</view><view class="text-2xs text-slate-400 font-medium">时间轴</view></view>
-              <view class="mt-3">
-                <OccupancyTimeline :occupancies="historyTimelineItems" />
+          <view v-if="shouldShowLoadingState" class="p-4 rounded-2xl surface-card">
+            <view class="animate-pulse">
+              <view class="h-4 w-24 rounded-full bg-slate-200"></view>
+              <view class="mt-3 h-3 w-full rounded-full bg-slate-100"></view>
+              <view class="mt-2 h-3 w-4/5 rounded-full bg-slate-100"></view>
+              <view class="mt-4 grid grid-cols-2 gap-3">
+                <view class="h-20 rounded-2xl bg-slate-100"></view>
+                <view class="h-20 rounded-2xl bg-slate-100"></view>
               </view>
             </view>
+            <view class="mt-4 text-sm text-slate-500 font-medium">正在加载房间数据…</view>
           </view>
+          <view v-else class="p-4 rounded-2xl surface-card"><view class="text-sm text-slate-600 font-medium">房间不存在或参数缺失。</view></view>
+        </view>
+
+          <view v-else class="px-5 pt-3 pb-5">
+            <view v-if="tab === 'history'" class="stack-3">
+              <view class="p-4 rounded-2xl surface-card">
+                <view class="flex items-center justify-between"><view class="font-bold text-slate-800 text-sm">历史入住</view><view class="text-2xs text-slate-400 font-medium">时间轴</view></view>
+                <view v-if="detailSectionsReady" class="mt-3">
+                  <OccupancyTimeline :occupancies="historyTimelineItems" />
+                </view>
+                <view v-else class="mt-3 animate-pulse">
+                  <view class="h-4 w-28 rounded-full bg-slate-200"></view>
+                  <view class="mt-3 h-16 rounded-2xl bg-slate-100"></view>
+                  <view class="mt-3 h-16 rounded-2xl bg-slate-100"></view>
+                </view>
+              </view>
+            </view>
 
           <view v-else class="stack-2">
+            <view v-if="roomRefreshing" class="loading-pill loading-pill-blue">
+              <view class="loading-pill-dots">
+                <view class="loading-pill-dot"></view>
+                <view class="loading-pill-dot"></view>
+                <view class="loading-pill-dot"></view>
+              </view>
+              <text class="loading-pill-text">正在同步最新房间数据…</text>
+            </view>
             <CollapsibleSectionCard
               title="房间概况"
               :expanded="roomOverviewExpanded"
@@ -53,7 +78,7 @@
                 <view class="flex items-start justify-between gap-3">
                   <view class="min-w-0">
                     <view class="text-base font-bold text-slate-800">{{ room.roomNo }}</view>
-                    <view class="text-xs text-slate-500 font-medium mt-1">{{ room.status === 'empty' ? '当前空置，可直接补资料后办理入住。' : `租期 ${fmtDate(room.leaseStart)} 至 ${fmtDate(room.leaseEnd)}` }}</view>
+                    <view class="text-xs text-slate-500 font-medium mt-1">{{ room.status === 'empty' ? '当前空置，可直接办理入住。' : `租期 ${fmtDate(room.leaseStart)} 至 ${fmtDate(room.leaseEnd)}` }}</view>
                   </view>
                   <view class="shrink-0 text-right">
                     <view class="text-xs text-slate-500 font-bold">支付约定</view>
@@ -63,7 +88,7 @@
                 </view>
 
                 <view class="mt-3 flex items-center gap-2 overflow-hidden">
-                  <button class="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 tap-scale shrink-0 flex flex-col items-center justify-center" @click="handleRoomPhotoUpload"><text class="text-sm font-semibold leading-none">+</text><text class="text-2xs font-medium mt-0_5">上传</text></button>
+                <button class="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 tap-scale shrink-0 flex flex-col items-center justify-center" @click="handleRoomPhotoUpload"><text class="text-sm font-semibold leading-none">+</text><text class="text-2xs font-medium mt-0_5">上传</text></button>
                   <scroll-view scroll-x class="flex-1 min-w-0 whitespace-nowrap overflow-hidden">
                     <view class="inline-flex gap-2">
                       <button v-for="photo in roomPhotos.slice(0, 6)" :key="photo.id" class="w-11 h-11 px-2 rounded-xl border border-slate-200 bg-slate-50 text-left tap-scale inline-flex flex-col justify-end overflow-hidden shrink-0" @click="openRoomPhotoPreview(photo)">
@@ -77,7 +102,7 @@
 
                 <view v-if="room.status === 'empty'" class="mt-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
                   <view class="text-sm font-bold text-emerald-800">当前为空置房</view>
-                  <view class="text-xs text-emerald-700 font-medium mt-1">建议先补房屋照片和档案资料，再办理入住。</view>
+                  <view class="text-xs text-emerald-700 font-medium mt-1">建议先补房屋资料，再办理入住。</view>
                 </view>
             </CollapsibleSectionCard>
 
@@ -98,156 +123,63 @@
                     {{ room.phone }}
                   </button>
                 </view>
-                <button class="px-3 py-2 rounded-xl border text-center tap-scale shrink-0" style="min-width: 112rpx;" :class="room.hasIdCardPic ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('idCard')">
+                <button v-if="room.hasIdCardPic || canManageTenantData" class="px-3 py-2 rounded-xl border text-center tap-scale shrink-0" style="min-width: 112rpx;" :class="room.hasIdCardPic ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('idCard')">
                   <view class="text-xs font-bold" :class="room.hasIdCardPic ? 'text-emerald-800' : 'text-slate-700'">{{ room.hasIdCardPic ? '查看身份证' : '上传身份证' }}</view>
                 </button>
-                <button class="px-3 py-2 rounded-xl border text-center tap-scale shrink-0" style="min-width: 112rpx;" :class="room.hasContract ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('contract')">
+                <button v-if="room.hasContract || canManageTenantData" class="px-3 py-2 rounded-xl border text-center tap-scale shrink-0" style="min-width: 112rpx;" :class="room.hasContract ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('contract')">
                   <view class="text-xs font-bold" :class="room.hasContract ? 'text-emerald-800' : 'text-slate-700'">{{ room.hasContract ? '查看合同' : '上传合同' }}</view>
                 </button>
             </CollapsibleSectionCard>
 
-            <CollapsibleSectionCard
-              v-if="room.status !== 'empty'"
-              title="租金收费"
+            <view v-if="!detailSectionsReady && room.status !== 'empty'" class="p-4 rounded-2xl surface-card animate-pulse stack-3">
+              <view class="h-4 w-24 rounded-full bg-slate-200"></view>
+              <view class="h-28 rounded-2xl bg-slate-100"></view>
+              <view class="h-28 rounded-2xl bg-slate-100"></view>
+            </view>
+
+            <RoomRentSection
+              :visible="detailSectionsReady && room.status !== 'empty'"
               :expanded="rentExpanded"
-              title-class="text-sm text-slate-700 font-bold"
+              :outstanding-count="overallOutstandingCount"
+              :status-lamp-class="rentStatusLampClass"
+              :progress-pct="overallProgressPct"
+              :paid="overallPaid"
+              :expected="overallExpected"
+              :terms="rentTermRows"
               @toggle="rentExpanded = !rentExpanded"
-            >
-              <view class="flex items-center justify-between gap-3">
-                <view class="flex items-center gap-2 shrink-0"><view class="status-lamp" :class="rentStatusLampClass"></view><view class="text-2xs text-slate-500 font-semibold">{{ overallOutstandingCount === 0 ? '已覆盖' : `待收 ${overallOutstandingCount}` }}</view></view>
-              </view>
-              <view class="mt-3 p-3 rounded-2xl surface-muted">
-                <view class="flex items-center justify-between text-xs font-bold text-slate-500">
-                  <view>房租收费进度</view>
-                  <view>{{ overallProgressPct }}%</view>
-                </view>
-                <view class="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <view class="h-2 rounded-full bg-blue-600" :style="{ width: overallProgressPct + '%' }"></view>
-                </view>
-                <view class="flex items-center justify-between text-2xs text-slate-500 font-mono mt-2">
-                  <view>已收 ￥{{ overallPaid }}</view>
-                  <view>应收 ￥{{ overallExpected }}</view>
-                </view>
-              </view>
-              <view class="mt-2 rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
-                <view class="utility-table-head">
-                  <text class="utility-head-label">期次</text>
-                  <text class="utility-head-label">金额</text>
-                  <text class="utility-head-label">状态</text>
-                  <text class="utility-head-label">操作</text>
-                </view>
-                <view v-for="term in rentTerms" :key="term.id" class="utility-table-row">
-                  <view class="utility-cell utility-type">
-                    <view class="text-center">
-                      <view class="utility-type-name">{{ term.term }}</view>
-                    </view>
-                  </view>
-                  <view class="rent-cell term-money-stack">
-                    <view class="term-money-row"><text class="term-money-label">应</text><text class="term-money-value">￥{{ term.expectedAmount }}</text></view>
-                    <view class="term-money-row term-money-sub"><text class="term-money-label">收</text><text class="term-money-value">￥{{ Number(term.coveredAmount || term.paidAmount || 0) }}</text></view>
-                  </view>
-                  <view class="rent-cell term-state">
-                    <view class="term-status-lamp" :class="termStatusLampClass(term)"></view>
-                  </view>
-                  <view class="utility-cell utility-action">
-                    <button
-                      class="utility-action-primary tap-scale"
-                      :class="termRemaining(term) <= 0 ? 'term-action-button-done' : 'term-action-button-active'"
-                      :disabled="termRemaining(term) <= 0"
-                      @click="openRentCollect(term)"
-                    >
-                      {{ termRemaining(term) <= 0 ? '已收' : Number(term.coveredAmount || term.paidAmount || 0) > 0 ? '补收' : '收费' }}
-                    </button>
-                  </view>
-                </view>
-              </view>
-            </CollapsibleSectionCard>
+              @collect="openRentCollectById"
+            />
 
-            <CollapsibleSectionCard
-              title="附加收费"
+            <RoomUtilitySection
+              :visible="detailSectionsReady"
               :expanded="utilityExpanded"
-              title-class="text-sm text-slate-700 font-bold"
+              :all-included="allUtilitiesIncluded"
+              :has-meter-utility="hasMeterUtility"
+              :meter-strip-class="meterStripClass"
+              :show-water-meter-card="showWaterMeterCard"
+              :show-electric-meter-card="showElectricMeterCard"
+              :water-meter="room.lastWater"
+              :electric-meter="room.lastElectric"
+              :water-price="room.waterPrice || 0"
+              :electric-price="room.electricPrice || 0"
+              :rows="utilityDisplayRows"
               @toggle="utilityExpanded = !utilityExpanded"
-            >
-              <view v-if="allUtilitiesIncluded" class="mt-3 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-500 font-medium">
-                水费、电费、燃汽、供暖均已包含在房租中。
-              </view>
+              @meter="meterOpen = true"
+              @collect="openUtilityCollect"
+            />
 
-              <view v-else-if="hasMeterUtility" class="utility-meter-strip mt-3" :class="meterStripClass">
-                <view v-if="showWaterMeterCard" class="utility-meter-card p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <view class="text-2xs text-slate-500 font-medium">当前水表</view>
-                  <view class="text-sm font-semibold text-slate-900 mt-1">{{ room.lastWater }}</view>
-                  <view class="text-2xs text-slate-400 mt-1">单价 ￥{{ room.waterPrice || 0 }}/吨</view>
-                </view>
-                <view v-if="showElectricMeterCard" class="utility-meter-card p-3 rounded-xl bg-slate-50 border border-slate-200">
-                  <view class="text-2xs text-slate-500 font-medium">当前电表</view>
-                  <view class="text-sm font-semibold text-slate-900 mt-1">{{ room.lastElectric }}</view>
-                  <view class="text-2xs text-slate-400 mt-1">单价 ￥{{ room.electricPrice || 0 }}/度</view>
-                </view>
-                <view class="utility-meter-action">
-                  <button class="utility-meter-button tap-scale" @click="meterOpen = true">
-                    <text>抄</text>
-                    <text>表</text>
-                  </button>
-                </view>
-              </view>
-
-              <view v-if="utilityTableRows.length > 0" class="mt-2 rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
-                <view class="utility-table-head">
-                  <text class="utility-head-label">项目</text>
-                  <text class="utility-head-label">金额</text>
-                  <text class="utility-head-label">状态</text>
-                  <text class="utility-head-label">操作</text>
-                </view>
-                <view v-for="item in utilityTableRows" :key="item.type" class="utility-table-row">
-                  <view class="utility-cell utility-type">
-                    <view class="text-center">
-                      <view class="utility-type-name">{{ utilityTypeLabel(item.type) }}</view>
-                    </view>
-                  </view>
-                  <view class="utility-cell term-money-stack utility-money-cell">
-                    <view class="term-money-row"><text class="term-money-label">应</text><text class="term-money-value">￥{{ item.expected }}</text></view>
-                    <view class="term-money-row term-money-sub"><text class="term-money-label">收</text><text class="term-money-value">￥{{ item.paid }}</text></view>
-                  </view>
-                  <view class="utility-cell term-state">
-                    <view class="term-status-lamp" :class="utilityStatusLampClass(item)"></view>
-                  </view>
-                  <view class="utility-cell utility-action">
-                    <view v-if="utilityChargeConfig[item.type] === 'included'" class="utility-included-text">
-                      已计入租金
-                    </view>
-                    <button
-                      v-else
-                      class="utility-action-primary tap-scale"
-                      :class="'term-action-button-active'"
-                      @click="openUtilityCollect(item.type)"
-                    >
-                      收费
-                    </button>
-                  </view>
-                </view>
-              </view>
-            </CollapsibleSectionCard>
-
-            <CollapsibleSectionCard
-              v-if="room.status !== 'empty'"
-              title="收费明细"
+            <RoomCollectionsSection
+              :visible="detailSectionsReady && room.status !== 'empty'"
               :expanded="collectionsExpanded"
-              title-class="text-sm text-slate-700 font-bold"
+              :rows="collectionDisplayRows"
               @toggle="collectionsExpanded = !collectionsExpanded"
-            >
-              <view v-if="allCollectionRows.length === 0" class="text-sm text-slate-500 font-medium">暂无收款记录。</view>
-              <view v-else class="rounded-2xl border border-slate-200 overflow-hidden">
-                <view class="compact-table-head"><text class="compact-head-label compact-head-label-left">日期</text><text class="compact-head-label compact-head-label-left">项目</text><text class="compact-head-label compact-head-label-right">金额</text></view>
-                <view v-for="item in allCollectionRows" :key="item.id" class="compact-table-row"><text class="compact-table-date">{{ fmtDate(item.paidAt) }}</text><view class="min-w-0"><view class="compact-table-title truncate">{{ collectionScopeText(item) }}</view><view class="compact-table-sub">{{ item.note || defaultCollectionNote(item) }}</view></view><text class="compact-table-amount">￥{{ item.amount }}</text></view>
-              </view>
-            </CollapsibleSectionCard>
-            <view class="h-16"></view>
+            />
+            <view class="h-24"></view>
           </view>
         </view>
       </scroll-view>
 
-      <view class="absolute inset-x-0 bottom-0 bg-white border-t border-slate-200-60">
+      <view class="absolute inset-x-0 bottom-0 bg-white">
         <view class="px-5 py-3">
           <ActionFooterRow
             v-if="room && room.status === 'empty'"
@@ -322,7 +254,7 @@
       <MeterEntryModal
         :open="meterOpen"
         title="录入水电表"
-        subtitle="输入本期水表、电表读数，点击后回写应收费用"
+        subtitle="录入本期读数后生成应收费用"
         :water="meterForm.water"
         :electric="meterForm.electric"
         :water-photo-picked="meterPhotoPicked.water"
@@ -338,7 +270,7 @@
       <CheckoutSettlementModal
         :open="checkoutOpen"
         title="办理退租"
-        subtitle="确认租金、附加费用结算后完成退租"
+        subtitle="确认结算后完成退租"
         :rent-status-text="checkoutRentStatusText"
         :rent-status-note="checkoutRentStatusNote"
         :rent-status-class="checkoutRentStatusClass"
@@ -383,7 +315,7 @@
         @confirm="confirmEditRoom"
       />
 
-      <BaseCenteredModal :open="attachmentPreviewOpen" title="资料预览" subtitle="查看房屋照片、身份证和合同" body-class="stack-3" @close="attachmentPreviewOpen = false"><view v-if="attachmentPreview" class="stack-3"><view class="p-3 rounded-2xl surface-muted"><view class="text-xs text-slate-500 font-bold">文件名称</view><view class="text-sm text-slate-800 font-mono mt-2 break-all">{{ attachmentPreview.name || '-' }}</view></view><view class="p-3 rounded-2xl surface-card"><view class="text-xs text-slate-500 font-bold">{{ previewTypeLabel }}</view><image v-if="attachmentPreview.filePath || attachmentPreview.url" :src="attachmentPreview.filePath || attachmentPreview.url" mode="aspectFit" class="w-full h-52 rounded-2xl bg-slate-50 mt-3" @click="previewAttachmentImage" /><view v-else class="text-sm text-slate-700 font-medium mt-2">{{ attachmentPreview.previewText || '暂无预览内容。' }}</view></view></view></BaseCenteredModal>
+      <BaseCenteredModal :open="attachmentPreviewOpen" title="资料预览" subtitle="查看房屋资料" body-class="stack-3" @close="attachmentPreviewOpen = false"><view v-if="attachmentPreview" class="stack-3"><view class="p-3 rounded-2xl surface-muted"><view class="text-xs text-slate-500 font-bold">文件名称</view><view class="text-sm text-slate-800 font-mono mt-2 break-all">{{ attachmentPreview.name || '-' }}</view></view><view class="p-3 rounded-2xl surface-card"><view class="text-xs text-slate-500 font-bold">{{ previewTypeLabel }}</view><image v-if="attachmentPreviewLocalSrc" :src="attachmentPreviewLocalSrc" mode="aspectFit" class="w-full h-52 rounded-2xl bg-slate-50 mt-3" @click="previewAttachmentImage" /><view v-else class="text-sm text-slate-700 font-medium mt-2">{{ attachmentPreview.previewText || '暂无预览内容。' }}</view></view></view></BaseCenteredModal>
 
     </view>
   </view>
@@ -394,6 +326,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import BaseCenteredModal from './BaseCenteredModal.vue'
 import OccupancyTimeline from './OccupancyTimeline.vue'
 import CollapsibleSectionCard from './CollapsibleSectionCard.vue'
+import RoomRentSection from './RoomRentSection.vue'
+import RoomUtilitySection from './RoomUtilitySection.vue'
+import RoomCollectionsSection from './RoomCollectionsSection.vue'
 import ChargeCollectDrawer from './ChargeCollectDrawer.vue'
 import MeterEntryModal from './MeterEntryModal.vue'
 import CheckoutSettlementModal from './CheckoutSettlementModal.vue'
@@ -401,10 +336,14 @@ import EditRoomInfoModal from './EditRoomInfoModal.vue'
 import ActionFooterRow from './ActionFooterRow.vue'
 import { safeNavigateTo } from '../utils/navigation'
 import { getDrawerHeaderTopPadding } from '../utils/layout'
-import { cloneProperties, findBlock, findProperty, findRoomWithFloor, generatePaymentSchedule, setProperties } from '../data/rentStore'
+import { cloneProperties, findBlock, findProperty, findRoomWithFloor, generatePaymentSchedule, mergeCloudRoomDetail, setProperties } from '../data/rentStore'
+import { canManageTenantData } from '../data/authStore'
+import { fetchRoomDetail, getCachedRoomDetail, submitMeterReading, submitRentCollection, submitRoomCheckout, submitUtilityCollection } from '../api/rooms'
+import { canUseCloudBackup, hasCloudApiBaseUrl } from '../config/cloud'
+import { enqueueSyncTask } from '../data/syncQueue.js'
 import { formatShortDate, getPaymentCycleLabel } from '../domain/rent-models'
 import { computeCollectionSummary, computeMeterCharge, createRoomTreeMutator, createUtilitiesBillFromMeter, markPaymentTermPaid, recordDirectUtilityCollection, recordRentCollection, uploadRoomAttachment, uploadRoomPhoto, checkoutRoomWithSettlement } from '../domain/rent-room-service'
-import { chooseSingleImage, previewChosenImage } from '../utils/media'
+import { chooseSingleImage, previewChosenImage, resolveOfflineImageSrc } from '../utils/media'
 import { isValidMainlandPhone, parseNonNegativeNumber, parsePositiveAmount, parsePositiveInteger } from '../utils/validation'
 
 const props = defineProps({ open: { type: Boolean, default: false }, propertyId: { type: String, default: '' }, blockId: { type: String, default: '' }, roomId: { type: String, default: '' } })
@@ -414,23 +353,45 @@ const propertyId = ref(''); const blockId = ref(''); const roomId = ref(''); con
 const rentCollectOpen = ref(false); const utilitiesCollectOpen = ref(false); const meterOpen = ref(false); const checkoutOpen = ref(false); const attachmentPreviewOpen = ref(false)
 const editOpen = ref(false)
 const attachmentPreview = ref(null); const receiptFile = ref(null)
+const cachedRoomFallback = ref(null)
+const roomLoading = ref(false)
+const roomRefreshing = ref(false)
 const selectedRentTermId = ref('')
 const collectionsExpanded = ref(false)
 const roomOverviewExpanded = ref(true)
 const currentTenantExpanded = ref(true)
 const rentExpanded = ref(true)
 const utilityExpanded = ref(true)
+const detailSectionsReady = ref(false)
 const rentQuickForm = ref({ amount: '', note: '' }); const utilityQuickForm = ref({ type: 'water', amount: '', note: '' }); const meterForm = ref({ water: '', electric: '', gas: '' }); const meterPhotoPicked = ref({ water: false, electric: false }); const meterPhotoFiles = ref({ water: null, electric: null }); const checkoutForm = ref({ water: '', electric: '', gas: '', refund: '' })
 const editForm = ref({ tenant: '', phone: '', idCard: '', rent: '', deposit: '', paymentCycle: '', leaseStart: '', leaseEnd: '' })
+let detailSectionsTimer = null
 const property = computed(() => (propertyId.value ? findProperty(propertyId.value) : null))
 const block = computed(() => (propertyId.value && blockId.value ? findBlock(propertyId.value, blockId.value) : null))
 const roomWithFloor = computed(() => propertyId.value && blockId.value && roomId.value ? findRoomWithFloor(propertyId.value, blockId.value, roomId.value) : null)
-const room = computed(() => roomWithFloor.value?.room || null)
+function mergeRoomSnapshot(primary, fallback) {
+  if (!primary) return fallback || null
+  if (!fallback) return primary
+  const merged = { ...fallback }
+  Object.entries(primary).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) merged[key] = value
+  })
+  return merged
+}
+const room = computed(() => mergeRoomSnapshot(roomWithFloor.value?.room || null, cachedRoomFallback.value))
+const shouldShowLoadingState = computed(() => props.open && roomLoading.value && !room.value)
 const roomPhotos = computed(() => room.value?.roomPhotos || [])
 const attachmentFiles = computed(() => room.value?.attachmentFiles || { idCard: null, contract: null })
-const collectionSummary = computed(() => computeCollectionSummary(room.value))
+const emptyCollectionSummary = {
+  paymentSchedule: [],
+  rent: { expected: 0, paid: 0, outstandingAmount: 0, progressPct: 0, recentCollections: [] },
+  utilities: { expected: 0, paid: 0, outstandingAmount: 0, byType: [], recentCollections: [] },
+  custom: { recentCollections: [] },
+  overall: { expected: 0, paid: 0, outstandingCount: 0, progressPct: 0 },
+}
+const collectionSummary = computed(() => (detailSectionsReady.value ? computeCollectionSummary(room.value) : emptyCollectionSummary))
 const roomLocationText = computed(() => [property.value?.name, block.value?.name].filter(Boolean).join(' · '))
-const historyOccupancies = computed(() => (room.value?.occupancies || []).filter((occupancy) => occupancy.kind === 'lease'))
+const historyOccupancies = computed(() => (detailSectionsReady.value ? (room.value?.occupancies || []).filter((occupancy) => occupancy.kind === 'lease') : []))
 const historyTimelineItems = computed(() => historyOccupancies.value.map((occupancy) => ({
   ...occupancy,
   rentTotal: occupancyRentTotal(occupancy),
@@ -441,6 +402,8 @@ function initializeDetailState() {
   blockId.value = String(props.blockId || '')
   roomId.value = String(props.roomId || '')
   if (!props.open || !room.value) return
+  detailSectionsReady.value = false
+  if (detailSectionsTimer) clearTimeout(detailSectionsTimer)
   tab.value = 'current'
   receiptFile.value = null
   selectedRentTermId.value = ''
@@ -475,14 +438,81 @@ function initializeDetailState() {
     leaseStart: room.value?.leaseStart || '',
     leaseEnd: room.value?.leaseEnd || '',
   }
+  detailSectionsTimer = setTimeout(() => {
+    detailSectionsReady.value = true
+  }, 80)
+}
+
+async function syncCloudRoomDetail() {
+  if (!props.open || !roomId.value) return
+  const cachedDetail = getCachedRoomDetail(roomId.value)
+  cachedRoomFallback.value = cachedDetail
+  roomLoading.value = false
+  if (!hasCloudApiBaseUrl()) {
+    roomRefreshing.value = false
+    return
+  }
+  roomRefreshing.value = true
+  try {
+    const detail = await fetchRoomDetail(roomId.value)
+    applyCloudRoomDetail(detail)
+  } catch {
+    // Retain the local aggregate when the server is temporarily unavailable.
+  } finally {
+    roomRefreshing.value = false
+  }
+}
+
+function applyCloudRoomDetail(detail) {
+  if (!detail) return
+  cachedRoomFallback.value = detail
+  mergeCloudRoomDetail(propertyId.value, blockId.value, roomId.value, detail)
+}
+
+async function runRoomMutation({ cloudAction, localAction, queueTask, successTitle, cloudErrorTitle = '云端提交失败', afterSuccess }) {
+  if (hasCloudApiBaseUrl() && roomId.value && !localAction) {
+    try {
+      const detail = await cloudAction()
+      applyCloudRoomDetail(detail)
+      if (typeof afterSuccess === 'function') afterSuccess(detail)
+      if (successTitle) uni.showToast({ title: successTitle, icon: 'success' })
+      return true
+    } catch (error) {
+      uni.showToast({ title: error?.message || cloudErrorTitle, icon: 'none' })
+      return false
+    }
+  }
+
+  const changed = localAction ? localAction() : false
+  if (!changed) return false
+  if (typeof afterSuccess === 'function') afterSuccess(room.value)
+  if (successTitle) uni.showToast({ title: successTitle, icon: 'success' })
+  if (canUseCloudBackup() && roomId.value && queueTask) {
+    enqueueSyncTask({
+      ...queueTask,
+      propertyId: propertyId.value,
+      blockId: blockId.value,
+      roomId: roomId.value,
+    })
+    roomRefreshing.value = true
+    setTimeout(() => {
+      roomRefreshing.value = false
+    }, 600)
+  }
+  return true
 }
 
 onMounted(() => {
   initializeDetailState()
+  syncCloudRoomDetail()
 })
 
 watch(() => props.open, (opened, previous) => {
-  if (opened && !previous) initializeDetailState()
+  if (opened && !previous) {
+    cachedRoomFallback.value = getCachedRoomDetail(roomId.value)
+    initializeDetailState()
+    syncCloudRoomDetail()
+  }
 })
 
 watch(() => room.value?.id, () => {
@@ -493,6 +523,10 @@ watch(() => [props.propertyId, props.blockId, props.roomId], () => {
   propertyId.value = String(props.propertyId || '')
   blockId.value = String(props.blockId || '')
   roomId.value = String(props.roomId || '')
+  cachedRoomFallback.value = getCachedRoomDetail(roomId.value)
+  roomLoading.value = false
+  roomRefreshing.value = false
+  if (props.open) syncCloudRoomDetail()
 })
 const utilitySummaryRows = computed(() => collectionSummary.value.utilities.byType.filter((item) => item.expected > 0 || item.paid > 0 || item.outstanding > 0))
 const utilityChargeConfig = computed(() => ({
@@ -522,11 +556,12 @@ const checkoutUtilityStatusText = computed(() => `已收 ￥${collectionSummary.
 const checkoutUtilityStatusNote = computed(() => checkoutUtilityOutstanding.value > 0 ? `待收 ￥${checkoutUtilityOutstanding.value}` : `应收 ￥${collectionSummary.value.utilities.expected || 0} 已覆盖`)
 const checkoutUtilityStatusClass = computed(() => checkoutUtilityOutstanding.value <= 0 ? 'checkout-status-lamp-done' : Number(collectionSummary.value.utilities.paid || 0) > 0 ? 'checkout-status-lamp-partial' : 'checkout-status-lamp-pending')
 const rentCollectExpectedAmount = computed(() => selectedRentTerm.value ? Number(selectedRentTerm.value.expectedAmount || 0) : Number(rentExpected.value || 0))
+const attachmentPreviewLocalSrc = computed(() => resolveOfflineImageSrc(attachmentPreview.value))
 const rentCollectReceivedAmount = computed(() => selectedRentTerm.value ? Number(selectedRentTerm.value.coveredAmount || selectedRentTerm.value.paidAmount || 0) : Number(rentPaid.value || 0))
 const rentCollectRemainingAmount = computed(() => Math.max(0, Number((rentCollectExpectedAmount.value - rentCollectReceivedAmount.value).toFixed(2))))
 const rentCollectInputAmount = computed(() => Number(rentQuickForm.value.amount || 0))
 const rentCollectOverpaid = computed(() => rentCollectInputAmount.value > rentCollectRemainingAmount.value && rentCollectRemainingAmount.value > 0)
-const canSubmitRentCollection = computed(() => Boolean(receiptFile.value) && Number.isFinite(rentCollectInputAmount.value) && rentCollectInputAmount.value > 0)
+const canSubmitRentCollection = computed(() => Number.isFinite(rentCollectInputAmount.value) && rentCollectInputAmount.value > 0)
 const rentCollectStatusLabel = computed(() => rentCollectRemainingAmount.value <= 0 ? '已收齐' : rentCollectReceivedAmount.value > 0 ? '补收中' : '待收中')
 const rentCollectDocumentNo = computed(() => `单据编号：${selectedRentTerm.value?.id || room.value?.id || 'ROOM'}-${String(selectedRentTerm.value?.term || 1).padStart(2, '0')}`)
 const previewTypeLabel = computed(() => attachmentPreview.value?.type === 'roomPhoto' ? '房屋照片' : attachmentPreview.value?.type === 'idCard' ? '身份证文件' : attachmentPreview.value?.type === 'contract' ? '合同文件' : '资料文件')
@@ -543,10 +578,33 @@ const utilityCollectPaidAmount = computed(() => Number(selectedUtilityCard.value
 const utilityCollectOutstandingAmount = computed(() => Number(selectedUtilityCard.value?.outstanding || 0))
 const utilityCollectStatusLabel = computed(() => utilityCollectOutstandingAmount.value <= 0 ? '已收齐' : utilityCollectPaidAmount.value > 0 ? '补收中' : '待收中')
 const utilityCollectDocumentNo = computed(() => `单据编号：UTIL-${room.value?.id || 'ROOM'}-${utilityQuickForm.value.type || 'item'}`)
-const canSubmitUtilityCollection = computed(() => Boolean(receiptFile.value) && Number.isFinite(Number(utilityQuickForm.value.amount || 0)) && Number(utilityQuickForm.value.amount || 0) > 0)
+const canSubmitUtilityCollection = computed(() => Number.isFinite(Number(utilityQuickForm.value.amount || 0)) && Number(utilityQuickForm.value.amount || 0) > 0)
 const utilityTableRows = computed(() => utilityCards.value.map((item) => ({
   ...item,
   supportsMeter: item.type === 'water' || item.type === 'electric',
+})))
+const rentTermRows = computed(() => rentTerms.value.map((term) => {
+  const coveredAmount = Number(term.coveredAmount || term.paidAmount || 0)
+  const remaining = termRemaining(term)
+  return {
+    ...term,
+    coveredAmount,
+    done: remaining <= 0,
+    statusLampClass: termStatusLampClass(term),
+    actionLabel: remaining <= 0 ? '已收' : coveredAmount > 0 ? '补收' : '收费',
+  }
+}))
+const utilityDisplayRows = computed(() => utilityTableRows.value.map((item) => ({
+  ...item,
+  label: utilityTypeLabel(item.type),
+  included: utilityChargeConfig.value[item.type] === 'included',
+  statusLampClass: utilityStatusLampClass(item),
+})))
+const collectionDisplayRows = computed(() => allCollectionRows.value.map((item) => ({
+  ...item,
+  dateText: fmtDate(item.paidAt),
+  scopeText: collectionScopeText(item),
+  noteText: item.note || defaultCollectionNote(item),
 })))
 const allUtilitiesIncluded = computed(() => ['water', 'electric', 'gas', 'heating'].every((type) => utilityChargeConfig.value[type] === 'included'))
 const hasMeterUtility = computed(() => utilityChargeConfig.value.water !== 'included' || utilityChargeConfig.value.electric !== 'included')
@@ -576,17 +634,28 @@ const utilityStatusLampClass = (item) => Number(item.outstanding || 0) <= 0 ? 't
 const utilityRowMainText = (item) => item.supportsMeter ? `当前表数 ${item.type === 'water' ? room.value?.lastWater || 0 : room.value?.lastElectric || 0}` : '手动输入费用'
 const utilityRowSubText = (item) => item.type === 'water' ? `单价 ￥${room.value?.waterPrice || 0}/吨` : item.type === 'electric' ? `单价 ￥${room.value?.electricPrice || 0}/度` : item.type === 'gas' ? '直接录入本次燃气收费' : '直接录入本期供暖收费'
 function nowString() { const d = new Date(); const p = (v) => String(v).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}` }
+function buildChosenFile(type, rawFile) {
+  return {
+    ...rawFile,
+    source: rawFile?.source || 'local',
+    uploadedAt: rawFile?.uploadedAt || nowString(),
+    name: rawFile?.name || `${room.value?.roomNo || 'room'}_${type}_${Date.now()}.jpg`,
+    filePath: rawFile?.filePath || rawFile?.url || '',
+    url: rawFile?.url || rawFile?.filePath || '',
+  }
+}
 async function pickReceipt() {
   try {
-    receiptFile.value = await chooseSingleImage({ fallbackPrefix: 'receipt' })
+    const chosen = await chooseSingleImage({ fallbackPrefix: 'receipt' })
+    receiptFile.value = buildChosenFile('receipt', chosen)
   } catch (error) {
     if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择凭证失败', icon: 'none' })
   }
 }
 function findRoomDraft(nextProperties) { return createRoomTreeMutator(nextProperties, propertyId.value, blockId.value, roomId.value) }
 function updateRoomDraft(mutator) { const nextProperties = cloneProperties(); const hit = findRoomDraft(nextProperties); if (!hit) return false; const changed = mutator(hit.room, hit, nextProperties); if (changed === false) return false; setProperties(nextProperties); return true }
-function goCheckIn() { safeNavigateTo(`/pages/room/checkin?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`) }
-function openEditModal() { if (!room.value) return; editForm.value = { tenant: room.value.tenant || '', phone: room.value.phone || '', idCard: room.value.idCard || '', rent: String(room.value.rent ?? ''), deposit: String(room.value.deposit ?? ''), paymentCycle: String(room.value.paymentCycle ?? ''), leaseStart: room.value.leaseStart || '', leaseEnd: room.value.leaseEnd || '' }; editOpen.value = true }
+function goCheckIn() { if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权办理入住', icon: 'none' }); safeNavigateTo(`/pages/room/checkin?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`) }
+function openEditModal() { if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权修改信息', icon: 'none' }); if (!room.value) return; editForm.value = { tenant: room.value.tenant || '', phone: room.value.phone || '', idCard: room.value.idCard || '', rent: String(room.value.rent ?? ''), deposit: String(room.value.deposit ?? ''), paymentCycle: String(room.value.paymentCycle ?? ''), leaseStart: room.value.leaseStart || '', leaseEnd: room.value.leaseEnd || '' }; editOpen.value = true }
 async function pickEditAttachment(type) {
   try {
     const chosen = await chooseSingleImage({ fallbackPrefix: type })
@@ -601,32 +670,252 @@ async function pickEditAttachment(type) {
   }
 }
 function openRoomPhotoPreview(photo) { if (!room.value || !photo) return; if (previewChosenImage(photo)) return; attachmentPreview.value = { type: 'roomPhoto', name: photo.name || '房屋照片', uploadedAt: photo.uploadedAt || '', previewText: photo.remark || '房屋照片预览占位。', tenant: room.value.tenant || '当前无租客', roomNo: room.value.roomNo || '', filePath: photo.filePath || '', url: photo.url || '' }; attachmentPreviewOpen.value = true }
-async function handleRoomPhotoUpload() { try { const chosen = await chooseSingleImage({ fallbackPrefix: `${room.value?.roomNo || 'room'}_photo` }); let uploadedPhoto = null; const changed = updateRoomDraft((draftRoom) => { uploadedPhoto = uploadRoomPhoto(draftRoom, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } }) }); if (!changed || !uploadedPhoto) return; openRoomPhotoPreview(uploadedPhoto) } catch (error) { if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' }) } }
+async function handleRoomPhotoUpload() {
+  if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权上传图片', icon: 'none' })
+  try {
+    const chosen = await chooseSingleImage({ fallbackPrefix: `${room.value?.roomNo || 'room'}_photo` })
+    if (canUseCloudBackup() && roomId.value) {
+      let uploadedPhoto = null
+      const changed = updateRoomDraft((draftRoom) => {
+        uploadedPhoto = uploadRoomPhoto(draftRoom, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
+      })
+      if (!changed || !uploadedPhoto) return
+      enqueueSyncTask({
+        type: 'attachment.upload',
+        propertyId: propertyId.value,
+        blockId: blockId.value,
+        roomId: roomId.value,
+        payload: {
+          type: 'roomPhoto',
+          file: chosen,
+        },
+      })
+      openRoomPhotoPreview(uploadedPhoto)
+      uni.showToast({ title: '已加入同步队列', icon: 'success' })
+      return
+    }
+    let uploadedPhoto = null
+    const changed = updateRoomDraft((draftRoom) => {
+      uploadedPhoto = uploadRoomPhoto(draftRoom, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
+    })
+    if (!changed || !uploadedPhoto) return
+    openRoomPhotoPreview(uploadedPhoto)
+  } catch (error) {
+    if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
+  }
+}
 function openAttachmentPreview(type, file) { if (!room.value || !file) return; if (previewChosenImage(file)) return; attachmentPreview.value = { type, name: file.name || '', uploadedAt: file.uploadedAt || '', previewText: file.previewText || '', tenant: room.value.tenant || '', roomNo: room.value.roomNo || '', filePath: file.filePath || '', url: file.url || '' }; attachmentPreviewOpen.value = true }
 function previewAttachmentImage() { if (attachmentPreview.value) previewChosenImage(attachmentPreview.value) }
-async function handleAttachment(type) { const file = attachmentFiles.value?.[type] || null; if (file) return openAttachmentPreview(type, file); try { const chosen = await chooseSingleImage({ fallbackPrefix: type }); let uploadedFile = null; const changed = updateRoomDraft((draftRoom) => { uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } }) }); if (!changed || !uploadedFile) return; openAttachmentPreview(type, uploadedFile) } catch (error) { if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' }) } }
+async function handleAttachment(type) {
+  const file = attachmentFiles.value?.[type] || null
+  if (file) return openAttachmentPreview(type, file)
+  if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权上传附件', icon: 'none' })
+  try {
+    const chosen = await chooseSingleImage({ fallbackPrefix: type })
+    if (canUseCloudBackup() && roomId.value) {
+      let uploadedFile = null
+      const changed = updateRoomDraft((draftRoom) => {
+        uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
+      })
+      if (!changed || !uploadedFile) return
+      enqueueSyncTask({
+        type: 'attachment.upload',
+        propertyId: propertyId.value,
+        blockId: blockId.value,
+        roomId: roomId.value,
+        payload: {
+          type,
+          file: chosen,
+        },
+      })
+      openAttachmentPreview(type, uploadedFile)
+      uni.showToast({ title: '已加入同步队列', icon: 'success' })
+      return
+    }
+    let uploadedFile = null
+    const changed = updateRoomDraft((draftRoom) => {
+      uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
+    })
+    if (!changed || !uploadedFile) return
+    openAttachmentPreview(type, uploadedFile)
+  } catch (error) {
+    if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
+  }
+}
 function copyPhone(phone) { uni.setClipboardData({ data: String(phone || ''), showToast: false, success: () => uni.showToast({ title: '手机号已复制', icon: 'none' }) }) }
-function openRentCollect(term) { selectedRentTermId.value = term?.id || ''; rentQuickForm.value = { amount: term ? String(termRemaining(term) || '') : '', note: '' }; receiptFile.value = null; rentCollectOpen.value = true }
+function openRentCollect(term) { if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权收费', icon: 'none' }); selectedRentTermId.value = term?.id || ''; rentQuickForm.value = { amount: term ? String(termRemaining(term) || '') : '', note: '' }; receiptFile.value = null; rentCollectOpen.value = true }
+function openRentCollectById(termId) { openRentCollect(rentTerms.value.find((term) => term.id === termId) || null) }
 function openUtilityCollect(type) {
+  if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权收费', icon: 'none' })
   const row = utilityCards.value.find((item) => item.type === type)
   utilityQuickForm.value = { type, amount: row && Number(row.outstanding || 0) > 0 ? String(row.outstanding) : '', note: '' }
   receiptFile.value = null
   utilitiesCollectOpen.value = true
 }
-function submitRentQuickCollection() { const amount = parsePositiveAmount(rentQuickForm.value.amount); const note = String(rentQuickForm.value.note || '').trim(); if (!amount) return uni.showToast({ title: '请输入有效金额', icon: 'none' }); if (!receiptFile.value) return uni.showToast({ title: '请先上传凭证', icon: 'none' }); const changed = updateRoomDraft((draftRoom) => selectedRentTermId.value ? markPaymentTermPaid(draftRoom, selectedRentTermId.value, { amount, note, now: nowString(), receiptPicked: true, receiptFile: receiptFile.value }) : recordRentCollection(draftRoom, { amount, note, now: nowString(), receiptPicked: true, receiptFile: receiptFile.value })); if (!changed) return; selectedRentTermId.value = ''; rentQuickForm.value = { amount: '', note: '' }; receiptFile.value = null; rentCollectOpen.value = false }
-function submitUtilityQuickCollection() { const amount = parsePositiveAmount(utilityQuickForm.value.amount); const note = String(utilityQuickForm.value.note || '').trim(); const type = utilityQuickForm.value.type || 'water'; if (!amount) return uni.showToast({ title: '请输入有效金额', icon: 'none' }); if (!receiptFile.value) return uni.showToast({ title: '请先上传凭证', icon: 'none' }); const changed = updateRoomDraft((draftRoom) => recordDirectUtilityCollection(draftRoom, { type, amount, note, title: `${fmtDate(nowString().slice(0, 10))} ${utilityTypeLabel(type)}`, now: nowString(), receiptPicked: true, receiptFile: receiptFile.value })); if (!changed) return; utilityQuickForm.value = { type: 'water', amount: '', note: '' }; receiptFile.value = null; utilitiesCollectOpen.value = false }
-async function pickMeterPhoto(type) { try { const chosen = await chooseSingleImage({ fallbackPrefix: `${type}_meter` }); meterPhotoPicked.value = { ...meterPhotoPicked.value, [type]: true }; meterPhotoFiles.value = { ...meterPhotoFiles.value, [type]: { ...chosen, uploadedAt: nowString() } } } catch (error) { if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' }) } }
-function confirmMeter() {
-  if (!room.value || !meterCalc.value) return uni.showToast({ title: '请先录入读数', icon: 'none' })
-  const changed = updateRoomDraft((draftRoom) => { createUtilitiesBillFromMeter(draftRoom, meterCalc.value, { now: nowString() }) })
-  if (!changed) return
-  meterOpen.value = false
-  meterForm.value = { water: room.value?.lastWater ?? '', electric: room.value?.lastElectric ?? '', gas: '' }
-  meterPhotoPicked.value = { water: false, electric: false }
-  meterPhotoFiles.value = { water: null, electric: null }
-  uni.showToast({ title: '水电费用已更新', icon: 'none' })
+async function submitRentQuickCollection() {
+  const amount = parsePositiveAmount(rentQuickForm.value.amount)
+  const note = String(rentQuickForm.value.note || '').trim()
+  if (!amount) return uni.showToast({ title: '请输入有效金额', icon: 'none' })
+  const succeeded = await runRoomMutation({
+    cloudAction: () => submitRentCollection(roomId.value, {
+      amount,
+      paidAt: nowString(),
+      note,
+      targetTermId: selectedRentTermId.value || null,
+      attachmentIds: receiptFile.value?.id ? [receiptFile.value.id] : [],
+    }),
+    queueTask: {
+      type: 'room.rentCollection',
+      payload: {
+        amount,
+        paidAt: nowString(),
+        note,
+        targetTermId: selectedRentTermId.value || null,
+        attachmentIds: receiptFile.value?.id ? [receiptFile.value.id] : [],
+        receiptFile: receiptFile.value,
+      },
+    },
+    localAction: () => updateRoomDraft((draftRoom) => selectedRentTermId.value
+      ? markPaymentTermPaid(draftRoom, selectedRentTermId.value, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })
+      : recordRentCollection(draftRoom, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })),
+    successTitle: '收款成功',
+    cloudErrorTitle: '云端收款失败',
+    afterSuccess: () => {
+      selectedRentTermId.value = ''
+      rentQuickForm.value = { amount: '', note: '' }
+      receiptFile.value = null
+      rentCollectOpen.value = false
+    },
+  })
+  if (!succeeded) return
 }
-function confirmCheckout() { const water = Number(checkoutForm.value.water); const electric = Number(checkoutForm.value.electric); const gas = Number(checkoutForm.value.gas); const refund = Number(checkoutForm.value.refund); if (!Number.isFinite(water) || !Number.isFinite(electric) || !Number.isFinite(gas) || !Number.isFinite(refund)) return uni.showToast({ title: '请完整填写退租结算', icon: 'none' }); const changed = updateRoomDraft((draftRoom) => { checkoutRoomWithSettlement(draftRoom, { water, electric, gas, refund }, { now: nowString() }) }); if (!changed) return; checkoutOpen.value = false; emit('close') }
+async function submitUtilityQuickCollection() {
+  const amount = parsePositiveAmount(utilityQuickForm.value.amount)
+  const note = String(utilityQuickForm.value.note || '').trim()
+  const type = utilityQuickForm.value.type || 'water'
+  if (!amount) return uni.showToast({ title: '请输入有效金额', icon: 'none' })
+  const typeMap = { water: 'WATER', electric: 'ELECTRIC', gas: 'GAS', heating: 'HEATING', custom: 'CUSTOM' }
+  const succeeded = await runRoomMutation({
+    cloudAction: () => submitUtilityCollection(roomId.value, {
+      billType: typeMap[type] || 'CUSTOM',
+      amount,
+      paidAt: nowString(),
+      note,
+      attachmentIds: receiptFile.value?.id ? [receiptFile.value.id] : [],
+    }),
+    queueTask: {
+      type: 'room.utilityCollection',
+      payload: {
+        billType: typeMap[type] || 'CUSTOM',
+        amount,
+        paidAt: nowString(),
+        note,
+        attachmentIds: receiptFile.value?.id ? [receiptFile.value.id] : [],
+        receiptFile: receiptFile.value,
+      },
+    },
+    localAction: () => updateRoomDraft((draftRoom) => recordDirectUtilityCollection(draftRoom, {
+      type,
+      amount,
+      note,
+      title: `${fmtDate(nowString().slice(0, 10))} ${utilityTypeLabel(type)}`,
+      now: nowString(),
+      receiptPicked: Boolean(receiptFile.value),
+      receiptFile: receiptFile.value,
+    })),
+    successTitle: '收费成功',
+    cloudErrorTitle: '云端收费失败',
+    afterSuccess: () => {
+      utilityQuickForm.value = { type: 'water', amount: '', note: '' }
+      receiptFile.value = null
+      utilitiesCollectOpen.value = false
+    },
+  })
+  if (!succeeded) return
+}
+async function pickMeterPhoto(type) {
+  try {
+    const chosen = await chooseSingleImage({ fallbackPrefix: `${type}_meter` })
+    const nextFile = buildChosenFile(`${type}_meter`, chosen)
+    meterPhotoPicked.value = { ...meterPhotoPicked.value, [type]: true }
+    meterPhotoFiles.value = { ...meterPhotoFiles.value, [type]: { ...nextFile, uploadedAt: nextFile.uploadedAt || nowString() } }
+  } catch (error) {
+    if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
+  }
+}
+async function confirmMeter() {
+  if (!room.value || !meterCalc.value) return uni.showToast({ title: '请先录入读数', icon: 'none' })
+  const attachmentIds = ['water', 'electric']
+    .map((type) => meterPhotoFiles.value[type]?.id || '')
+    .filter(Boolean)
+  const succeeded = await runRoomMutation({
+    cloudAction: () => submitMeterReading(roomId.value, {
+      recordedAt: nowString(),
+      waterReading: meterCalc.value.currentWater,
+      electricReading: meterCalc.value.currentElectric,
+      gasReading: null,
+      attachmentIds,
+    }),
+    queueTask: {
+      type: 'room.meterReading',
+      payload: {
+        recordedAt: nowString(),
+        waterReading: meterCalc.value.currentWater,
+        electricReading: meterCalc.value.currentElectric,
+        gasReading: null,
+        attachmentIds,
+        meterPhotoFiles: meterPhotoFiles.value,
+      },
+    },
+    localAction: () => updateRoomDraft((draftRoom) => { createUtilitiesBillFromMeter(draftRoom, meterCalc.value, { now: nowString() }) }),
+    successTitle: '应收费用已生成',
+    cloudErrorTitle: '抄表提交失败',
+    afterSuccess: (detail) => {
+      meterOpen.value = false
+      meterForm.value = {
+        water: detail?.lastWater ?? room.value?.lastWater ?? '',
+        electric: detail?.lastElectric ?? room.value?.lastElectric ?? '',
+        gas: '',
+      }
+      meterPhotoPicked.value = { water: false, electric: false }
+      meterPhotoFiles.value = { water: null, electric: null }
+    },
+  })
+  if (!succeeded) return
+}
+async function confirmCheckout() {
+  const water = Number(checkoutForm.value.water)
+  const electric = Number(checkoutForm.value.electric)
+  const gas = Number(checkoutForm.value.gas)
+  const refund = Number(checkoutForm.value.refund)
+  if (!Number.isFinite(refund)) return uni.showToast({ title: '请输入有效退押金额', icon: 'none' })
+  if (!Number.isFinite(water) || !Number.isFinite(electric) || !Number.isFinite(gas)) return uni.showToast({ title: '请完整填写退租结算', icon: 'none' })
+  const succeeded = await runRoomMutation({
+    cloudAction: () => submitRoomCheckout(roomId.value, {
+      checkoutDate: nowString(),
+      refundAmount: refund,
+      note: '',
+      attachmentIds: [],
+    }),
+    queueTask: {
+      type: 'room.checkout',
+      payload: {
+        checkoutDate: nowString(),
+        refundAmount: refund,
+        note: '',
+        attachmentIds: [],
+      },
+    },
+    localAction: () => updateRoomDraft((draftRoom) => { checkoutRoomWithSettlement(draftRoom, { water, electric, gas, refund }, { now: nowString() }) }),
+    successTitle: '退租完成',
+    cloudErrorTitle: '云端退租失败',
+    afterSuccess: () => {
+      checkoutOpen.value = false
+      emit('close')
+    },
+  })
+  if (!succeeded) return
+}
 function confirmEditRoom() {
   const tenant = String(editForm.value.tenant || '').trim()
   const phone = String(editForm.value.phone || '').trim()
@@ -796,7 +1085,6 @@ function occupancyExtraCollectionTotal(occupancy) {
 .detail-footer-rose { background: linear-gradient(135deg, #fb7185, #ef4444); box-shadow: 0 16rpx 28rpx rgba(239, 68, 68, 0.18); }
 .rent-collect-hero { padding:32rpx; border-radius:28rpx; color:#fff; background:linear-gradient(135deg,#4f46e5,#3b82f6); box-shadow:0 18rpx 36rpx rgba(59,130,246,.18); position:relative; overflow:hidden; }
 .utility-collect-hero { background:linear-gradient(135deg,#f59e0b,#f97316); box-shadow:0 18rpx 36rpx rgba(249,115,22,.18); }
-.rent-collect-hero::after { content:''; position:absolute; right:-28rpx; bottom:-28rpx; width:140rpx; height:140rpx; border-radius:9999rpx; background:rgba(255,255,255,.10); filter:blur(6rpx); }
 .rent-collect-hero-top { display:flex; align-items:center; justify-content:space-between; gap:16rpx; position:relative; z-index:1; }
 .rent-collect-hero-label { font-size:22rpx; font-weight:700; color:rgba(219,234,254,.95); }
 .rent-collect-hero-badge { padding:6rpx 14rpx; border-radius:12rpx; font-size:18rpx; font-weight:700; color:#eff6ff; background:rgba(255,255,255,.18); }

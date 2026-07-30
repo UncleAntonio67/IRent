@@ -16,8 +16,9 @@ module.exports = {
   theme: {
     extend: {
       fontSize: {
-        '2xs': ['10px', { lineHeight: '14px' }],
-        '3xs': ['8px', { lineHeight: '12px' }],
+        // Keep auxiliary copy readable on 360-430px mobile screens.
+        '2xs': ['12px', { lineHeight: '17px' }],
+        '3xs': ['10px', { lineHeight: '15px' }],
       },
     },
   },

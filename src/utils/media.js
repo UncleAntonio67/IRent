@@ -1,5 +1,16 @@
+function resolveLocalPath(file) {
+  return String(file?.tempFilePath || file?.path || file?.filePath || '')
+}
+
+function isRemoteUrl(value) {
+  return /^https?:\/\//i.test(String(value || ''))
+}
+
 function resolveTempPath(file) {
-  return file?.tempFilePath || file?.path || file?.url || file?.filePath || ''
+  const localPath = resolveLocalPath(file)
+  if (localPath) return localPath
+  const fallback = String(file?.url || '')
+  return isRemoteUrl(fallback) ? '' : fallback
 }
 
 function resolveFileName(path, fallbackPrefix = 'image') {
@@ -49,6 +60,10 @@ export function chooseSingleImage(options = {}) {
 
 export function hasPreviewableImage(file) {
   return Boolean(resolveTempPath(file))
+}
+
+export function resolveOfflineImageSrc(file) {
+  return resolveTempPath(file)
 }
 
 export function previewChosenImage(file) {

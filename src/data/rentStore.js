@@ -10,6 +10,7 @@ import {
   generateId,
 } from '../domain/rent-models'
 import { buildAttachmentFile } from '../domain/rent-room-service.js'
+import { refreshBillEntriesSnapshot } from './billSnapshots.js'
 
 const PROPERTIES_STORAGE_KEY = 'rent_demo_properties_v1'
 const GLOBAL_CONFIG_STORAGE_KEY = 'rent_global_config_v1'
@@ -59,14 +60,14 @@ function hydrateScenarioData(tree) {
     ]
     r3.occupancies = [
       normalizeOccupancy({ id: 'oc_r3_now', kind: 'lease', status: 'active', tenant: '陈先生', phone: '13911112222', idCard: '310101199305155678', startDate: '2026-01-01', endDate: '2026-12-31', rent: 3400, deposit: 6800, paymentCycle: 6, remark: '当前在租，资料完整', archive: { paymentSchedule: r3.paymentSchedule, collections: r3.collections, bills: r3.bills } }),
-      normalizeOccupancy({ id: 'oc_r3_09', kind: 'lease', status: 'completed', tenant: '周小姐', phone: '13600009999', startDate: '2025-02-01', endDate: '2025-12-20', rent: 3200, deposit: 6400, paymentCycle: 3, remark: '按季付，正常退租', archive: { paymentSchedule: [{ expectedAmount: 38400 }], collections: [{ kind: 'utilities', amount: 420 }, { kind: 'custom', amount: 180 }], bills: [{ amount: 420 }, { amount: 180 }] } }),
-      normalizeOccupancy({ id: 'oc_r3_08', kind: 'lease', status: 'completed', tenant: '林先生', phone: '13600008888', startDate: '2024-03-01', endDate: '2025-01-20', rent: 3100, deposit: 6200, paymentCycle: 3, remark: '租满一年后退租', archive: { paymentSchedule: [{ expectedAmount: 34100 }], collections: [{ kind: 'utilities', amount: 560 }], bills: [{ amount: 560 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_09', kind: 'lease', status: 'completed', tenant: '周小姐', phone: '13600009999', startDate: '2025-02-01', endDate: '2025-12-20', rent: 3200, deposit: 6400, paymentCycle: 3, remark: '按季付款，已完成交接', archive: { paymentSchedule: [{ expectedAmount: 38400 }], collections: [{ kind: 'utilities', amount: 420 }, { kind: 'custom', amount: 180 }], bills: [{ amount: 420 }, { amount: 180 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_08', kind: 'lease', status: 'completed', tenant: '林先生', phone: '13600008888', startDate: '2024-03-01', endDate: '2025-01-20', rent: 3100, deposit: 6200, paymentCycle: 3, remark: '租满一年，已完成交接', archive: { paymentSchedule: [{ expectedAmount: 34100 }], collections: [{ kind: 'utilities', amount: 560 }], bills: [{ amount: 560 }] } }),
       normalizeOccupancy({ id: 'oc_r3_07', kind: 'lease', status: 'completed', tenant: '高女士', phone: '13577776666', startDate: '2023-04-15', endDate: '2024-02-18', rent: 3000, deposit: 6000, paymentCycle: 6, remark: '整租到期离场', archive: { paymentSchedule: [{ expectedAmount: 30000 }], collections: [{ kind: 'utilities', amount: 380 }, { kind: 'custom', amount: 90 }], bills: [{ amount: 380 }, { amount: 90 }] } }),
-      normalizeOccupancy({ id: 'oc_r3_06', kind: 'lease', status: 'completed', tenant: '何先生', phone: '13555554444', startDate: '2022-06-01', endDate: '2023-03-31', rent: 2950, deposit: 5900, paymentCycle: 3, remark: '合同到期退租', archive: { paymentSchedule: [{ expectedAmount: 29500 }], collections: [{ kind: 'utilities', amount: 410 }], bills: [{ amount: 410 }] } }),
-      normalizeOccupancy({ id: 'oc_r3_05', kind: 'lease', status: 'completed', tenant: '冯先生', phone: '13533332222', startDate: '2021-07-01', endDate: '2022-05-20', rent: 2850, deposit: 5700, paymentCycle: 3, remark: '提前一个月退租', archive: { paymentSchedule: [{ expectedAmount: 31350 }], collections: [{ kind: 'utilities', amount: 360 }, { kind: 'custom', amount: 120 }], bills: [{ amount: 360 }, { amount: 120 }] } }),
-      normalizeOccupancy({ id: 'oc_r3_04', kind: 'lease', status: 'completed', tenant: '沈女士', phone: '13499998888', startDate: '2020-08-10', endDate: '2021-06-25', rent: 2780, deposit: 5560, paymentCycle: 1, remark: '月付稳定，正常退租', archive: { paymentSchedule: [{ expectedAmount: 30580 }], collections: [{ kind: 'utilities', amount: 500 }], bills: [{ amount: 500 }] } }),
-      normalizeOccupancy({ id: 'oc_r3_03', kind: 'lease', status: 'completed', tenant: '唐先生', phone: '13477776666', startDate: '2019-09-01', endDate: '2020-07-31', rent: 2680, deposit: 5360, paymentCycle: 3, remark: '上一任租客已结清', archive: { paymentSchedule: [{ expectedAmount: 29480 }], collections: [{ kind: 'utilities', amount: 450 }, { kind: 'custom', amount: 60 }], bills: [{ amount: 450 }, { amount: 60 }] } }),
-      normalizeOccupancy({ id: 'oc_r3_02', kind: 'lease', status: 'completed', tenant: '郭女士', phone: '13455554444', startDate: '2018-10-01', endDate: '2019-08-20', rent: 2550, deposit: 5100, paymentCycle: 6, remark: '半年付，按时退租', archive: { paymentSchedule: [{ expectedAmount: 28050 }], collections: [{ kind: 'utilities', amount: 320 }], bills: [{ amount: 320 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_06', kind: 'lease', status: 'completed', tenant: '何先生', phone: '13555554444', startDate: '2022-06-01', endDate: '2023-03-31', rent: 2950, deposit: 5900, paymentCycle: 3, remark: '租约到期，已完成交接', archive: { paymentSchedule: [{ expectedAmount: 29500 }], collections: [{ kind: 'utilities', amount: 410 }], bills: [{ amount: 410 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_05', kind: 'lease', status: 'completed', tenant: '冯先生', phone: '13533332222', startDate: '2021-07-01', endDate: '2022-05-20', rent: 2850, deposit: 5700, paymentCycle: 3, remark: '租期调整后完成交接', archive: { paymentSchedule: [{ expectedAmount: 31350 }], collections: [{ kind: 'utilities', amount: 360 }, { kind: 'custom', amount: 120 }], bills: [{ amount: 360 }, { amount: 120 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_04', kind: 'lease', status: 'completed', tenant: '沈女士', phone: '13499998888', startDate: '2020-08-10', endDate: '2021-06-25', rent: 2780, deposit: 5560, paymentCycle: 1, remark: '月付稳定，已完成交接', archive: { paymentSchedule: [{ expectedAmount: 30580 }], collections: [{ kind: 'utilities', amount: 500 }], bills: [{ amount: 500 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_03', kind: 'lease', status: 'completed', tenant: '唐先生', phone: '13477776666', startDate: '2019-09-01', endDate: '2020-07-31', rent: 2680, deposit: 5360, paymentCycle: 3, remark: '账务已结清并归档', archive: { paymentSchedule: [{ expectedAmount: 29480 }], collections: [{ kind: 'utilities', amount: 450 }, { kind: 'custom', amount: 60 }], bills: [{ amount: 450 }, { amount: 60 }] } }),
+      normalizeOccupancy({ id: 'oc_r3_02', kind: 'lease', status: 'completed', tenant: '郭女士', phone: '13455554444', startDate: '2018-10-01', endDate: '2019-08-20', rent: 2550, deposit: 5100, paymentCycle: 6, remark: '半年付款，已完成交接', archive: { paymentSchedule: [{ expectedAmount: 28050 }], collections: [{ kind: 'utilities', amount: 320 }], bills: [{ amount: 320 }] } }),
       normalizeOccupancy({ id: 'oc_r3_01', kind: 'lease', status: 'completed', tenant: '钱先生', phone: '13433332222', startDate: '2017-11-01', endDate: '2018-09-10', rent: 2400, deposit: 4800, paymentCycle: 3, remark: '首任租客，已归档', archive: { paymentSchedule: [{ expectedAmount: 26400 }], collections: [{ kind: 'utilities', amount: 260 }, { kind: 'custom', amount: 40 }], bills: [{ amount: 260 }, { amount: 40 }] } }),
     ]
     r3.activeOccupancyId = 'oc_r3_now'
@@ -126,7 +127,7 @@ function hydrateScenarioData(tree) {
     r6.hasContract = true
     r6.attachmentFiles = {
       idCard: null,
-      contract: normalizeAttachmentFile({ name: 'N201_合同扫描件.pdf', uploadedAt: '2025-11-01 08:03', previewText: '合同已归档，身份证待补传' }),
+      contract: normalizeAttachmentFile({ name: 'N201_合同扫描件.pdf', uploadedAt: '2025-11-01 08:03', previewText: '合同已归档，证件资料待补齐' }),
     }
     r6.leaseStart = '2025-11-01'
     r6.leaseEnd = '2026-10-31'
@@ -143,7 +144,7 @@ function hydrateScenarioData(tree) {
     ]
     r6.activeOccupancyId = 'oc_r6_now'
     r6.history = [
-      { id: 'h_r6_1', type: 'checkin', date: '2025-11-01 08:00', remark: '办理入住，合同已归档，身份证缺失' },
+      { id: 'h_r6_1', type: 'checkin', date: '2025-11-01 08:00', remark: '已办理入住，合同已归档，证件资料待补齐' },
     ]
   }
 
@@ -188,19 +189,19 @@ function hydrateScenarioData(tree) {
     r13.waterPrice = 5.5
     r13.electricPrice = 1.2
     r13.occupancies = [
-      normalizeOccupancy({ id: 'oc_r13_prev', kind: 'lease', status: 'completed', tenant: '周同学', phone: '18800001111', startDate: '2025-09-01', endDate: '2026-02-20', rent: 2100, deposit: 4200, paymentCycle: 3, remark: '上一任正常退租' }),
+      normalizeOccupancy({ id: 'oc_r13_prev', kind: 'lease', status: 'completed', tenant: '周同学', phone: '18800001111', startDate: '2025-09-01', endDate: '2026-02-20', rent: 2100, deposit: 4200, paymentCycle: 3, remark: '上一位租客已完成交接' }),
       normalizeOccupancy({ id: 'oc_r13_idle', kind: 'idle', status: 'idle', startDate: '2026-02-21', endDate: '', remark: '当前空置待招租' }),
     ]
     r13.history = [
-      { id: 'h_r13_1', type: 'checkout', date: '2026-02-20 18:30', remark: '上一任租客已退租归档，房间重置为空置' },
+      { id: 'h_r13_1', type: 'checkout', date: '2026-02-20 18:30', remark: '上一位租客已归档，房间已恢复空置' },
     ]
   }
 
   const r16 = room('r16')
   if (r16) {
     r16.history = [
-      { id: 'h_r16_1', type: 'checkout', date: '2026-02-28 12:10', remark: '上一任租客退租，已清空账单和抄表记录' },
-      { id: 'h_r16_2', type: 'idle', date: '2026-03-01 09:00', remark: '进入空置期，等待办理入住' },
+      { id: 'h_r16_1', type: 'checkout', date: '2026-02-28 12:10', remark: '上一位租客已归档，相关账单与抄表记录已整理' },
+      { id: 'h_r16_2', type: 'idle', date: '2026-03-01 09:00', remark: '当前为空置状态，可直接办理入住' },
     ]
   }
 
@@ -212,7 +213,7 @@ function hydrateScenarioData(tree) {
     r19.hasIdCardPic = true
     r19.hasContract = false
     r19.attachmentFiles = {
-      idCard: normalizeAttachmentFile({ name: '603_王先生身份证.jpg', uploadedAt: '2026-01-08 09:58', previewText: '身份证已上传，合同待补传' }),
+      idCard: normalizeAttachmentFile({ name: '603_王先生身份证.jpg', uploadedAt: '2026-01-08 09:58', previewText: '身份证已上传，合同资料待补齐' }),
       contract: null,
     }
     r19.leaseStart = '2026-01-08'
@@ -224,11 +225,11 @@ function hydrateScenarioData(tree) {
       normalizePaymentTerm({ id: 'term_r19_2', term: 2, startDate: '2026-04-08', endDate: '2026-07-07', dueDate: '2026-04-08', expectedAmount: 5250, paidAmount: 0, status: 'due_soon' }),
     ]
     r19.occupancies = [
-      normalizeOccupancy({ id: 'oc_r19_now', kind: 'lease', status: 'active', tenant: '小王', phone: '15099990000', idCard: '440101199801018888', startDate: '2026-01-08', endDate: '2027-01-07', rent: 1750, deposit: 3500, paymentCycle: 3, remark: '合同待补传场景' }),
+      normalizeOccupancy({ id: 'oc_r19_now', kind: 'lease', status: 'active', tenant: '小王', phone: '15099990000', idCard: '440101199801018888', startDate: '2026-01-08', endDate: '2027-01-07', rent: 1750, deposit: 3500, paymentCycle: 3, remark: '合同资料待补齐' }),
     ]
     r19.activeOccupancyId = 'oc_r19_now'
     r19.history = [
-      { id: 'h_r19_1', type: 'checkin', date: '2026-01-08 10:00', remark: '已办理入住，合同扫描件待补传' },
+      { id: 'h_r19_1', type: 'checkin', date: '2026-01-08 10:00', remark: '已办理入住，合同资料待补齐' },
     ]
   }
 
@@ -317,7 +318,7 @@ function sanitizeScenarioRooms(tree) {
         rent: 3200,
         deposit: 6400,
         paymentCycle: 3,
-        remark: '按季付，退租交接完成',
+        remark: '按季付款，已完成交接',
         archivedBillsCount: 3,
         archivedReadingsCount: 2,
         totalRentCollected: 38400,
@@ -354,8 +355,8 @@ function sanitizeScenarioRooms(tree) {
     ]
     room.activeOccupancyId = 'oc_r4_now'
     room.history = [
-      { id: 'h_r4_1', type: 'checkin', date: '2026-01-01 10:00', remark: '赵女士办理入住，身份证已上传，合同待补' },
-      { id: 'h_r4_2', type: 'custom', date: '2026-03-12 17:28', remark: '新增门禁卡补办收费 50 元' },
+      { id: 'h_r4_1', type: 'checkin', date: '2026-01-01 10:00', remark: '赵女士已办理入住，证件资料待补齐' },
+      { id: 'h_r4_2', type: 'custom', date: '2026-03-12 17:28', remark: '新增门禁卡服务费 50 元' },
     ]
   })
 
@@ -377,7 +378,7 @@ function sanitizeScenarioRooms(tree) {
         rent: 3000,
         deposit: 6000,
         paymentCycle: 1,
-        remark: '资料待补齐，当前房租存在欠费',
+        remark: '资料待补齐，当前账务存在待处理项',
       }),
       normalizeOccupancy({
         id: 'oc_r6_prev_1',
@@ -390,7 +391,7 @@ function sanitizeScenarioRooms(tree) {
     ]
     room.activeOccupancyId = 'oc_r6_now'
     room.history = [
-      { id: 'h_r6_1', type: 'checkin', date: '2025-12-01 11:00', remark: '李女士办理入住，资料待补' },
+      { id: 'h_r6_1', type: 'checkin', date: '2025-12-01 11:00', remark: '李女士已办理入住，资料待补齐' },
       { id: 'h_r6_2', type: 'rent', date: '2026-03-25 18:00', remark: '本期房租仍未收齐，系统标记为欠费' },
     ]
   })
@@ -435,7 +436,7 @@ function sanitizeScenarioRooms(tree) {
         rent: 2400,
         deposit: 4800,
         paymentCycle: 6,
-        remark: '租期结束后正常退租',
+        remark: '租期结束后已完成交接',
         archivedBillsCount: 5,
         archivedReadingsCount: 4,
         totalRentCollected: 26400,
@@ -452,7 +453,7 @@ function sanitizeScenarioRooms(tree) {
     ]
     room.activeOccupancyId = null
     room.history = [
-      { id: 'h_r13_1', type: 'checkout', date: '2025-03-31 17:40', remark: '王师傅退租，完成水电结算与押金返还' },
+      { id: 'h_r13_1', type: 'checkout', date: '2025-03-31 17:40', remark: '王师傅已退租，结算与押金返还已完成' },
     ]
   })
 
@@ -469,7 +470,7 @@ function sanitizeScenarioRooms(tree) {
         rent: 2600,
         deposit: 5200,
         paymentCycle: 12,
-        remark: '两年整租后退租，资料已归档',
+        remark: '两年整租后已完成交接，资料已归档',
         archivedBillsCount: 8,
         archivedReadingsCount: 6,
         totalRentCollected: 62400,
@@ -481,12 +482,12 @@ function sanitizeScenarioRooms(tree) {
         status: 'archived',
         startDate: '2026-01-01',
         endDate: '2026-04-09',
-        remark: '已退租，待保洁和重新上架',
+        remark: '已完成交接，房间待重新整理',
       }),
     ]
     room.activeOccupancyId = null
     room.history = [
-      { id: 'h_r16_1', type: 'checkout', date: '2025-12-31 15:00', remark: '刘姐退租，结算完成并进入空置状态' },
+      { id: 'h_r16_1', type: 'checkout', date: '2025-12-31 15:00', remark: '刘姐已退租，结算完成并恢复空置' },
     ]
   })
 
@@ -504,12 +505,12 @@ function sanitizeScenarioRooms(tree) {
         rent: 1750,
         deposit: 3500,
         paymentCycle: 3,
-        remark: '合同待补传扫描件',
+        remark: '合同资料待补齐',
       }),
     ]
     room.activeOccupancyId = 'oc_r19_now'
     room.history = [
-      { id: 'h_r19_1', type: 'checkin', date: '2026-01-08 10:00', remark: '小王办理入住，合同扫描件待补传' },
+      { id: 'h_r19_1', type: 'checkin', date: '2026-01-08 10:00', remark: '小王已办理入住，合同资料待补齐' },
     ]
   })
 
@@ -600,7 +601,7 @@ const seedProperties = sanitizeScenarioRooms(sanitizeDemoLabels(hydrateScenarioD
                     id: 'oc_n302_prev',
                     kind: 'lease',
                     status: 'completed',
-                    tenant: '林女士（前任）',
+                    tenant: '林女士（上一位租客）',
                     phone: '13700000000',
                     startDate: '2025-02-15',
                     endDate: '2026-02-14',
@@ -678,7 +679,7 @@ const seedProperties = sanitizeScenarioRooms(sanitizeDemoLabels(hydrateScenarioD
                 rent: 2000,
                 paymentCycle: 3,
                 occupancies: [
-                  { id: 'oc_a403_prev', kind: 'lease', status: 'completed', tenant: '前任租客', startDate: '2025-09-01', endDate: '2026-02-28', rent: 2000, deposit: 4000, paymentCycle: 3, remark: '正常退租，已完成交接' },
+                  { id: 'oc_a403_prev', kind: 'lease', status: 'completed', tenant: '上一位租客', startDate: '2025-09-01', endDate: '2026-02-28', rent: 2000, deposit: 4000, paymentCycle: 3, remark: '已完成交接' },
                   { id: 'oc_a403_idle', kind: 'idle', status: 'idle', startDate: '2026-03-01', endDate: '', remark: '空置中' },
                 ],
               },
@@ -757,6 +758,7 @@ export const globalConfig = ref(loadStoredGlobalConfig())
 watch(activeUserId, () => {
   properties.value = loadStoredProperties()
   globalConfig.value = loadStoredGlobalConfig()
+  refreshBillEntriesSnapshot(properties.value)
 })
 
 export function cloneProperties() {
@@ -767,12 +769,33 @@ export function setProperties(next) {
   const normalized = normalizePropertyTree(next)
   properties.value = normalized
   saveStoredProperties(normalized)
+  refreshBillEntriesSnapshot(normalized)
+}
+
+export function mergeCloudRoomDetail(propertyId, blockId, roomId, roomDetail) {
+  const nextProperties = cloneProperties()
+  const property = nextProperties.find((item) => item.id === propertyId)
+  const block = property?.blocks?.find((item) => item.id === blockId)
+  if (!block) return false
+
+  for (const floorItem of block.floors || []) {
+    const room = (floorItem.rooms || []).find((item) => item.id === roomId)
+    if (!room) continue
+    Object.assign(room, roomDetail)
+    setProperties(nextProperties)
+    return true
+  }
+
+  return false
 }
 
 export function resetDemoProperties() {
   properties.value = cloneDeep(seedProperties)
   saveStoredProperties(properties.value)
+  refreshBillEntriesSnapshot(properties.value)
 }
+
+refreshBillEntriesSnapshot(properties.value)
 
 export function saveGlobalConfig(next) {
   const normalized = {

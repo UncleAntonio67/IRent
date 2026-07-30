@@ -28,11 +28,10 @@ button {
   line-height: 1.2;
   background: transparent;
   border: 0;
+  border-style: none;
+  outline: none;
+  box-sizing: border-box;
   color: inherit;
-}
-
-button::after {
-  border: 0;
 }
 
 input,

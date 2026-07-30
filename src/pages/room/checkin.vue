@@ -14,6 +14,8 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import CheckInSheet from '../../components/CheckInSheet.vue'
+import { setProperties } from '../../data/rentStore'
+import { getCachedPropertiesTree } from '../../api/properties'
 import { safeNavigateBack, safeNavigateTo } from '../../utils/navigation'
 
 const propertyId = ref('')
@@ -24,6 +26,10 @@ onLoad((query) => {
   propertyId.value = String(query?.propertyId || '')
   blockId.value = String(query?.blockId || '')
   roomId.value = String(query?.roomId || '')
+  const cachedTree = getCachedPropertiesTree()
+  if (Array.isArray(cachedTree) && cachedTree.length) {
+    setProperties(cachedTree)
+  }
 })
 
 function closeSelf() {

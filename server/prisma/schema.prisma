@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantUserRole {
+  OWNER
+  MANAGER
+  VIEWER
+}
+
+enum RoomStatus {
+  EMPTY
+  RENTED
+  DUE_SOON
+  OVERDUE
+}
+
+enum OccupancyKind {
+  LEASE
+  IDLE
+}
+
+enum OccupancyStatus {
+  ACTIVE
+  COMPLETED
+  IDLE
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  DUE_SOON
+  OVERDUE
+}
+
+enum BillType {
+  RENT
+  WATER
+  ELECTRIC
+  GAS
+  HEATING
+  CUSTOM
+  DEPOSIT
+}
+
+enum AttachmentType {
+  ROOM_PHOTO
+  ID_CARD
+  CONTRACT
+  RECEIPT
+  METER_PHOTO
+  TEMPLATE
+}
+
+enum ExportTaskStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model User {
+  id               String       @id @default(cuid())
+  wechatOpenId     String       @unique
+  unionId          String?
+  nickName         String
+  avatarUrl        String?
+  activeTenantId   String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  activeTenant     Tenant?      @relation("ActiveTenant", fields: [activeTenantId], references: [id], onDelete: SetNull)
+  tenantMemberships TenantUser[]
+  exportTasks      ExportTask[]
+  operationLogs    OperationLog[]
+
+  @@index([activeTenantId])
+}
+
+model Tenant {
+  id              String        @id @default(cuid())
+  name            String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  users           TenantUser[]
+  properties      Property[]
+  attachments     Attachment[]
+  exportTasks     ExportTask[]
+  operationLogs   OperationLog[]
+  activeUsers     User[]        @relation("ActiveTenant")
+}
+
+model TenantUser {
+  id         String         @id @default(cuid())
+  tenantId   String
+  userId     String
+  role       TenantUserRole @default(OWNER)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+}
+
+model Property {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  blocks      Block[]
+
+  @@index([tenantId])
+}
+
+model Block {
+  id          String   @id @default(cuid())
+  propertyId  String
+  name        String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  floors      Floor[]
+
+  @@index([propertyId])
+}
+
+model Floor {
+  id          String   @id @default(cuid())
+  blockId     String
+  floorNo     Int
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  block       Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  rooms       Room[]
+
+  @@index([blockId])
+  @@unique([blockId, floorNo])
+}
+
+model Room {
+  id                   String        @id @default(cuid())
+  floorId              String
+  roomNo               String
+  status               RoomStatus    @default(EMPTY)
+  tenantName           String?
+  phone                String?
+  idCardNo             String?
+  rentAmount           Decimal?      @db.Decimal(10, 2)
+  depositAmount        Decimal?      @db.Decimal(10, 2)
+  paymentCycleMonths   Int?
+  leaseStartDate       DateTime?
+  leaseEndDate         DateTime?
+  waterPrice           Decimal?      @db.Decimal(10, 2)
+  electricPrice        Decimal?      @db.Decimal(10, 2)
+  gasPrice             Decimal?      @db.Decimal(10, 2)
+  heatingPrice         Decimal?      @db.Decimal(10, 2)
+  waterChargeMode      String?       @db.VarChar(20)
+  electricChargeMode   String?       @db.VarChar(20)
+  gasChargeMode        String?       @db.VarChar(20)
+  heatingChargeMode    String?       @db.VarChar(20)
+  lastWaterReading     Decimal?      @db.Decimal(10, 2)
+  lastElectricReading  Decimal?      @db.Decimal(10, 2)
+  lastGasReading       Decimal?      @db.Decimal(10, 2)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  floor                Floor         @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  occupancies          Occupancy[]
+  paymentTerms         PaymentTerm[]
+  collections          Collection[]
+  bills                Bill[]
+  meterReadings        MeterReading[]
+  attachments          Attachment[]
+  operationLogs        OperationLog[]
+
+  @@index([floorId])
+  @@unique([floorId, roomNo])
+}
+
+model Occupancy {
+  id                  String           @id @default(cuid())
+  roomId              String
+  kind                OccupancyKind
+  status              OccupancyStatus
+  tenantName          String?
+  phone               String?
+  idCardNo            String?
+  rentAmount          Decimal?         @db.Decimal(10, 2)
+  depositAmount       Decimal?         @db.Decimal(10, 2)
+  paymentCycleMonths  Int?
+  startDate           DateTime?
+  endDate             DateTime?
+  remark              String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  room                Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
+
+model PaymentTerm {
+  id                String        @id @default(cuid())
+  roomId            String
+  termNo            Int
+  startDate         DateTime
+  endDate           DateTime
+  dueDate           DateTime
+  expectedAmount    Decimal       @db.Decimal(10, 2)
+  paidAmount        Decimal       @db.Decimal(10, 2) @default(0)
+  coveredAmount     Decimal       @db.Decimal(10, 2) @default(0)
+  status            PaymentStatus @default(UNPAID)
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  room              Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  collections       Collection[]
+
+  @@index([roomId])
+  @@unique([roomId, termNo])
+}
+
+model Collection {
+  id               String    @id @default(cuid())
+  roomId           String
+  billType         BillType
+  title            String
+  amount           Decimal   @db.Decimal(10, 2)
+  note             String?
+  coverageLabel    String?
+  paidAt           DateTime
+  relatedBillId    String?
+  relatedTermId    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  room             Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  bill             Bill?     @relation(fields: [relatedBillId], references: [id], onDelete: SetNull)
+  paymentTerm      PaymentTerm? @relation(fields: [relatedTermId], references: [id], onDelete: SetNull)
+  attachments      Attachment[]
+
+  @@index([roomId])
+  @@index([relatedBillId])
+  @@index([relatedTermId])
+}
+
+model Bill {
+  id               String      @id @default(cuid())
+  roomId           String
+  type             BillType
+  title            String
+  amount           Decimal     @db.Decimal(10, 2)
+  status           PaymentStatus @default(UNPAID)
+  dueDate          DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  room             Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  collections      Collection[]
+
+  @@index([roomId])
+}
+
+model MeterReading {
+  id               String      @id @default(cuid())
+  roomId           String
+  waterReading     Decimal?    @db.Decimal(10, 2)
+  electricReading  Decimal?    @db.Decimal(10, 2)
+  gasReading       Decimal?    @db.Decimal(10, 2)
+  totalAmount      Decimal?    @db.Decimal(10, 2)
+  recordedAt       DateTime    @default(now())
+  createdAt        DateTime    @default(now())
+  room             Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  attachments      Attachment[]
+
+  @@index([roomId])
+}
+
+model Attachment {
+  id               String         @id @default(cuid())
+  tenantId         String
+  roomId           String?
+  collectionId     String?
+  meterReadingId   String?
+  type             AttachmentType
+  fileName         String
+  mimeType         String?
+  filePath         String?
+  fileUrl          String?
+  storageKey       String?
+  fileSize         Int            @default(0)
+  uploadedAt       DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room             Room?          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  collection       Collection?    @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  meterReading     MeterReading?  @relation(fields: [meterReadingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([roomId])
+  @@index([collectionId])
+  @@index([meterReadingId])
+}
+
+model OperationLog {
+  id               String    @id @default(cuid())
+  tenantId         String
+  roomId           String?
+  userId           String?
+  action           String
+  detail           String?
+  createdAt        DateTime  @default(now())
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room             Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([roomId])
+  @@index([userId])
+}
+
+model ExportTask {
+  id               String           @id @default(cuid())
+  tenantId         String
+  userId           String
+  scope            String
+  roomId           String?
+  status           ExportTaskStatus @default(PENDING)
+  fileUrl          String?
+  summaryJson      Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+}

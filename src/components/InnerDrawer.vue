@@ -2,8 +2,8 @@
   <view v-if="open" class="absolute inset-0 z-50 flex items-end">
     <view class="absolute inset-0 bg-slate-900-45" @click="emitClose"></view>
     <view class="relative inset-x-0 bottom-0 w-full">
-      <view class="w-full bg-white rounded-t-3xl shadow-top-soft flex flex-col overflow-hidden border-t border-slate-200-60" :style="{ maxHeight: panelMaxHeight + 'px' }" @click.stop>
-        <view class="border-b border-slate-200-60" :class="props.compact ? 'px-4 pt-2 pb-1_5' : 'px-5 pt-4 pb-3'">
+      <view class="w-full bg-white rounded-t-3xl shadow-top-soft flex flex-col overflow-hidden" :style="{ maxHeight: panelMaxHeight + 'px' }" @click.stop>
+        <view :class="props.compact ? 'px-4 pt-2 pb-1_5' : 'px-5 pt-4 pb-3'">
           <view class="flex justify-center">
             <view class="w-10 h-1_5 rounded-full bg-slate-200"></view>
           </view>
@@ -27,7 +27,7 @@
           </view>
         </scroll-view>
 
-        <view v-if="$slots.footer" class="border-t border-slate-200-60 bg-white" :class="props.compact ? 'px-4 pb-3 pt-1_5' : 'px-5 pb-4 pt-2'">
+        <view v-if="$slots.footer" class="bg-white" :class="props.compact ? 'px-4 pb-3 pt-1_5' : 'px-5 pb-4 pt-2'">
           <slot name="footer" />
           <view :style="{ height: safeAreaBottom + 'px' }"></view>
         </view>

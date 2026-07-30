@@ -1,12 +1,12 @@
 ﻿<template>
-  <view class="p-3 rounded-2xl surface-card">
-    <button class="w-full flex items-center justify-between bg-transparent p-0 pr-2 text-left tap-scale" @click="emit('toggle')">
+  <view class="section-card">
+    <view class="section-card-trigger w-full flex items-center justify-between bg-transparent p-0 text-left tap-scale" @click="emit('toggle')">
       <view :class="titleClass">{{ title }}</view>
       <view class="flex items-center justify-end gap-2 shrink-0 collapse-indicator">
         <view class="text-2xs text-slate-500 font-semibold">{{ expanded ? collapseLabel : expandLabel }}</view>
         <view class="collapse-chevron" :class="expanded ? 'collapse-chevron-open' : ''"></view>
       </view>
-    </button>
+    </view>
     <view v-if="expanded" :class="bodyClass">
       <slot />
     </view>
@@ -27,9 +27,20 @@ const emit = defineEmits(['toggle'])
 </script>
 
 <style>
+.section-card {
+  padding: 28rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.055);
+}
+
+.section-card-trigger {
+  min-height: 44rpx;
+}
+
 .collapse-chevron {
-  width: 12rpx;
-  height: 12rpx;
+  width: 14rpx;
+  height: 14rpx;
   border-right: 2rpx solid #94a3b8;
   border-bottom: 2rpx solid #94a3b8;
   transform: rotate(-45deg);
@@ -42,7 +53,7 @@ const emit = defineEmits(['toggle'])
 }
 
 .collapse-indicator {
-  min-width: 96rpx;
+  min-width: 104rpx;
 }
 </style>
 

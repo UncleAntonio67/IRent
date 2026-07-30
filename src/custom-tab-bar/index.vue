@@ -92,7 +92,7 @@ export default {
   padding: 12rpx;
   border-radius: 34rpx;
   background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 0;
   box-shadow: 0 12rpx 40rpx rgba(15, 23, 42, 0.14);
   backdrop-filter: blur(20rpx);
   pointer-events: auto;
@@ -125,12 +125,11 @@ export default {
   align-items: center;
   justify-content: center;
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: 0;
 }
 
 .tab-icon.active {
   background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
-  border-color: #bfdbfe;
 }
 
 .tab-label {

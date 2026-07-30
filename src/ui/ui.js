@@ -1,5 +1,5 @@
 export const UI = {
-  card: 'bg-white rounded-2xl border border-slate-200-60 shadow-soft',
+  card: 'bg-white rounded-2xl shadow-soft',
   btnPrimary:
     'bg-blue-600 text-white font-bold rounded-xl shadow-md tap-scale flex justify-center items-center gap-2',
   btnSecondary:

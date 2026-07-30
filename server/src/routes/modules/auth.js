@@ -1,0 +1,40 @@
+import express from 'express'
+import { z } from 'zod'
+import { requireAuth } from '../../middleware/auth.js'
+import { buildAuthMePayload, loginWithWeChat } from '../../services/auth.js'
+
+export const authRouter = express.Router()
+
+const loginSchema = z.object({
+  code: z.string().trim().min(1).optional(),
+  nickName: z.string().trim().min(1).optional(),
+  avatarUrl: z.string().trim().url().optional(),
+})
+
+authRouter.post('/wechat/login', async (req, res, next) => {
+  const parsed = loginSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ ok: false, code: 'INVALID_PAYLOAD', message: 'Invalid login payload' })
+    return
+  }
+
+  try {
+    const result = await loginWithWeChat({
+      ...parsed.data,
+      code: parsed.data.code || 'dev:local-user',
+    })
+    res.json({
+      ok: true,
+      ...result,
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+authRouter.get('/me', requireAuth, (req, res) => {
+  res.json({
+    ok: true,
+    ...buildAuthMePayload(req.auth),
+  })
+})
