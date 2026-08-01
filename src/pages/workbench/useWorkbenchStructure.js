@@ -1,4 +1,6 @@
-import { createDefaultRoom, generateId } from '../../domain/rent-models'
+import { createDefaultFloor, createDefaultRoom, generateId, getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
+
+export const PROPERTY_LIMIT = 3
 
 export const WORKBENCH_MODAL_CONFIG = {
   property: {
@@ -15,7 +17,7 @@ export const WORKBENCH_MODAL_CONFIG = {
   },
   floor: {
     title: '新增楼层',
-    hint: '输入楼层号，系统会自动排序。',
+    hint: '填写楼层号和初始房间数量，系统会自动生成递增房号。',
     placeholder: '例如：3',
     inputType: 'number',
   },
@@ -37,6 +39,7 @@ export function createWorkbenchModalState() {
     inputType: 'text',
     blockId: null,
     floor: null,
+    roomCount: '1',
   }
 }
 
@@ -45,9 +48,9 @@ export function createQuickBuildState() {
     open: false,
     blockName: '',
     floorCount: '6',
-    roomsPerFloor: '8',
-    topFloor: '',
-    roomStart: '1',
+    hasBasement: false,
+    floorRooms: [],
+    floorRowsReady: false,
   }
 }
 
@@ -135,6 +138,9 @@ export function applyWorkbenchStructureChange(nextProperties, activePropertyId, 
   }
 
   if (modal.type === 'property') {
+    if (nextProperties.length >= PROPERTY_LIMIT) {
+      return { error: `最多支持创建 ${PROPERTY_LIMIT} 个院落` }
+    }
     const propertyId = generateId('p')
     nextProperties.push({
       id: propertyId,
@@ -143,7 +149,7 @@ export function applyWorkbenchStructureChange(nextProperties, activePropertyId, 
         {
           id: generateId('b'),
           name: '主楼',
-          floors: [{ floor: 1, rooms: [createDefaultRoom('101')] }],
+          floors: [createDefaultFloor(1)],
         },
       ],
     })
@@ -154,7 +160,7 @@ export function applyWorkbenchStructureChange(nextProperties, activePropertyId, 
     nextProperties[propertyIndex].blocks.push({
       id: generateId('b'),
       name: value,
-      floors: [{ floor: 1, rooms: [createDefaultRoom('101')] }],
+      floors: [createDefaultFloor(1)],
     })
     return { nextProperties }
   }
@@ -168,10 +174,13 @@ export function applyWorkbenchStructureChange(nextProperties, activePropertyId, 
     if (block.floors.some((item) => item.floor === floorNumber)) {
       return { error: '该楼层已存在' }
     }
-    block.floors.unshift({
-      floor: floorNumber,
-      rooms: [createDefaultRoom(`${floorNumber}01`)],
-    })
+    const roomCount = Number(modal.roomCount || 1)
+    if (!Number.isInteger(roomCount) || roomCount <= 0) {
+      return { error: '请填写有效房间数量' }
+    }
+    const nextFloor = createDefaultFloor(floorNumber)
+    nextFloor.rooms = Array.from({ length: roomCount }, (_, index) => createDefaultRoom(getDefaultRoomNo(floorNumber, index + 1)))
+    block.floors.unshift(nextFloor)
     block.floors.sort((a, b) => b.floor - a.floor)
     return { nextProperties }
   }
@@ -211,30 +220,30 @@ export function applyQuickBuild(nextProperties, activePropertyId, payload) {
 
   const blockName = String(payload.blockName || '').trim()
   const floorCount = Number(payload.floorCount || 0)
-  const roomsPerFloor = Number(payload.roomsPerFloor || 0)
-  const topFloor = Number(payload.topFloor || payload.floorCount || 0)
-  const roomStart = Number(payload.roomStart || 1)
 
   if (!blockName) return { error: '请填写楼栋名称' }
   if (!Number.isInteger(floorCount) || floorCount <= 0) return { error: '请填写有效楼层数' }
-  if (!Number.isInteger(roomsPerFloor) || roomsPerFloor <= 0) return { error: '请填写每层房间数' }
-  if (!Number.isInteger(topFloor) || topFloor <= 0) return { error: '请填写顶层楼层号' }
-  if (!Number.isInteger(roomStart) || roomStart <= 0) return { error: '请填写起始房号' }
+  if (!payload.floorRowsReady) return { error: '请先生成逐层房间数' }
 
   if (property.blocks.some((item) => item.name === blockName)) {
     return { error: '同名楼栋已存在' }
   }
 
   const floors = []
-  for (let offset = 0; offset < floorCount; offset += 1) {
-    const floor = topFloor - offset
-    if (floor <= 0) return { error: '楼层号不能小于 1' }
+  const roomRows = Array.isArray(payload.floorRooms) ? payload.floorRooms : []
+  const floorNumbers = payload.hasBasement
+    ? Array.from({ length: floorCount }, (_, index) => floorCount - index - 1)
+    : Array.from({ length: floorCount }, (_, index) => floorCount - index)
+  for (const floor of floorNumbers) {
+    const row = roomRows.find((item) => Number(item?.floor) === floor)
+    const roomsPerFloor = Number(row?.rooms || 0)
+    if (!Number.isInteger(roomsPerFloor) || roomsPerFloor <= 0) return { error: `请填写 ${getFloorDisplayName(floor)} 房间数` }
     const rooms = []
     for (let index = 0; index < roomsPerFloor; index += 1) {
-      const roomNo = `${floor}${String(roomStart + index).padStart(2, '0')}`
+      const roomNo = getDefaultRoomNo(floor, index + 1)
       rooms.push(createDefaultRoom(roomNo))
     }
-    floors.push({ floor, rooms })
+    floors.push({ floor, name: getFloorDisplayName(floor), rooms })
   }
 
   property.blocks.push({
@@ -258,6 +267,15 @@ export function removeWorkbenchRoom(nextProperties, activePropertyId, blockId, f
   return true
 }
 
+export function removeWorkbenchFloor(nextProperties, activePropertyId, blockId, floor) {
+  const property = nextProperties.find((item) => item.id === activePropertyId)
+  const block = property?.blocks?.find((item) => item.id === blockId)
+  if (!block) return false
+  const before = Array.isArray(block.floors) ? block.floors.length : 0
+  block.floors = (block.floors || []).filter((item) => item.floor !== floor)
+  return block.floors.length !== before
+}
+
 export function removeWorkbenchBlock(nextProperties, activePropertyId, blockId) {
   const property = nextProperties.find((item) => item.id === activePropertyId)
   if (!property) return false
@@ -268,6 +286,7 @@ export function removeWorkbenchBlock(nextProperties, activePropertyId, blockId) 
 export function removeWorkbenchProperty(nextProperties, activePropertyId) {
   const next = nextProperties.filter((item) => item.id !== activePropertyId)
   if (next.length === nextProperties.length) return { removed: false, nextPropertyId: activePropertyId }
+  nextProperties.splice(0, nextProperties.length, ...next)
   return { removed: true, nextPropertyId: next[0]?.id || '' }
 }
 

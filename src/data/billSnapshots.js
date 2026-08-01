@@ -8,16 +8,46 @@ function normalizeMoney(value) {
   return Math.round(amount * 100) / 100
 }
 
+function toLedgerKind(kind) {
+  if (kind === 'rent') return 'rent'
+  if (['water', 'electric', 'gas', 'heating', 'utilities'].includes(String(kind || ''))) return 'utilities'
+  return 'custom'
+}
+
 export function buildBillEntriesSnapshot(propertyTree = []) {
   const entries = []
   for (const property of propertyTree || []) {
     for (const block of property.blocks || []) {
       for (const floor of block.floors || []) {
         for (const room of floor.rooms || []) {
+          const collectionTermIds = new Set()
+          const collectionBillIds = new Set()
+          for (const collection of room.collections || []) {
+            const amount = normalizeMoney(collection.amount)
+            if (amount <= 0) continue
+            for (const termId of collection.termIds || []) collectionTermIds.add(termId)
+            if (collection.billId) collectionBillIds.add(collection.billId)
+            entries.push({
+              key: `collection_${property.id}_${block.id}_${room.id}_${collection.id}`,
+              kind: toLedgerKind(collection.kind),
+              propertyId: property.id,
+              blockId: block.id,
+              roomId: room.id,
+              roomNo: room.roomNo,
+              tenant: room.tenant || '',
+              title: collection.title || '收费',
+              amount,
+              dueDate: '',
+              payDate: collection.paidAt || '',
+              receiptPic: Boolean(collection.receiptPic),
+              receiptFile: collection.receiptFile || null,
+            })
+          }
+
           for (const term of room.paymentSchedule || []) {
             const expectedAmount = normalizeMoney(term.expectedAmount || 0)
             const coveredAmount = normalizeMoney(term.coveredAmount || term.paidAmount || 0)
-            if (!(term.status === 'paid' && coveredAmount >= expectedAmount && expectedAmount > 0)) continue
+            if (collectionTermIds.has(term.id) || !(term.status === 'paid' && coveredAmount >= expectedAmount && expectedAmount > 0)) continue
             entries.push({
               key: `rent_${property.id}_${block.id}_${room.id}_${term.id}`,
               kind: 'rent',
@@ -36,10 +66,10 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
           }
 
           for (const bill of room.bills || []) {
-            if (bill.status !== 'paid' || bill.type === 'rent') continue
+            if (collectionBillIds.has(bill.id) || bill.status !== 'paid' || bill.type === 'rent') continue
             entries.push({
               key: `bill_${property.id}_${block.id}_${room.id}_${bill.id}`,
-              kind: bill.type || 'custom',
+              kind: toLedgerKind(bill.type),
               propertyId: property.id,
               blockId: block.id,
               roomId: room.id,
@@ -53,6 +83,80 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
               receiptFile: bill.receiptFile || null,
             })
           }
+
+          // Check-out clears current collections. Preserve completed leases in
+          // the ledger through their archived charge data instead of showing
+          // generic room-operation history.
+          for (const occupancy of room.occupancies || []) {
+            const archive = occupancy?.archive
+            if (!archive || occupancy.status === 'active') continue
+
+            const archiveTermIds = new Set()
+            const archiveBillIds = new Set()
+            for (const [index, collection] of (archive.collections || []).entries()) {
+              const amount = normalizeMoney(collection.amount)
+              if (amount <= 0) continue
+              for (const termId of collection.termIds || []) archiveTermIds.add(termId)
+              if (collection.billId) archiveBillIds.add(collection.billId)
+              entries.push({
+                key: `archive_collection_${property.id}_${block.id}_${room.id}_${occupancy.id || 'lease'}_${collection.id || index}`,
+                kind: toLedgerKind(collection.kind),
+                propertyId: property.id,
+                blockId: block.id,
+                roomId: room.id,
+                roomNo: room.roomNo,
+                tenant: occupancy.tenant || room.tenant || '',
+                title: collection.title || '收费',
+                amount,
+                dueDate: '',
+                payDate: collection.paidAt || occupancy.endDate || '',
+                receiptPic: Boolean(collection.receiptPic),
+                receiptFile: collection.receiptFile || null,
+              })
+            }
+
+            for (const [index, term] of (archive.paymentSchedule || []).entries()) {
+              const expectedAmount = normalizeMoney(term.expectedAmount || 0)
+              const coveredAmount = normalizeMoney(term.coveredAmount || term.paidAmount || 0)
+              if (archiveTermIds.has(term.id) || !(term.status === 'paid' && coveredAmount >= expectedAmount && expectedAmount > 0)) continue
+              entries.push({
+                key: `archive_rent_${property.id}_${block.id}_${room.id}_${occupancy.id || 'lease'}_${term.id || index}`,
+                kind: 'rent',
+                propertyId: property.id,
+                blockId: block.id,
+                roomId: room.id,
+                roomNo: room.roomNo,
+                tenant: occupancy.tenant || room.tenant || '',
+                title: `房租 第${term.term || index + 1}期`,
+                amount: expectedAmount,
+                dueDate: term.dueDate || '',
+                payDate: term.payDate || occupancy.endDate || '',
+                receiptPic: Boolean(term.receiptPic),
+                receiptFile: term.receiptFile || null,
+              })
+            }
+
+            for (const [index, bill] of (archive.bills || []).entries()) {
+              const amount = normalizeMoney(bill.amount || 0)
+              if (archiveBillIds.has(bill.id) || bill.status !== 'paid' || bill.type === 'rent' || amount <= 0) continue
+              entries.push({
+                key: `archive_bill_${property.id}_${block.id}_${room.id}_${occupancy.id || 'lease'}_${bill.id || index}`,
+                kind: toLedgerKind(bill.type),
+                propertyId: property.id,
+                blockId: block.id,
+                roomId: room.id,
+                roomNo: room.roomNo,
+                tenant: occupancy.tenant || room.tenant || '',
+                title: bill.title || '费用',
+                amount,
+                dueDate: bill.dueDate || '',
+                payDate: bill.payDate || occupancy.endDate || '',
+                receiptPic: Boolean(bill.receiptPic),
+                receiptFile: bill.receiptFile || null,
+              })
+            }
+          }
+
         }
       }
     }

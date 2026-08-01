@@ -2,7 +2,7 @@ import express from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
 import { requireTenant, requireTenantRole } from '../../lib/tenant.js'
-import { confirmAttachmentUpload, presignAttachmentUpload } from '../../services/attachments.js'
+import { confirmAttachmentUpload, deleteAttachment, presignAttachmentUpload } from '../../services/attachments.js'
 
 const attachmentTypeSchema = z.enum([
   'ROOM_PHOTO',
@@ -84,6 +84,17 @@ attachmentRouter.post('/confirm', async (req, res, next) => {
       ok: true,
       attachment,
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+attachmentRouter.delete('/:id', async (req, res, next) => {
+  try {
+    requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
+    const tenant = requireTenant(req.auth)
+    const result = await deleteAttachment({ tenantId: tenant.id, attachmentId: req.params.id })
+    res.json({ ok: true, ...result })
   } catch (error) {
     next(error)
   }

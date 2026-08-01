@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view v-if="open" class="fixed inset-0 z-50 bg-slate-900-50 flex items-end justify-center" @click="emit('close')">
     <view class="w-full max-w-md drawer-page-panel sheet-font-boost flex flex-col bg-slate-50 rounded-t-3xl shadow-2xl relative overflow-hidden" @click.stop>
       <view class="bg-white-80 px-5 pb-3 shrink-0" :style="{ paddingTop: headerTopPadding + 'px' }">
@@ -13,12 +13,10 @@
               <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">{{ roomLocationText }}</view>
             </view>
           </view>
-          <view v-if="room && room.status !== 'empty'" class="nav-icon-button tap-scale" @click="openEditModal">
-            <view class="icon-edit">
-              <view class="icon-edit-body"></view>
-              <view class="icon-edit-tip"></view>
-            </view>
-          </view>
+          <button v-if="undoableOperation" class="room-header-undo-button tap-scale" @click="confirmUndoLatest">
+            <text class="room-header-undo-icon">↶</text>
+            <text>撤销</text>
+          </button>
         </view>
         <view class="mt-3">
           <view class="p-1 surface-muted rounded-2xl flex gap-1">
@@ -91,10 +89,13 @@
                 <button class="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 tap-scale shrink-0 flex flex-col items-center justify-center" @click="handleRoomPhotoUpload"><text class="text-sm font-semibold leading-none">+</text><text class="text-2xs font-medium mt-0_5">上传</text></button>
                   <scroll-view scroll-x class="flex-1 min-w-0 whitespace-nowrap overflow-hidden">
                     <view class="inline-flex gap-2">
-                      <button v-for="photo in roomPhotos.slice(0, 6)" :key="photo.id" class="w-11 h-11 px-2 rounded-xl border border-slate-200 bg-slate-50 text-left tap-scale inline-flex flex-col justify-end overflow-hidden shrink-0" @click="openRoomPhotoPreview(photo)">
-                        <view class="text-2xs font-bold text-slate-700 truncate">{{ room.roomNo }}</view>
-                        <view class="text-2xs text-slate-400 truncate">{{ photo.name }}</view>
-                      </button>
+                      <view v-for="(photo, index) in roomPhotos.slice(0, 9)" :key="photo.id" class="room-photo-item shrink-0">
+                        <button class="w-11 h-11 rounded-xl bg-slate-100 overflow-hidden tap-scale" @click="openRoomPhotoPreview(index)">
+                          <image v-if="resolveOfflineImageSrc(photo)" :src="resolveOfflineImageSrc(photo)" mode="aspectFill" class="w-full h-full" />
+                          <view v-else class="w-full h-full flex items-center justify-center text-2xs text-slate-400 font-medium">图片</view>
+                        </button>
+                        <button v-if="canManageTenantData" class="room-photo-delete" @click.stop="confirmRemoveRoomPhoto(photo)">×</button>
+                      </view>
                       <view v-if="roomPhotos.length === 0" class="w-11 h-11 px-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 inline-flex items-center justify-center text-2xs text-slate-400 font-bold shrink-0">暂无</view>
                     </view>
                   </scroll-view>
@@ -113,22 +114,24 @@
               @toggle="currentTenantExpanded = !currentTenantExpanded"
               body-class="flex items-end justify-between gap-2 mt-2"
             >
-                <view class="min-w-0 flex-1">
-                  <view class="text-sm font-bold text-slate-900">{{ room.tenant || '未入住' }}</view>
+                <view class="tenant-current-info min-w-0 flex-1">
+                  <view class="tenant-current-name">{{ room.tenant || '未入住' }}</view>
                   <button
                     v-if="room.phone"
-                    class="mt-1 text-2xs text-slate-500 font-mono text-left bg-transparent p-0 tap-scale"
+                    class="tenant-current-phone tap-scale"
                     @click="copyPhone(room.phone)"
                   >
                     {{ room.phone }}
                   </button>
                 </view>
-                <button v-if="room.hasIdCardPic || canManageTenantData" class="px-3 py-2 rounded-xl border text-center tap-scale shrink-0" style="min-width: 112rpx;" :class="room.hasIdCardPic ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('idCard')">
-                  <view class="text-xs font-bold" :class="room.hasIdCardPic ? 'text-emerald-800' : 'text-slate-700'">{{ room.hasIdCardPic ? '查看身份证' : '上传身份证' }}</view>
-                </button>
-                <button v-if="room.hasContract || canManageTenantData" class="px-3 py-2 rounded-xl border text-center tap-scale shrink-0" style="min-width: 112rpx;" :class="room.hasContract ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('contract')">
-                  <view class="text-xs font-bold" :class="room.hasContract ? 'text-emerald-800' : 'text-slate-700'">{{ room.hasContract ? '查看合同' : '上传合同' }}</view>
-                </button>
+                <view class="room-attachment-actions">
+                  <view class="room-attachment-action-group">
+                    <button v-if="idCardFiles.length || canManageTenantData" class="detail-side-button tap-scale" :class="idCardFiles.length ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('idCard')"><view class="detail-side-button-text" :class="idCardFiles.length ? 'text-emerald-800' : 'text-slate-700'">{{ idCardFiles.length ? '身份证已上传' : '上传身份证' }}</view></button>
+                  </view>
+                  <view class="room-attachment-action-group">
+                    <button v-if="contractFiles.length || canManageTenantData" class="detail-side-button tap-scale" :class="contractFiles.length ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('contract')"><view class="detail-side-button-text" :class="contractFiles.length ? 'text-emerald-800' : 'text-slate-700'">{{ contractFiles.length ? '合同已上传' : '上传合同' }}</view></button>
+                  </view>
+                </view>
             </CollapsibleSectionCard>
 
             <view v-if="!detailSectionsReady && room.status !== 'empty'" class="p-4 rounded-2xl surface-card animate-pulse stack-3">
@@ -174,13 +177,11 @@
               :rows="collectionDisplayRows"
               @toggle="collectionsExpanded = !collectionsExpanded"
             />
-            <view class="h-24"></view>
           </view>
         </view>
       </scroll-view>
 
-      <view class="absolute inset-x-0 bottom-0 bg-white">
-        <view class="px-5 py-3">
+      <view v-if="room && tab === 'current'" class="drawer-action-bar">
           <ActionFooterRow
             v-if="room && room.status === 'empty'"
             :show-secondary="false"
@@ -195,7 +196,6 @@
             primary-class="detail-footer-rose"
             @primary="checkoutOpen = true"
           />
-        </view>
       </view>
 
       <ChargeCollectDrawer
@@ -216,7 +216,6 @@
         :receipt-file-name="receiptFile?.name || '未上传凭证'"
         confirm-label="确认提交收款"
         :confirm-disabled="!canSubmitRentCollection"
-        :confirm-badge="Number(rentQuickForm.amount || 0) > 0 ? `￥${Number(rentQuickForm.amount || 0)}` : ''"
         :helper-text="rentCollectOverpaid ? '注意：输入金额超过当前待收金额' : ''"
         @close="rentCollectOpen = false"
         @update:modelValue="rentQuickForm.amount = $event"
@@ -242,7 +241,6 @@
         :receipt-file-name="receiptFile?.name || '未上传凭证'"
         confirm-label="确认提交收款"
         :confirm-disabled="!canSubmitUtilityCollection"
-        :confirm-badge="Number(utilityQuickForm.amount || 0) > 0 ? `￥${Number(utilityQuickForm.amount || 0)}` : ''"
         :helper-text="utilitySupportsMeter ? '水费、电费可先抄表生成费用单，再回来确认收款。' : ''"
         hero-tone="amber"
         @close="utilitiesCollectOpen = false"
@@ -277,6 +275,7 @@
         :utility-status-text="checkoutUtilityStatusText"
         :utility-status-note="checkoutUtilityStatusNote"
         :utility-status-class="checkoutUtilityStatusClass"
+        :deposit-collected="checkoutDepositCollected"
         :water="checkoutForm.water"
         :electric="checkoutForm.electric"
         :gas="checkoutForm.gas"
@@ -289,33 +288,7 @@
         @confirm="confirmCheckout"
       />
 
-      <EditRoomInfoModal
-        :open="editOpen"
-        :tenant="editForm.tenant"
-        :phone="editForm.phone"
-        :id-card="editForm.idCard"
-        :rent="editForm.rent"
-        :deposit="editForm.deposit"
-        :payment-cycle="editForm.paymentCycle"
-        :lease-start="editForm.leaseStart"
-        :lease-end="editForm.leaseEnd"
-        :has-id-card-pic="room?.hasIdCardPic"
-        :has-contract="room?.hasContract"
-        @close="editOpen = false"
-        @pick-id-card="pickEditAttachment('idCard')"
-        @pick-contract="pickEditAttachment('contract')"
-        @update:tenant="editForm.tenant = $event"
-        @update:phone="editForm.phone = $event"
-        @update:idCard="editForm.idCard = $event"
-        @update:rent="editForm.rent = $event"
-        @update:deposit="editForm.deposit = $event"
-        @update:paymentCycle="editForm.paymentCycle = $event"
-        @update:leaseStart="editForm.leaseStart = $event"
-        @update:leaseEnd="editForm.leaseEnd = $event"
-        @confirm="confirmEditRoom"
-      />
-
-      <BaseCenteredModal :open="attachmentPreviewOpen" title="资料预览" subtitle="查看房屋资料" body-class="stack-3" @close="attachmentPreviewOpen = false"><view v-if="attachmentPreview" class="stack-3"><view class="p-3 rounded-2xl surface-muted"><view class="text-xs text-slate-500 font-bold">文件名称</view><view class="text-sm text-slate-800 font-mono mt-2 break-all">{{ attachmentPreview.name || '-' }}</view></view><view class="p-3 rounded-2xl surface-card"><view class="text-xs text-slate-500 font-bold">{{ previewTypeLabel }}</view><image v-if="attachmentPreviewLocalSrc" :src="attachmentPreviewLocalSrc" mode="aspectFit" class="w-full h-52 rounded-2xl bg-slate-50 mt-3" @click="previewAttachmentImage" /><view v-else class="text-sm text-slate-700 font-medium mt-2">{{ attachmentPreview.previewText || '暂无预览内容。' }}</view></view></view></BaseCenteredModal>
+      <BaseCenteredModal :open="attachmentPreviewOpen" title="资料预览" subtitle="查看房屋资料" body-class="stack-3" @close="attachmentPreviewOpen = false"><view v-if="attachmentPreview" class="p-3 rounded-2xl surface-card"><view class="text-xs text-slate-500 font-bold">{{ previewTypeLabel }}</view><image v-if="attachmentPreviewLocalSrc" :src="attachmentPreviewLocalSrc" mode="aspectFit" class="w-full h-52 rounded-2xl bg-slate-50 mt-3" @click="previewAttachmentImage" /><view v-else class="text-sm text-slate-700 font-medium mt-2">{{ attachmentPreview.previewText || '暂无预览内容。' }}</view></view></BaseCenteredModal>
 
     </view>
   </view>
@@ -332,26 +305,25 @@ import RoomCollectionsSection from './RoomCollectionsSection.vue'
 import ChargeCollectDrawer from './ChargeCollectDrawer.vue'
 import MeterEntryModal from './MeterEntryModal.vue'
 import CheckoutSettlementModal from './CheckoutSettlementModal.vue'
-import EditRoomInfoModal from './EditRoomInfoModal.vue'
 import ActionFooterRow from './ActionFooterRow.vue'
 import { safeNavigateTo } from '../utils/navigation'
 import { getDrawerHeaderTopPadding } from '../utils/layout'
-import { cloneProperties, findBlock, findProperty, findRoomWithFloor, generatePaymentSchedule, mergeCloudRoomDetail, setProperties } from '../data/rentStore'
+import { cloneProperties, findBlock, findProperty, findRoomWithFloor, mergeCloudRoomDetail, setProperties } from '../data/rentStore'
 import { canManageTenantData } from '../data/authStore'
 import { fetchRoomDetail, getCachedRoomDetail, submitMeterReading, submitRentCollection, submitRoomCheckout, submitUtilityCollection } from '../api/rooms'
+import { deleteAttachmentForRoom } from '../api/attachments.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl } from '../config/cloud'
 import { enqueueSyncTask } from '../data/syncQueue.js'
-import { formatShortDate, getPaymentCycleLabel } from '../domain/rent-models'
-import { computeCollectionSummary, computeMeterCharge, createRoomTreeMutator, createUtilitiesBillFromMeter, markPaymentTermPaid, recordDirectUtilityCollection, recordRentCollection, uploadRoomAttachment, uploadRoomPhoto, checkoutRoomWithSettlement } from '../domain/rent-room-service'
-import { chooseSingleImage, previewChosenImage, resolveOfflineImageSrc } from '../utils/media'
-import { isValidMainlandPhone, parseNonNegativeNumber, parsePositiveAmount, parsePositiveInteger } from '../utils/validation'
+import { ATTACHMENT_FILE_LIMITS, formatShortDate, getPaymentCycleLabel, ROOM_PHOTO_LIMIT } from '../domain/rent-models'
+import { computeCollectionSummary, computeMeterCharge, createRoomTreeMutator, createUtilitiesBillFromMeter, getCollectedDepositAmount, getLatestUndoableRoomOperation, getRoomAttachmentFiles, markPaymentTermPaid, recordDirectUtilityCollection, recordRentCollection, recordRoomOperation, undoLatestRoomOperation, uploadRoomAttachment, uploadRoomPhoto, checkoutRoomWithSettlement } from '../domain/rent-room-service'
+import { chooseImages, chooseSingleImage, previewChosenImage, previewChosenImages, resolveOfflineImageSrc } from '../utils/media'
+import { parseNonNegativeNumber, parsePositiveAmount } from '../utils/validation'
 
 const props = defineProps({ open: { type: Boolean, default: false }, propertyId: { type: String, default: '' }, blockId: { type: String, default: '' }, roomId: { type: String, default: '' } })
 const emit = defineEmits(['close'])
 const headerTopPadding = ref(getDrawerHeaderTopPadding(24))
 const propertyId = ref(''); const blockId = ref(''); const roomId = ref(''); const tab = ref('current')
 const rentCollectOpen = ref(false); const utilitiesCollectOpen = ref(false); const meterOpen = ref(false); const checkoutOpen = ref(false); const attachmentPreviewOpen = ref(false)
-const editOpen = ref(false)
 const attachmentPreview = ref(null); const receiptFile = ref(null)
 const cachedRoomFallback = ref(null)
 const roomLoading = ref(false)
@@ -364,7 +336,6 @@ const rentExpanded = ref(true)
 const utilityExpanded = ref(true)
 const detailSectionsReady = ref(false)
 const rentQuickForm = ref({ amount: '', note: '' }); const utilityQuickForm = ref({ type: 'water', amount: '', note: '' }); const meterForm = ref({ water: '', electric: '', gas: '' }); const meterPhotoPicked = ref({ water: false, electric: false }); const meterPhotoFiles = ref({ water: null, electric: null }); const checkoutForm = ref({ water: '', electric: '', gas: '', refund: '' })
-const editForm = ref({ tenant: '', phone: '', idCard: '', rent: '', deposit: '', paymentCycle: '', leaseStart: '', leaseEnd: '' })
 let detailSectionsTimer = null
 const property = computed(() => (propertyId.value ? findProperty(propertyId.value) : null))
 const block = computed(() => (propertyId.value && blockId.value ? findBlock(propertyId.value, blockId.value) : null))
@@ -381,7 +352,10 @@ function mergeRoomSnapshot(primary, fallback) {
 const room = computed(() => mergeRoomSnapshot(roomWithFloor.value?.room || null, cachedRoomFallback.value))
 const shouldShowLoadingState = computed(() => props.open && roomLoading.value && !room.value)
 const roomPhotos = computed(() => room.value?.roomPhotos || [])
-const attachmentFiles = computed(() => room.value?.attachmentFiles || { idCard: null, contract: null })
+const attachmentFiles = computed(() => room.value?.attachmentFiles || { idCard: [], contract: [] })
+const idCardFiles = computed(() => getRoomAttachmentFiles(room.value, 'idCard'))
+const contractFiles = computed(() => getRoomAttachmentFiles(room.value, 'contract'))
+const undoableOperation = computed(() => getLatestUndoableRoomOperation(room.value))
 const emptyCollectionSummary = {
   paymentSchedule: [],
   rent: { expected: 0, paid: 0, outstandingAmount: 0, progressPct: 0, recentCollections: [] },
@@ -425,18 +399,7 @@ function initializeDetailState() {
     water: room.value?.lastWater ?? '',
     electric: room.value?.lastElectric ?? '',
     gas: room.value?.lastGas ?? '',
-    refund: room.value?.deposit ?? '',
-  }
-  editOpen.value = false
-  editForm.value = {
-    tenant: room.value?.tenant || '',
-    phone: room.value?.phone || '',
-    idCard: room.value?.idCard || '',
-    rent: String(room.value?.rent ?? ''),
-    deposit: String(room.value?.deposit ?? ''),
-    paymentCycle: String(room.value?.paymentCycle ?? ''),
-    leaseStart: room.value?.leaseStart || '',
-    leaseEnd: room.value?.leaseEnd || '',
+    refund: checkoutDepositCollected.value > 0 ? String(checkoutDepositCollected.value) : '',
   }
   detailSectionsTimer = setTimeout(() => {
     detailSectionsReady.value = true
@@ -555,6 +518,7 @@ const checkoutRentStatusClass = computed(() => checkoutRentOutstanding.value <= 
 const checkoutUtilityStatusText = computed(() => `已收 ￥${collectionSummary.value.utilities.paid || 0}`)
 const checkoutUtilityStatusNote = computed(() => checkoutUtilityOutstanding.value > 0 ? `待收 ￥${checkoutUtilityOutstanding.value}` : `应收 ￥${collectionSummary.value.utilities.expected || 0} 已覆盖`)
 const checkoutUtilityStatusClass = computed(() => checkoutUtilityOutstanding.value <= 0 ? 'checkout-status-lamp-done' : Number(collectionSummary.value.utilities.paid || 0) > 0 ? 'checkout-status-lamp-partial' : 'checkout-status-lamp-pending')
+const checkoutDepositCollected = computed(() => getCollectedDepositAmount(room.value))
 const rentCollectExpectedAmount = computed(() => selectedRentTerm.value ? Number(selectedRentTerm.value.expectedAmount || 0) : Number(rentExpected.value || 0))
 const attachmentPreviewLocalSrc = computed(() => resolveOfflineImageSrc(attachmentPreview.value))
 const rentCollectReceivedAmount = computed(() => selectedRentTerm.value ? Number(selectedRentTerm.value.coveredAmount || selectedRentTerm.value.paidAmount || 0) : Number(rentPaid.value || 0))
@@ -653,94 +617,123 @@ async function pickReceipt() {
   }
 }
 function findRoomDraft(nextProperties) { return createRoomTreeMutator(nextProperties, propertyId.value, blockId.value, roomId.value) }
-function updateRoomDraft(mutator) { const nextProperties = cloneProperties(); const hit = findRoomDraft(nextProperties); if (!hit) return false; const changed = mutator(hit.room, hit, nextProperties); if (changed === false) return false; setProperties(nextProperties); return true }
+function updateRoomDraft(mutator, operation = null) {
+  const nextProperties = cloneProperties()
+  const hit = findRoomDraft(nextProperties)
+  if (!hit) return false
+  const before = operation ? JSON.parse(JSON.stringify(hit.room)) : null
+  if (before) delete before.operationLog
+  const changed = mutator(hit.room, hit, nextProperties)
+  if (changed === false) return false
+  if (operation) recordRoomOperation(hit.room, { ...operation, before })
+  setProperties(nextProperties)
+  return true
+}
+function confirmUndoLatest() {
+  const operation = undoableOperation.value
+  if (!operation) return uni.showToast({ title: '暂无可撤销操作', icon: 'none' })
+  uni.showModal({
+    title: '撤销最近操作',
+    content: `将恢复到“${operation.label}”前的状态，已产生的数据会一并恢复。`,
+    confirmText: '确认撤销',
+    success: ({ confirm }) => {
+      if (!confirm) return
+      const changed = updateRoomDraft((draftRoom) => undoLatestRoomOperation(draftRoom, { now: nowString() }))
+      if (changed) uni.showToast({ title: '已撤销最近操作', icon: 'success' })
+    },
+  })
+}
 function goCheckIn() { if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权办理入住', icon: 'none' }); safeNavigateTo(`/pages/room/checkin?propertyId=${propertyId.value}&blockId=${blockId.value}&roomId=${roomId.value}`) }
-function openEditModal() { if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权修改信息', icon: 'none' }); if (!room.value) return; editForm.value = { tenant: room.value.tenant || '', phone: room.value.phone || '', idCard: room.value.idCard || '', rent: String(room.value.rent ?? ''), deposit: String(room.value.deposit ?? ''), paymentCycle: String(room.value.paymentCycle ?? ''), leaseStart: room.value.leaseStart || '', leaseEnd: room.value.leaseEnd || '' }; editOpen.value = true }
-async function pickEditAttachment(type) {
-  try {
-    const chosen = await chooseSingleImage({ fallbackPrefix: type })
-    let uploadedFile = null
-    const changed = updateRoomDraft((draftRoom) => {
-      uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
-    })
-    if (!changed || !uploadedFile) return
-    openAttachmentPreview(type, uploadedFile)
-  } catch (error) {
-    if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
-  }
-}
-function openRoomPhotoPreview(photo) { if (!room.value || !photo) return; if (previewChosenImage(photo)) return; attachmentPreview.value = { type: 'roomPhoto', name: photo.name || '房屋照片', uploadedAt: photo.uploadedAt || '', previewText: photo.remark || '房屋照片预览占位。', tenant: room.value.tenant || '当前无租客', roomNo: room.value.roomNo || '', filePath: photo.filePath || '', url: photo.url || '' }; attachmentPreviewOpen.value = true }
-async function handleRoomPhotoUpload() {
-  if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权上传图片', icon: 'none' })
-  try {
-    const chosen = await chooseSingleImage({ fallbackPrefix: `${room.value?.roomNo || 'room'}_photo` })
-    if (canUseCloudBackup() && roomId.value) {
-      let uploadedPhoto = null
-      const changed = updateRoomDraft((draftRoom) => {
-        uploadedPhoto = uploadRoomPhoto(draftRoom, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
-      })
-      if (!changed || !uploadedPhoto) return
-      enqueueSyncTask({
-        type: 'attachment.upload',
-        propertyId: propertyId.value,
-        blockId: blockId.value,
-        roomId: roomId.value,
-        payload: {
-          type: 'roomPhoto',
-          file: chosen,
-        },
-      })
-      openRoomPhotoPreview(uploadedPhoto)
-      uni.showToast({ title: '已加入同步队列', icon: 'success' })
-      return
-    }
-    let uploadedPhoto = null
-    const changed = updateRoomDraft((draftRoom) => {
-      uploadedPhoto = uploadRoomPhoto(draftRoom, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
-    })
-    if (!changed || !uploadedPhoto) return
-    openRoomPhotoPreview(uploadedPhoto)
-  } catch (error) {
-    if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
-  }
-}
-function openAttachmentPreview(type, file) { if (!room.value || !file) return; if (previewChosenImage(file)) return; attachmentPreview.value = { type, name: file.name || '', uploadedAt: file.uploadedAt || '', previewText: file.previewText || '', tenant: room.value.tenant || '', roomNo: room.value.roomNo || '', filePath: file.filePath || '', url: file.url || '' }; attachmentPreviewOpen.value = true }
-function previewAttachmentImage() { if (attachmentPreview.value) previewChosenImage(attachmentPreview.value) }
-async function handleAttachment(type) {
-  const file = attachmentFiles.value?.[type] || null
-  if (file) return openAttachmentPreview(type, file)
+async function uploadAttachment(type) {
+  const limit = ATTACHMENT_FILE_LIMITS[type] || 1
+  if (getRoomAttachmentFiles(room.value, type).length >= limit) return uni.showToast({ title: `最多上传 ${limit} 张图片`, icon: 'none' })
   if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权上传附件', icon: 'none' })
   try {
     const chosen = await chooseSingleImage({ fallbackPrefix: type })
-    if (canUseCloudBackup() && roomId.value) {
-      let uploadedFile = null
-      const changed = updateRoomDraft((draftRoom) => {
-        uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
-      })
-      if (!changed || !uploadedFile) return
-      enqueueSyncTask({
-        type: 'attachment.upload',
-        propertyId: propertyId.value,
-        blockId: blockId.value,
-        roomId: roomId.value,
-        payload: {
-          type,
-          file: chosen,
-        },
-      })
-      openAttachmentPreview(type, uploadedFile)
-      uni.showToast({ title: '已加入同步队列', icon: 'success' })
-      return
-    }
     let uploadedFile = null
     const changed = updateRoomDraft((draftRoom) => {
       uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
     })
     if (!changed || !uploadedFile) return
-    openAttachmentPreview(type, uploadedFile)
+    if (canUseCloudBackup() && roomId.value) {
+      enqueueSyncTask({
+        type: 'attachment.upload',
+        propertyId: propertyId.value,
+        blockId: blockId.value,
+        roomId: roomId.value,
+        payload: { type, file: uploadedFile },
+      })
+    }
+    uni.showToast({ title: '资料已上传', icon: 'success' })
   } catch (error) {
     if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
   }
+}
+function openRoomPhotoPreview(index = 0) { if (!room.value || !roomPhotos.value.length) return; if (previewChosenImages(roomPhotos.value, index)) return; const photo = roomPhotos.value[index] || roomPhotos.value[0]; attachmentPreview.value = { type: 'roomPhoto', name: photo.name || '房屋照片', uploadedAt: photo.uploadedAt || '', previewText: photo.remark || '房屋照片预览占位。', tenant: room.value.tenant || '当前无租客', roomNo: room.value.roomNo || '', filePath: photo.filePath || '', url: photo.url || '' }; attachmentPreviewOpen.value = true }
+function confirmRemoveRoomPhoto(photo) {
+  if (!photo?.id) return
+  uni.showModal({
+    title: '删除房屋图片',
+    content: `确定删除“${photo.name || '未命名图片'}”吗？删除后无法恢复。`,
+    confirmColor: '#dc2626',
+    success: async ({ confirm }) => {
+      if (!confirm) return
+      try {
+        if (canUseCloudBackup() && roomId.value && !String(photo.id).startsWith('photo_')) await deleteAttachmentForRoom(photo.id)
+        const changed = updateRoomDraft((draftRoom) => {
+          draftRoom.roomPhotos = (draftRoom.roomPhotos || []).filter((item) => item.id !== photo.id)
+        }, { kind: 'delete_room_photo', label: '删除房屋图片', now: nowString() })
+        if (changed) uni.showToast({ title: '图片已删除', icon: 'success' })
+      } catch (error) {
+        uni.showToast({ title: '删除图片失败，请稍后重试', icon: 'none' })
+      }
+    },
+  })
+}
+async function handleRoomPhotoUpload() {
+  if (roomPhotos.value.length >= ROOM_PHOTO_LIMIT) return uni.showToast({ title: '房屋照片最多上传 9 张', icon: 'none' })
+  if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权上传图片', icon: 'none' })
+  try {
+    const remaining = ROOM_PHOTO_LIMIT - roomPhotos.value.length
+    const chosen = await chooseImages({ fallbackPrefix: `${room.value?.roomNo || 'room'}_photo`, count: remaining })
+    if (chosen.length === 0) return
+    const preparedPhotos = chosen.map((file) => ({ ...file, uploadedAt: nowString() }))
+    if (canUseCloudBackup() && roomId.value) {
+      let uploadedPhotos = []
+      const changed = updateRoomDraft((draftRoom) => {
+        uploadedPhotos = preparedPhotos
+          .map((file) => uploadRoomPhoto(draftRoom, { now: nowString(), file }))
+          .filter(Boolean)
+      })
+      if (!changed || uploadedPhotos.length === 0) return
+      uploadedPhotos.forEach((file) => enqueueSyncTask({
+        type: 'attachment.upload',
+        propertyId: propertyId.value,
+        blockId: blockId.value,
+        roomId: roomId.value,
+        payload: { type: 'roomPhoto', file },
+      }))
+      uni.showToast({ title: `已上传 ${uploadedPhotos.length} 张照片`, icon: 'success' })
+      return
+    }
+    let uploadedPhotos = []
+    const changed = updateRoomDraft((draftRoom) => {
+      uploadedPhotos = preparedPhotos
+        .map((file) => uploadRoomPhoto(draftRoom, { now: nowString(), file }))
+        .filter(Boolean)
+    })
+    if (!changed || uploadedPhotos.length === 0) return
+    uni.showToast({ title: `已上传 ${uploadedPhotos.length} 张照片`, icon: 'success' })
+  } catch (error) {
+    if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
+  }
+}
+function openAttachmentPreview(type, files, index = 0) { const list = Array.isArray(files) ? files : (files ? [files] : []); if (!room.value || list.length === 0) return; if (previewChosenImages(list, index)) return; const file = list[index] || list[0]; attachmentPreview.value = { type, name: file.name || '', uploadedAt: file.uploadedAt || '', previewText: file.previewText || '', tenant: room.value.tenant || '', roomNo: room.value.roomNo || '', filePath: file.filePath || '', url: file.url || '' }; attachmentPreviewOpen.value = true }
+function previewAttachmentImage() { if (attachmentPreview.value) previewChosenImage(attachmentPreview.value) }
+async function handleAttachment(type) {
+  const files = getRoomAttachmentFiles(room.value, type)
+  if (files.length > 0) return openAttachmentPreview(type, files)
+  return uploadAttachment(type)
 }
 function copyPhone(phone) { uni.setClipboardData({ data: String(phone || ''), showToast: false, success: () => uni.showToast({ title: '手机号已复制', icon: 'none' }) }) }
 function openRentCollect(term) { if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权收费', icon: 'none' }); selectedRentTermId.value = term?.id || ''; rentQuickForm.value = { amount: term ? String(termRemaining(term) || '') : '', note: '' }; receiptFile.value = null; rentCollectOpen.value = true }
@@ -775,9 +768,9 @@ async function submitRentQuickCollection() {
         receiptFile: receiptFile.value,
       },
     },
-    localAction: () => updateRoomDraft((draftRoom) => selectedRentTermId.value
+    localAction: () => updateRoomDraft((draftRoom) => (selectedRentTermId.value
       ? markPaymentTermPaid(draftRoom, selectedRentTermId.value, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })
-      : recordRentCollection(draftRoom, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })),
+      : recordRentCollection(draftRoom, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })), { kind: 'rent_collection', label: '租金收款', now: nowString() }),
     successTitle: '收款成功',
     cloudErrorTitle: '云端收款失败',
     afterSuccess: () => {
@@ -822,7 +815,7 @@ async function submitUtilityQuickCollection() {
       now: nowString(),
       receiptPicked: Boolean(receiptFile.value),
       receiptFile: receiptFile.value,
-    })),
+    }), { kind: 'utility_collection', label: `${utilityTypeLabel(type)}收费`, now: nowString() }),
     successTitle: '收费成功',
     cloudErrorTitle: '云端收费失败',
     afterSuccess: () => {
@@ -867,7 +860,7 @@ async function confirmMeter() {
         meterPhotoFiles: meterPhotoFiles.value,
       },
     },
-    localAction: () => updateRoomDraft((draftRoom) => { createUtilitiesBillFromMeter(draftRoom, meterCalc.value, { now: nowString() }) }),
+    localAction: () => updateRoomDraft((draftRoom) => { createUtilitiesBillFromMeter(draftRoom, meterCalc.value, { now: nowString() }) }, { kind: 'meter_entry', label: '抄表生成费用', now: nowString() }),
     successTitle: '应收费用已生成',
     cloudErrorTitle: '抄表提交失败',
     afterSuccess: (detail) => {
@@ -887,8 +880,8 @@ async function confirmCheckout() {
   const water = Number(checkoutForm.value.water)
   const electric = Number(checkoutForm.value.electric)
   const gas = Number(checkoutForm.value.gas)
-  const refund = Number(checkoutForm.value.refund)
-  if (!Number.isFinite(refund)) return uni.showToast({ title: '请输入有效退押金额', icon: 'none' })
+  const refund = checkoutDepositCollected.value > 0 ? Number(checkoutForm.value.refund) : 0
+  if (checkoutDepositCollected.value > 0 && (!Number.isFinite(refund) || refund < 0 || refund > checkoutDepositCollected.value)) return uni.showToast({ title: '退押金额应在已收押金范围内', icon: 'none' })
   if (!Number.isFinite(water) || !Number.isFinite(electric) || !Number.isFinite(gas)) return uni.showToast({ title: '请完整填写退租结算', icon: 'none' })
   const succeeded = await runRoomMutation({
     cloudAction: () => submitRoomCheckout(roomId.value, {
@@ -906,7 +899,7 @@ async function confirmCheckout() {
         attachmentIds: [],
       },
     },
-    localAction: () => updateRoomDraft((draftRoom) => { checkoutRoomWithSettlement(draftRoom, { water, electric, gas, refund }, { now: nowString() }) }),
+    localAction: () => updateRoomDraft((draftRoom) => { checkoutRoomWithSettlement(draftRoom, { water, electric, gas, refund }, { now: nowString() }) }, { kind: 'checkout', label: '办理退租', now: nowString() }),
     successTitle: '退租完成',
     cloudErrorTitle: '云端退租失败',
     afterSuccess: () => {
@@ -915,71 +908,6 @@ async function confirmCheckout() {
     },
   })
   if (!succeeded) return
-}
-function confirmEditRoom() {
-  const tenant = String(editForm.value.tenant || '').trim()
-  const phone = String(editForm.value.phone || '').trim()
-  const idCard = String(editForm.value.idCard || '').trim()
-  const rent = parsePositiveAmount(editForm.value.rent)
-  const deposit = parseNonNegativeNumber(editForm.value.deposit)
-  const paymentCycle = parsePositiveInteger(editForm.value.paymentCycle)
-  const leaseStart = String(editForm.value.leaseStart || '').trim()
-  const leaseEnd = String(editForm.value.leaseEnd || '').trim()
-  if (!tenant) return uni.showToast({ title: '请填写租客姓名', icon: 'none' })
-  if (phone && !isValidMainlandPhone(phone)) return uni.showToast({ title: '请输入正确手机号', icon: 'none' })
-  if (!rent || deposit === null || !paymentCycle) {
-    return uni.showToast({ title: '请完善租约信息', icon: 'none' })
-  }
-  const changed = updateRoomDraft((draftRoom) => {
-    draftRoom.tenant = tenant
-    draftRoom.phone = phone
-    draftRoom.idCard = idCard
-    draftRoom.rent = rent
-    draftRoom.deposit = deposit
-    draftRoom.paymentCycle = paymentCycle
-    draftRoom.leaseStart = leaseStart
-    draftRoom.leaseEnd = leaseEnd
-    const activeOccupancy = (draftRoom.occupancies || []).find((item) => item.status === 'active')
-    if (activeOccupancy) {
-      activeOccupancy.tenant = tenant
-      activeOccupancy.phone = phone
-      activeOccupancy.idCard = idCard
-      activeOccupancy.rent = rent
-      activeOccupancy.deposit = deposit
-      activeOccupancy.paymentCycle = paymentCycle
-      activeOccupancy.startDate = leaseStart
-      activeOccupancy.endDate = leaseEnd
-    }
-    const nextSchedule = generatePaymentSchedule({
-      startDate: leaseStart,
-      endDate: leaseEnd,
-      cycleMonths: paymentCycle,
-      rentPerCycle: rent,
-    })
-    const previousSchedule = Array.isArray(draftRoom.paymentSchedule) ? draftRoom.paymentSchedule : []
-    draftRoom.paymentSchedule = nextSchedule.map((term, index) => {
-      const previous = previousSchedule[index]
-      if (!previous) return term
-      const covered = Math.min(Number(term.expectedAmount || 0), Number(previous.coveredAmount || previous.paidAmount || 0))
-      return {
-        ...term,
-        paidAmount: covered,
-        coveredAmount: covered,
-        payDate: previous.payDate || '',
-        receiptPic: Boolean(previous.receiptPic),
-        status: covered >= Number(term.expectedAmount || 0) ? 'paid' : covered > 0 ? 'unpaid' : (previous.status || 'unpaid'),
-      }
-    })
-    draftRoom.history.unshift({
-      id: `h_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      type: 'edit_room_info',
-      date: nowString(),
-      remark: '更新了租客和租约信息',
-    })
-  })
-  if (!changed) return
-  editOpen.value = false
-  uni.showToast({ title: '已保存修改', icon: 'success' })
 }
 function occupancyRentTotal(occupancy) {
   if (!occupancy) return 0
@@ -1001,7 +929,7 @@ function occupancyExtraCollectionTotal(occupancy) {
 }
 </script>
 
-<style>
+<style scoped>
 .drawer-page-panel { animation: room-sheet-enter 220ms ease-out; transform-origin: bottom center; }
 .sheet-font-boost .text-2xs { font-size: 22rpx !important; }
 .sheet-font-boost .text-xs { font-size: 26rpx !important; }
@@ -1018,9 +946,16 @@ function occupancyExtraCollectionTotal(occupancy) {
 .sheet-font-boost .compact-table-title { font-size: 26rpx; }
 .sheet-font-boost .compact-table-sub { font-size: 22rpx; }
 .sheet-font-boost .compact-table-amount { font-size: 26rpx; }
-.icon-edit { position: relative; width: 30rpx; height: 30rpx; display: flex; align-items: center; justify-content: center; transform: rotate(-18deg); }
-.icon-edit-body { width: 18rpx; height: 6rpx; border-radius: 9999rpx; background: #64748b; }
-.icon-edit-tip { position: absolute; right: 2rpx; width: 0; height: 0; border-top: 5rpx solid transparent; border-bottom: 5rpx solid transparent; border-left: 8rpx solid #64748b; }
+.room-header-undo-button { min-width: 92rpx; height: 64rpx; padding: 0 16rpx; border: 0; border-radius: 18rpx; background: #fffbeb; color: #b45309; font-size: 24rpx; font-weight: 600; line-height: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6rpx; flex-shrink: 0; box-sizing: border-box; }
+.room-header-undo-icon { font-size: 30rpx; line-height: 1; }
+.tenant-current-name { font-size: 30rpx; line-height: 1.35; font-weight: 500; color: #0f172a; }
+.tenant-current-phone { display: block; min-height: 36rpx; margin-top: 8rpx; padding: 0; border: 0; background: transparent; color: #64748b; font-size: 26rpx; line-height: 1.4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: left; }
+.room-attachment-actions { display: flex; align-items: center; gap: 10rpx; flex-shrink: 0; }
+.room-photo-item { position: relative; width: 88rpx; height: 88rpx; }
+.room-photo-delete { position: absolute; z-index: 2; top: -8rpx; right: -8rpx; width: 30rpx; height: 30rpx; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.94); color: #64748b; font-size: 24rpx; line-height: 24rpx; font-weight: 700; box-shadow: 0 3rpx 8rpx rgba(15,23,42,.16); }
+.room-attachment-action-group { min-width: 0; }
+.room-attachment-action-group .detail-side-button { min-width: 128rpx; padding: 16rpx 14rpx; border-radius: 14rpx; border-width: 1rpx; text-align: center; }
+.detail-side-button-text { font-size: 24rpx; line-height: 1.15; font-weight: 600; }
 .status-lamp { width:18rpx; height:18rpx; border-radius:9999rpx; border:2rpx solid rgba(255,255,255,.95); box-shadow:0 0 0 2rpx rgba(148,163,184,.12); }
 .status-lamp-emerald { background:#10b981; box-shadow:0 0 0 2rpx rgba(16,185,129,.16),0 0 10rpx rgba(16,185,129,.35); }
 .status-lamp-amber { background:#f59e0b; box-shadow:0 0 0 2rpx rgba(245,158,11,.16),0 0 10rpx rgba(245,158,11,.35); }
@@ -1051,15 +986,15 @@ function occupancyExtraCollectionTotal(occupancy) {
   gap: 12rpx;
 }
 .rent-cell { min-width:0; }
-.term-no { font-size:28rpx; font-weight:500; color:#0f172a; text-align:center; justify-self:center; }
+.term-no { font-size: 28rpx; font-weight:500; color:#0f172a; text-align:center; justify-self:center; }
 .term-money-stack { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; }
 .utility-money-cell { align-items:center; }
 .utility-money-cell .term-money-row { width:auto; min-width:132rpx; }
 .term-money-row { display:grid; grid-template-columns:24rpx minmax(0,1fr); align-items:center; column-gap:6rpx; width:auto; min-width:132rpx; line-height:1.15; }
-.term-money-label { font-size:20rpx; color:#94a3b8; font-weight:500; text-align:right; }
-.term-money-value { font-size:26rpx; font-weight:500; color:#0f172a; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
+.term-money-label { font-size: 20rpx; color:#94a3b8; font-weight:500; text-align:right; }
+.term-money-value { font-size: 26rpx; font-weight:500; color:#0f172a; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
 .term-money-sub { margin-top:4rpx; }
-.term-money-sub .term-money-value { font-size:22rpx; color:#64748b; }
+.term-money-sub .term-money-value { font-size: 22rpx; color:#64748b; }
 .term-state { display:flex; align-items:center; justify-content:center; }
 .term-status-lamp { width:16rpx; height:16rpx; border-radius:9999rpx; flex-shrink:0; box-shadow:0 0 0 4rpx rgba(148,163,184,.08); }
 .term-status-lamp-done { background:#10b981; box-shadow:0 0 0 4rpx rgba(16,185,129,.12); }
@@ -1071,56 +1006,55 @@ function occupancyExtraCollectionTotal(occupancy) {
 .term-action-button-active { color:#ffffff; background:linear-gradient(135deg,#2563eb,#3b82f6); box-shadow:0 10rpx 18rpx rgba(37,99,235,.18); }
 .term-action-button-done { color:#047857; background:#f3fdf6; border:0; box-shadow:none; }
 .term-action-button-disabled { color:#94a3b8; background:#f8fafc; border:1rpx solid rgba(203,213,225,.9); box-shadow:none; }
-.utility-table-head { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.15fr) minmax(0,.7fr) minmax(0,.95fr); gap:12rpx; padding:16rpx 18rpx; background:#f8fafc; color:#64748b; font-size:24rpx; font-weight:600; align-items:center; text-align:center; }
+.utility-table-head { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.15fr) minmax(0,.7fr) minmax(0,.95fr); gap:12rpx; padding:16rpx 18rpx; background:#f8fafc; color:#64748b; font-size: 24rpx; font-weight:600; align-items:center; text-align:center; }
 .utility-head-label { justify-self:center; text-align:center; }
 .utility-table-row { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.15fr) minmax(0,.7fr) minmax(0,.95fr); gap:12rpx; padding:18rpx 18rpx; border-top:1rpx solid rgba(226,232,240,.9); align-items:center; }
 .utility-cell { min-width:0; }
 .utility-type { display:flex; align-items:center; justify-content:center; text-align:center; }
-.utility-type-name { font-size:26rpx; font-weight:500; color:#0f172a; }
-.utility-type-sub { margin-top:6rpx; font-size:22rpx; color:#94a3b8; font-weight:600; }
+.utility-type-name { font-size: 26rpx; font-weight:500; color:#0f172a; }
+.utility-type-sub { margin-top:6rpx; font-size: 22rpx; color:#94a3b8; font-weight:600; }
 .utility-action { display:flex; flex-direction:column; gap:8rpx; align-items:center; justify-content:center; }
-.utility-action-primary { min-width:96rpx; padding:14rpx 18rpx; border-radius:12rpx; color:#fff; font-size:24rpx; font-weight:700; line-height:1; }
+.utility-action-primary { min-width:96rpx; padding:14rpx 18rpx; border-radius:12rpx; color:#fff; font-size: 24rpx; font-weight:700; line-height:1; }
 .utility-included-text { font-size: 22rpx; line-height: 1.25; color: #94a3b8; font-weight: 500; text-align: center; }
 .detail-footer-emerald { background: linear-gradient(135deg, #34d399, #4ade80); box-shadow: 0 16rpx 28rpx rgba(52, 211, 153, 0.18); }
 .detail-footer-rose { background: linear-gradient(135deg, #fb7185, #ef4444); box-shadow: 0 16rpx 28rpx rgba(239, 68, 68, 0.18); }
 .rent-collect-hero { padding:32rpx; border-radius:28rpx; color:#fff; background:linear-gradient(135deg,#4f46e5,#3b82f6); box-shadow:0 18rpx 36rpx rgba(59,130,246,.18); position:relative; overflow:hidden; }
 .utility-collect-hero { background:linear-gradient(135deg,#f59e0b,#f97316); box-shadow:0 18rpx 36rpx rgba(249,115,22,.18); }
 .rent-collect-hero-top { display:flex; align-items:center; justify-content:space-between; gap:16rpx; position:relative; z-index:1; }
-.rent-collect-hero-label { font-size:22rpx; font-weight:700; color:rgba(219,234,254,.95); }
-.rent-collect-hero-badge { padding:6rpx 14rpx; border-radius:12rpx; font-size:18rpx; font-weight:700; color:#eff6ff; background:rgba(255,255,255,.18); }
-.rent-collect-hero-amount { margin-top:18rpx; font-size:52rpx; line-height:1; font-weight:800; position:relative; z-index:1; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
+.rent-collect-hero-label { font-size: 22rpx; font-weight:700; color:rgba(219,234,254,.95); }
+.rent-collect-hero-badge { padding:6rpx 14rpx; border-radius:12rpx; font-size: 18rpx; font-weight:700; color:#eff6ff; background:rgba(255,255,255,.18); }
+.rent-collect-hero-amount { margin-top:18rpx; font-size: 52rpx; line-height:1; font-weight:800; position:relative; z-index:1; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
 .rent-collect-hero-bottom { margin-top:24rpx; padding-top:22rpx; border-top:1rpx solid rgba(255,255,255,.22); display:flex; align-items:flex-start; justify-content:space-between; gap:20rpx; position:relative; z-index:1; }
-.rent-collect-hero-sub-label { font-size:18rpx; color:rgba(219,234,254,.92); }
-.rent-collect-hero-sub-value { margin-top:6rpx; font-size:28rpx; font-weight:800; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
+.rent-collect-hero-sub-label { font-size: 18rpx; color:rgba(219,234,254,.92); }
+.rent-collect-hero-sub-value { margin-top:6rpx; font-size: 28rpx; font-weight:800; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
 .rent-collect-section { padding:28rpx; border-radius:28rpx; background:#fff; border:1rpx solid rgba(226,232,240,.9); box-shadow:0 10rpx 28rpx rgba(15,23,42,.05); }
-.rent-collect-label { font-size:24rpx; font-weight:700; color:#334155; }
+.rent-collect-label { font-size: 24rpx; font-weight:700; color:#334155; }
 .rent-collect-input-wrap { margin-top:18rpx; position:relative; }
-.rent-collect-currency { position:absolute; left:26rpx; top:50%; transform:translateY(-50%); font-size:34rpx; font-weight:800; color:#94a3b8; z-index:1; }
-.rent-collect-input { width:100%; height:88rpx; padding:0 24rpx 0 58rpx; border-radius:24rpx; border:1rpx solid rgba(226,232,240,.95); background:#f8fafc; font-size:38rpx; line-height:88rpx; font-weight:800; color:#0f172a; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; box-sizing:border-box; }
-.rent-collect-alert { margin-top:12rpx; font-size:20rpx; font-weight:700; color:#d97706; }
+.rent-collect-currency { position:absolute; left:26rpx; top:50%; transform:translateY(-50%); font-size: 34rpx; font-weight:800; color:#94a3b8; z-index:1; }
+.rent-collect-input { width:100%; height:88rpx; padding:0 24rpx 0 58rpx; border-radius:24rpx; border:1rpx solid rgba(226,232,240,.95); background:#f8fafc; font-size: 38rpx; line-height:88rpx; font-weight:800; color:#0f172a; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; box-sizing:border-box; }
+.rent-collect-alert { margin-top:12rpx; font-size: 20rpx; font-weight:700; color:#d97706; }
 .rent-upload-zone { width:100%; margin-top:16rpx; padding:22rpx 24rpx; min-height:180rpx; border-radius:24rpx; border:2rpx dashed rgba(203,213,225,.95); background:rgba(248,250,252,.8); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
 .rent-upload-zone-done { border-color:rgba(167,243,208,.95); background:rgba(236,253,245,.9); }
-.rent-upload-icon { width:60rpx; height:60rpx; border-radius:9999rpx; display:flex; align-items:center; justify-content:center; background:#fff; border:1rpx solid rgba(226,232,240,.95); color:#94a3b8; font-size:24rpx; font-weight:900; }
+.rent-upload-icon { width:60rpx; height:60rpx; border-radius:9999rpx; display:flex; align-items:center; justify-content:center; background:#fff; border:1rpx solid rgba(226,232,240,.95); color:#94a3b8; font-size: 24rpx; font-weight:900; }
 .rent-upload-icon-done { background:#10b981; border-color:#10b981; color:#fff; }
-.rent-upload-title { margin-top:12rpx; font-size:22rpx; font-weight:700; color:#475569; }
-.rent-upload-sub { margin-top:4rpx; font-size:18rpx; color:#94a3b8; }
-.rent-footer-confirm-badge { padding:4rpx 10rpx; border-radius:10rpx; background:rgba(255,255,255,.18); font-size:18rpx; font-weight:700; }
-.compact-table-head { display:grid; grid-template-columns:minmax(0, .9fr) minmax(0, 2.25fr) minmax(0, .85fr); gap:18rpx; padding:16rpx 20rpx; background:#f8fafc; color:#64748b; font-size:20rpx; font-weight:600; align-items:center; text-align:center; }
+.rent-upload-title { margin-top:12rpx; font-size: 22rpx; font-weight:700; color:#475569; }
+.rent-upload-sub { margin-top:4rpx; font-size: 18rpx; color:#94a3b8; }
+.compact-table-head { display:grid; grid-template-columns:minmax(0, .9fr) minmax(0, 2.25fr) minmax(0, .85fr); gap:18rpx; padding:16rpx 20rpx; background:#f8fafc; color:#64748b; font-size: 20rpx; font-weight:600; align-items:center; text-align:center; }
 .compact-head-label { justify-self:stretch; }
 .compact-head-label-left { text-align:left; }
 .compact-head-label-right { text-align:right; }
 .compact-table-row { display:grid; grid-template-columns:minmax(0, .9fr) minmax(0, 2.25fr) minmax(0, .85fr); gap:18rpx; padding:18rpx 20rpx; border-top:1rpx solid rgba(226,232,240,.9); align-items:start; }
-.compact-table-date { color:#64748b; font-size:20rpx; line-height:1.35; text-align:left; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
-.compact-table-title { color:#0f172a; font-size:24rpx; font-weight:600; line-height:1.3; }
-.compact-table-sub { margin-top:6rpx; color:#94a3b8; font-size:20rpx; font-weight:500; line-height:1.3; }
-.compact-table-amount { color:#047857; font-size:24rpx; font-weight:700; line-height:1.35; text-align:right; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
+.compact-table-date { color:#64748b; font-size: 20rpx; line-height:1.35; text-align:left; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
+.compact-table-title { color:#0f172a; font-size: 24rpx; font-weight:600; line-height:1.3; }
+.compact-table-sub { margin-top:6rpx; color:#94a3b8; font-size: 20rpx; font-weight:500; line-height:1.3; }
+.compact-table-amount { color:#047857; font-size: 24rpx; font-weight:700; line-height:1.35; text-align:right; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Courier New',monospace; }
 @media (max-width: 380px) {
   .utility-table-head, .utility-table-row { grid-template-columns:minmax(0,.85fr) minmax(0,1.05fr) minmax(0,.65fr) minmax(0,.9fr); gap:8rpx; }
   .utility-meter-strip-double { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:10rpx; }
   .utility-meter-strip-single { grid-template-columns:minmax(0,1fr) auto; gap:10rpx; }
   .compact-table-head, .compact-table-row { grid-template-columns:minmax(0, .85fr) minmax(0, 1.95fr) minmax(0, .8fr); gap:10rpx; }
-  .rent-collect-hero-amount { font-size:48rpx; }
-  .rent-collect-input { font-size:34rpx; }
+  .rent-collect-hero-amount { font-size: 48rpx; }
+  .rent-collect-input { font-size: 34rpx; }
 }
 @keyframes room-sheet-enter { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 </style>

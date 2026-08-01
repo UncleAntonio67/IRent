@@ -10,6 +10,8 @@
     "prebuild:mp-weixin": "npm run tw:build && node scripts/clean-mp-weixin-build.cjs",
     "test:domain": "node --experimental-default-type=module --test tests/domain.test.js",
     "verify:encoding": "node scripts/verify-encoding.cjs",
+    "ui:inspect": "node scripts/verify-ui-inspection.cjs",
+    "ui:inspect:strict": "node scripts/verify-ui-inspection.cjs --strict",
     "dev:custom": "uni -p",
     "dev:h5": "uni",
     "dev:h5:ssr": "uni --ssr",

@@ -1,5 +1,5 @@
 import { prisma } from '../db.js'
-import { buildPublicFileUrl, createPresignedUpload } from './r2.js'
+import { buildPublicFileUrl, createPresignedUpload, deleteStorageObject } from './r2.js'
 
 async function assertRoomBelongsToTenant(roomId, tenantId) {
   if (!roomId) return null
@@ -137,4 +137,22 @@ export async function confirmAttachmentUpload({
     fileSize: attachment.fileSize || 0,
     uploadedAt: attachment.uploadedAt.toISOString(),
   }
+}
+
+export async function deleteAttachment({ tenantId, attachmentId }) {
+  const attachment = await prisma.attachment.findFirst({ where: { id: attachmentId, tenantId } })
+  if (!attachment) {
+    const error = new Error('Attachment not found')
+    error.statusCode = 404
+    error.code = 'ATTACHMENT_NOT_FOUND'
+    throw error
+  }
+  // Keep the attachment record when object-store deletion fails, so users can
+  // retry instead of being left with an unmanageable orphaned upload.
+  if (attachment.storageKey) await deleteStorageObject(attachment.storageKey)
+
+  await prisma.$transaction(async (tx) => {
+    await tx.attachment.delete({ where: { id: attachment.id } })
+  })
+  return { id: attachment.id, deleted: true }
 }

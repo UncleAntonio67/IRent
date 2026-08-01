@@ -15,7 +15,7 @@
         <view class="edit-room-label">手机号</view>
         <input :value="phone" type="text" class="edit-room-input" placeholder="输入手机号" @input="emit('update:phone', $event.detail.value)" />
       </view>
-      <view class="edit-room-field">
+      <view class="edit-room-field edit-room-field-wide">
         <view class="edit-room-label">身份证号</view>
         <input :value="idCard" type="text" class="edit-room-input" placeholder="输入身份证号" @input="emit('update:idCard', $event.detail.value)" />
       </view>
@@ -33,20 +33,20 @@
       </view>
       <view class="edit-room-field">
         <view class="edit-room-label">租期开始</view>
-        <input :value="leaseStart" type="text" class="edit-room-input" placeholder="YYYY-MM-DD" @input="emit('update:leaseStart', $event.detail.value)" />
+        <input :value="leaseStart" type="text" class="edit-room-input" placeholder="YYYY-MM-DD" @input="emit('update:leaseStart', $event.detail.value)" @blur="normalizeAndEmit('leaseStart', $event.detail.value)" />
       </view>
       <view class="edit-room-field">
         <view class="edit-room-label">租期结束</view>
-        <input :value="leaseEnd" type="text" class="edit-room-input" placeholder="YYYY-MM-DD" @input="emit('update:leaseEnd', $event.detail.value)" />
+        <input :value="leaseEnd" type="text" class="edit-room-input" placeholder="YYYY-MM-DD" @input="emit('update:leaseEnd', $event.detail.value)" @blur="normalizeAndEmit('leaseEnd', $event.detail.value)" />
       </view>
     </view>
 
     <view class="edit-room-attachments">
       <button class="edit-room-attachment-button tap-scale" @click="emit('pick-id-card')">
-        {{ hasIdCardPic ? '更新身份证图片' : '上传身份证图片' }}
+        {{ idCardCount ? '身份证已上传' : '上传身份证图片' }}
       </button>
       <button class="edit-room-attachment-button tap-scale" @click="emit('pick-contract')">
-        {{ hasContract ? '更新合同图片' : '上传合同图片' }}
+        {{ contractCount ? '合同已上传' : '上传合同图片' }}
       </button>
     </view>
 
@@ -59,6 +59,7 @@
 <script setup>
 import ActionFooterRow from './ActionFooterRow.vue'
 import BaseCenteredModal from './BaseCenteredModal.vue'
+import { normalizeDateInput } from '../utils/validation'
 
 defineProps({
   open: { type: Boolean, default: false },
@@ -70,8 +71,8 @@ defineProps({
   paymentCycle: { type: [String, Number], default: '' },
   leaseStart: { type: String, default: '' },
   leaseEnd: { type: String, default: '' },
-  hasIdCardPic: { type: Boolean, default: false },
-  hasContract: { type: Boolean, default: false },
+  idCardCount: { type: Number, default: 0 },
+  contractCount: { type: Number, default: 0 },
 })
 
 const emit = defineEmits([
@@ -88,57 +89,69 @@ const emit = defineEmits([
   'update:leaseStart',
   'update:leaseEnd',
 ])
+
+function normalizeAndEmit(field, value) {
+  const normalized = normalizeDateInput(value)
+  if (!normalized) return uni.showToast({ title: '请输入有效日期', icon: 'none' })
+  emit(`update:${field}`, normalized)
+}
 </script>
 
 <style>
 .edit-room-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14rpx;
+  column-gap: 18rpx;
+  row-gap: 22rpx;
 }
 
 .edit-room-field {
-  padding: 18rpx;
-  border-radius: 24rpx;
-  background: #ffffff;
-  border: 1rpx solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 10rpx 28rpx rgba(15, 23, 42, 0.05);
+  min-width: 0;
+}
+
+.edit-room-field-wide {
+  grid-column: 1 / -1;
 }
 
 .edit-room-label {
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 600;
   color: #475569;
 }
 
 .edit-room-input {
   width: 100%;
-  height: 72rpx;
-  margin-top: 12rpx;
-  padding: 0 18rpx;
-  border-radius: 20rpx;
-  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  height: 76rpx;
+  margin-top: 10rpx;
+  padding: 0 20rpx;
+  border-radius: 18rpx;
+  border: 1rpx solid #e2e8f0;
   background: #f8fafc;
-  font-size: 28rpx;
-  line-height: 72rpx;
+  font-size: 30rpx;
+  line-height: 76rpx;
   font-weight: 500;
   color: #0f172a;
   box-sizing: border-box;
 }
 
+
 .edit-room-attachments {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12rpx;
+  padding: 12rpx;
+  border-radius: 20rpx;
+  background: #f8fafc;
 }
 
 .edit-room-attachment-button {
-  height: 72rpx;
-  border-radius: 20rpx;
-  border: 1rpx solid rgba(191, 219, 254, 0.95);
+  height: 68rpx;
+  padding: 0 12rpx;
+  border: 0;
+  border-radius: 16rpx;
   background: #eff6ff;
   color: #2563eb;
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 600;
   display: inline-flex;
   align-items: center;

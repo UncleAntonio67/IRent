@@ -4,6 +4,8 @@
   OCCUPANCY_STATUS,
   PAYMENT_STATUS,
   ROOM_STATUS,
+  ATTACHMENT_FILE_LIMITS,
+  ROOM_PHOTO_LIMIT,
   generateId,
 } from './rent-models.js'
 
@@ -48,6 +50,74 @@ function buildLegacyRentCollections(paymentSchedule) {
       note: '历史补录收款',
       coverageLabel: `覆盖第${term.term}期`,
     }))
+}
+
+function ensureRoomAttachments(room) {
+  const current = room.attachmentFiles || {}
+  room.attachmentFiles = {
+    idCard: Array.isArray(current.idCard) ? current.idCard : (current.idCard ? [current.idCard] : []),
+    contract: Array.isArray(current.contract) ? current.contract : (current.contract ? [current.contract] : []),
+  }
+  return room.attachmentFiles
+}
+
+function cloneOperationSnapshot(room) {
+  const snapshot = JSON.parse(JSON.stringify(room || {}))
+  delete snapshot.operationLog
+  return snapshot
+}
+
+export function recordRoomOperation(room, { kind, label, now, before } = {}) {
+  room.operationLog = Array.isArray(room.operationLog) ? room.operationLog : []
+  room.operationLog.push({
+    id: generateId('op'),
+    kind: kind || 'room_update',
+    label: label || '房间操作',
+    createdAt: now || '',
+    status: 'active',
+    before: before || cloneOperationSnapshot(room),
+  })
+  room.operationLog = room.operationLog.slice(-12)
+}
+
+export function getLatestUndoableRoomOperation(room) {
+  const operations = Array.isArray(room?.operationLog) ? room.operationLog : []
+  const latest = operations[operations.length - 1]
+  return latest?.status === 'active' && latest.before ? latest : null
+}
+
+export function undoLatestRoomOperation(room, { now } = {}) {
+  const target = getLatestUndoableRoomOperation(room)
+  if (!target) return null
+
+  const operations = JSON.parse(JSON.stringify(room.operationLog || []))
+  const restored = JSON.parse(JSON.stringify(target.before))
+  Object.keys(room).forEach((key) => delete room[key])
+  Object.assign(room, restored)
+  room.operationLog = operations.map((item) => item.id === target.id
+    ? { ...item, status: 'undone', undoneAt: now || '' }
+    : item)
+  room.history = [
+    {
+      id: generateId('h'),
+      type: 'undo',
+      date: now || '',
+      remark: `已撤销：${target.label || '房间操作'}`,
+    },
+    ...(Array.isArray(room.history) ? room.history : []),
+  ]
+  return target
+}
+
+export function getRoomAttachmentFiles(room, type) {
+  const files = room?.attachmentFiles?.[type]
+  return Array.isArray(files) ? files : (files ? [files] : [])
+}
+
+export function getCollectedDepositAmount(room) {
+  return (room?.collections || [])
+    .filter((item) => item?.coverageLabel === '押金' || item?.title === '押金收取' || item?.note === '办理入住押金收取')
+    .reduce((sum, item) => sum + Math.max(0, Number(item.amount || 0)), 0)
 }
 
 export function checkoutRoomWithSettlement(room, payload, { now }) {
@@ -263,8 +333,9 @@ export function buildRoomPhotoFile(room, { now, remark = '', file = null } = {})
 }
 
 export function uploadRoomPhoto(room, { now, remark = '', file = null } = {}) {
+  if (ensureRoomPhotos(room).length >= ROOM_PHOTO_LIMIT) return null
   const next = buildRoomPhotoFile(room, { now, remark, file })
-  ensureRoomPhotos(room).unshift(next)
+  room.roomPhotos.unshift(next)
   room.history.unshift({
     id: generateId('h'),
     type: 'upload_room_photo',
@@ -536,15 +607,18 @@ export function createUtilitiesBillFromMeter(room, meterCalc, { now }) {
 }
 
 export function uploadRoomAttachment(room, type, { now, file = null }) {
-  if (type === 'idCard') room.hasIdCardPic = true
-  if (type === 'contract') room.hasContract = true
+  const limit = ATTACHMENT_FILE_LIMITS[type] || 1
+  const attachments = ensureRoomAttachments(room)
+  if (attachments[type].length >= limit) return null
 
-  room.attachmentFiles = room.attachmentFiles || { idCard: null, contract: null }
-  room.attachmentFiles[type] = file || buildAttachmentFile(type, {
+  const next = file || buildAttachmentFile(type, {
     tenant: room.tenant || '租客',
     roomNo: room.roomNo || '房间',
     now,
   })
+  attachments[type].push(next)
+  if (type === 'idCard') room.hasIdCardPic = true
+  if (type === 'contract') room.hasContract = true
 
   room.history.unshift({
     id: generateId('h'),
@@ -553,7 +627,7 @@ export function uploadRoomAttachment(room, type, { now, file = null }) {
     remark: type === 'idCard' ? '已上传身份证照片' : '已上传合同资料',
   })
 
-  return room.attachmentFiles[type]
+  return next
 }
 
 export function checkInRoom(room, payload, { now, paymentSchedule, attachments, initialCollectionAmount, initialReceiptPicked, initialReceiptFile = null, initialDepositAmount, initialDepositReceiptPicked, initialDepositReceiptFile = null }) {
@@ -646,9 +720,12 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments, 
   }
   room.lastWater = Number.isFinite(Number(payload.waterBase)) ? Number(payload.waterBase) : Number(room.lastWater || 0)
   room.lastElectric = Number.isFinite(Number(payload.electricBase)) ? Number(payload.electricBase) : Number(room.lastElectric || 0)
-  room.hasIdCardPic = Boolean(attachments?.idCard)
-  room.hasContract = Boolean(attachments?.contract)
-  room.attachmentFiles = attachments || { idCard: null, contract: null }
+  room.attachmentFiles = {
+    idCard: Array.isArray(attachments?.idCard) ? attachments.idCard.slice(0, ATTACHMENT_FILE_LIMITS.idCard) : (attachments?.idCard ? [attachments.idCard] : []),
+    contract: Array.isArray(attachments?.contract) ? attachments.contract.slice(0, ATTACHMENT_FILE_LIMITS.contract) : (attachments?.contract ? [attachments.contract] : []),
+  }
+  room.hasIdCardPic = room.attachmentFiles.idCard.length > 0
+  room.hasContract = room.attachmentFiles.contract.length > 0
   room.status = ROOM_STATUS.RENTED
 
   const firstPaymentAmount = Number.isFinite(Number(initialCollectionAmount))
@@ -697,7 +774,7 @@ export function checkoutRoom(room, payload, { now }) {
   room.idCard = ''
   room.hasIdCardPic = false
   room.hasContract = false
-  room.attachmentFiles = { idCard: null, contract: null }
+  room.attachmentFiles = { idCard: [], contract: [] }
   room.lastWater = payload.water
   room.lastElectric = payload.electric
   room.lastGas = payload.gas ?? room.lastGas ?? 0

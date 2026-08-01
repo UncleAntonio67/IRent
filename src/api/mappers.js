@@ -87,7 +87,8 @@ export function mapServerPropertyTree(properties) {
 
 export function mapServerRoomDetail(room) {
   const attachments = Array.isArray(room.attachments) ? room.attachments : []
-  const attachmentByType = (type) => attachments.find((item) => lower(item.type) === type)
+  const attachmentsByType = (type) => attachments.filter((item) => lower(item.type) === type)
+  const attachmentByType = (type) => attachmentsByType(type)[0] || null
 
   const paymentSchedule = (room.paymentTerms || []).map((term) => ({
     id: term.id,
@@ -164,8 +165,8 @@ export function mapServerRoomDetail(room) {
     hasIdCardPic: Boolean(attachmentByType('id_card')),
     hasContract: Boolean(attachmentByType('contract')),
     attachmentFiles: {
-      idCard: mapServerAttachmentFile(attachmentByType('id_card')),
-      contract: mapServerAttachmentFile(attachmentByType('contract')),
+      idCard: attachmentsByType('id_card').map(mapServerAttachmentFile).filter(Boolean),
+      contract: attachmentsByType('contract').map(mapServerAttachmentFile).filter(Boolean),
     },
     roomPhotos: attachments
       .filter((item) => lower(item.type) === 'room_photo')

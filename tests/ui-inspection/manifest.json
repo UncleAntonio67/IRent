@@ -1,0 +1,18 @@
+{
+  "device": "Android reference device, portrait, fixed system font scale",
+  "capture": "full-page screenshot with the mini-program navigation capsule and bottom safe area visible",
+  "scenarios": [
+    { "id": "workbench-default", "page": "工作台", "state": "默认浏览态，院落切换区可见" },
+    { "id": "workbench-structure", "page": "工作台", "state": "结构管理编辑态，楼栋与房间操作可见" },
+    { "id": "block-room-grid", "page": "楼栋详情", "state": "包含已租、待收和空置房间卡" },
+    { "id": "room-current-expanded", "page": "房间详情", "state": "当前情况，租金收费和附加收费展开" },
+    { "id": "room-history", "page": "房间详情", "state": "历史入住时间轴" },
+    { "id": "checkin-current", "page": "办理入住", "state": "租客、租金租期、入住收费和附加费用可见" },
+    { "id": "charge-collect", "page": "收费弹层", "state": "未上传凭证的可收费状态" },
+    { "id": "meter-entry", "page": "抄表弹层", "state": "水电读数输入与可选照片上传" },
+    { "id": "checkout-settlement", "page": "退租弹层", "state": "租金和附加费用状态、退押金输入" },
+    { "id": "bills-history", "page": "账务", "state": "累计实收卡和历史流水列表" },
+    { "id": "profile-home", "page": "我的", "state": "用户卡、菜单分组和底部导航" },
+    { "id": "profile-utility-template", "page": "默认水电单价模板", "state": "输入框与固定底部保存按钮" }
+  ]
+}

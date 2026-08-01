@@ -74,3 +74,8 @@ export async function uploadAttachmentForRoom({ roomId, type, file }) {
 
   return mapServerAttachmentFile(confirmed.attachment || null)
 }
+
+export async function deleteAttachmentForRoom(attachmentId) {
+  if (!attachmentId) return
+  await apiRequest(`/attachments/${attachmentId}`, { method: 'DELETE' })
+}

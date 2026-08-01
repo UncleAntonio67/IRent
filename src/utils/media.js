@@ -20,13 +20,57 @@ function resolveFileName(path, fallbackPrefix = 'image') {
   return `${fallbackPrefix}_${Date.now()}.jpg`
 }
 
-export function normalizeChosenImage(file, options = {}) {
+function resolveImageExtension(path) {
+  const match = String(path || '').match(/\.(jpe?g|png|webp|pdf)$/i)
+  return match ? `.${match[1].toLowerCase()}` : '.jpg'
+}
+
+function resolveDisplayName(fallbackPrefix, index, path) {
+  const prefix = String(fallbackPrefix || 'image')
+  const extension = resolveImageExtension(path)
+  if (prefix === 'idCard') return `身份证图片${index + 1}${extension}`
+  if (prefix === 'contract') return `租赁合同${index + 1}${extension}`
+  if (prefix === 'receipt') return `收费凭证${extension}`
+
+  const roomNo = prefix.replace(/_photo$/i, '')
+  return `${roomNo || '房间'}_房屋照片${index + 1}${extension}`
+}
+
+// Keep an offline-friendly copy with a modest quality reduction. Some devices
+// still return a large file for `sizeType: compressed`, so this is a second
+// best-effort pass rather than a hard requirement for selecting an image.
+function lightlyCompressImage(file) {
+  const sourcePath = resolveLocalPath(file)
+  if (!sourcePath || typeof uni.compressImage !== 'function') return Promise.resolve(file)
+
+  return new Promise((resolve) => {
+    uni.compressImage({
+      src: sourcePath,
+      quality: 80,
+      success(result) {
+        const compressedPath = String(result?.tempFilePath || sourcePath)
+        resolve({
+          ...file,
+          tempFilePath: compressedPath,
+          filePath: compressedPath,
+          path: compressedPath,
+        })
+      },
+      fail() {
+        // Choosing an image must still succeed if the platform cannot compress it.
+        resolve(file)
+      },
+    })
+  })
+}
+
+export function normalizeChosenImage(file, options = {}, index = 0) {
   const path = resolveTempPath(file)
   const fallbackPrefix = options.fallbackPrefix || 'image'
   const now = options.uploadedAt || ''
   return {
     id: options.id || '',
-    name: options.name || resolveFileName(path, fallbackPrefix),
+    name: options.name || resolveDisplayName(fallbackPrefix, index, path) || resolveFileName(path, fallbackPrefix),
     uploadedAt: now,
     source: 'local',
     previewText: options.previewText || '',
@@ -38,24 +82,30 @@ export function normalizeChosenImage(file, options = {}) {
   }
 }
 
-export function chooseSingleImage(options = {}) {
+export function chooseImages(options = {}) {
   return new Promise((resolve, reject) => {
     uni.chooseImage({
-      count: 1,
+      count: Math.max(1, Number(options.count || 1)),
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       ...options,
-      success(res) {
-        const rawFile = Array.isArray(res.tempFiles) && res.tempFiles.length > 0
-          ? res.tempFiles[0]
-          : { tempFilePath: res.tempFilePaths?.[0] || '' }
-        resolve(normalizeChosenImage(rawFile, options))
+      async success(res) {
+        const rawFiles = Array.isArray(res.tempFiles) && res.tempFiles.length > 0
+          ? res.tempFiles
+          : (res.tempFilePaths || []).map((tempFilePath) => ({ tempFilePath }))
+        const compressedFiles = await Promise.all(rawFiles.map((file) => lightlyCompressImage(file)))
+        resolve(compressedFiles.map((file, index) => normalizeChosenImage(file, options, index)).filter((file) => file.filePath))
       },
       fail(err) {
         reject(err)
       },
     })
   })
+}
+
+export async function chooseSingleImage(options = {}) {
+  const files = await chooseImages({ ...options, count: 1 })
+  return files[0] || null
 }
 
 export function hasPreviewableImage(file) {
@@ -73,5 +123,16 @@ export function previewChosenImage(file) {
     current,
     urls: [current],
   })
+  return true
+}
+
+export function previewChosenImages(files, currentIndex = 0) {
+  const urls = (Array.isArray(files) ? files : [files])
+    .map(resolveTempPath)
+    .filter(Boolean)
+  if (urls.length === 0) return false
+
+  const index = Math.min(Math.max(Number(currentIndex) || 0, 0), urls.length - 1)
+  uni.previewImage({ current: urls[index], urls })
   return true
 }

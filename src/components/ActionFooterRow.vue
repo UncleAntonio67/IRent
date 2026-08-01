@@ -11,5 +11,5 @@ const emit = defineEmits(['secondary', 'primary'])
 </script>
 
 <style>
-.action-footer-row{display:flex;gap:16rpx}.action-footer-row-single{gap:0}.action-footer-secondary,.action-footer-primary{min-height:78rpx;padding:26rpx 22rpx;border-radius:9999rpx;font-size:28rpx;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center}.action-footer-secondary{flex:1;background:#f8fafc;border:0;color:#475569}.action-footer-primary{flex:1.4;gap:10rpx;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;font-weight:800;box-shadow:0 16rpx 28rpx rgba(37,99,235,.18)}.action-footer-primary-single{flex:1}.action-footer-primary-disabled{background:#cbd5e1;box-shadow:none}
+.action-footer-row{display:flex;gap:16rpx}.action-footer-row-single{gap:0}.action-footer-secondary,.action-footer-primary{height:88rpx;padding:0 22rpx;border-radius:9999rpx;font-size: 28rpx;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box}.action-footer-secondary{flex:1;background:#f8fafc;border:0;color:#475569}.action-footer-primary{flex:1.4;gap:10rpx;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;font-weight:700;box-shadow:0 12rpx 22rpx rgba(37,99,235,.16)}.action-footer-primary-single{flex:1}.action-footer-primary-disabled{background:#cbd5e1;box-shadow:none}
 </style>

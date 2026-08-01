@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <view class="min-h-screen bg-slate-50 text-slate-800">
     <view class="mx-auto max-w-md min-h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
       <view class="bg-white-80 px-5 pb-3 relative shrink-0 z-20 shadow-soft sticky-header" :style="{ paddingTop: headerTopPadding + 'px' }">
@@ -26,18 +26,17 @@
 
         <scroll-view scroll-x class="mt-4" show-scrollbar="false">
           <view class="flex items-center gap-2 pb-1">
-            <button
-              v-for="property in properties"
-              :key="property.id"
-              class="property-chip tap-scale"
-              :class="property.id === activePropertyId ? 'property-chip-active' : 'property-chip-default'"
-              @click="switchProperty(property.id)"
-            >
-              <text class="truncate">{{ property.name }}</text>
-            </button>
-            <button v-if="editMode" class="property-chip property-chip-soft tap-scale" @click="openAddModal('property')">新建院落</button>
-            <button v-if="editMode" class="property-chip property-chip-soft tap-scale" @click="openQuickBuildModal">快速构建</button>
-            <button v-if="editMode && properties.length > 1" class="property-chip property-chip-danger tap-scale" @click="removeCurrentProperty">删除当前院落</button>
+            <view v-for="property in properties" :key="property.id" class="property-chip-wrap">
+              <button
+                class="property-chip tap-scale"
+                :class="[property.id === activePropertyId ? 'property-chip-active' : 'property-chip-default', editMode && property.id === activePropertyId ? 'property-chip-editable' : '']"
+                @click="switchProperty(property.id)"
+              >
+                <text class="truncate">{{ property.name }}</text>
+              </button>
+              <button v-if="editMode && properties.length > 1 && property.id === activePropertyId" class="property-chip-delete property-chip-delete-active tap-scale" @click.stop="removeProperty(property.id)">×</button>
+            </view>
+            <button v-if="editMode && properties.length < 3" class="structure-icon-action structure-icon-add tap-scale" @click="openAddModal('property')">+</button>
           </view>
         </scroll-view>
       </view>
@@ -97,7 +96,7 @@
 
                 <view class="stack-2">
                   <view v-for="floorItem in block.floors" :key="floorItem.floor" class="flex items-center gap-3">
-                    <view class="w-5 text-right text-2xs font-medium text-slate-400">F{{ floorItem.floor }}</view>
+                    <view class="w-8 text-right text-2xs font-medium text-slate-400 truncate">{{ floorItem.name || getFloorDisplayName(floorItem.floor) }}</view>
                     <view class="flex-1 flex flex-wrap gap-1_5">
                       <view
                         v-for="room in floorItem.rooms"
@@ -115,22 +114,23 @@
               <view v-for="block in activeProperty.blocks" :key="block.id" class="overflow-hidden relative" :class="UI.card">
                 <view class="bg-slate-100-50 px-4 py-3 flex items-center justify-between">
                   <view class="font-bold text-slate-700 text-sm">{{ block.name }}</view>
-                  <button class="px-3 py-1_5 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200 tap-scale" @click.stop="removeBlock(block.id)">删除楼栋</button>
+                  <button class="structure-delete-text tap-scale" @click.stop="removeBlock(block.id)">×</button>
                 </view>
 
-                <view class="m-4 bg-white border border-blue-200 border-dashed text-blue-600 py-3 rounded-xl flex justify-center items-center gap-2 font-bold tap-scale" @click.stop="openAddModal('floor', { blockId: block.id })">
+                <view class="structure-add-floor tap-scale" @click.stop="openAddModal('floor', { blockId: block.id })">
                   <text>+ 新增楼层</text>
                 </view>
 
                 <view v-if="block.floors.length === 0" class="py-12 text-center text-slate-400 font-medium">暂无楼层</view>
 
                 <view v-else>
-                  <view v-for="(floorItem, floorIndex) in block.floors" :key="floorItem.floor" class="flex flex-col" :class="floorIndex > 0 ? 'border-t border-slate-100' : ''">
-                    <view class="bg-slate-50-50 px-4 py-2 flex items-center justify-between">
-                      <text class="font-medium text-slate-400 text-xs">F {{ floorItem.floor }}</text>
+                  <view v-for="(floorItem, floorIndex) in block.floors" :key="floorItem.floor" class="floor-structure-row flex flex-col" :class="floorIndex > 0 ? 'floor-structure-row-separated' : ''">
+                    <view class="floor-structure-header bg-slate-50-50 px-4 flex items-center justify-between">
+                      <text class="font-medium text-slate-400 text-2xs">{{ floorItem.name || getFloorDisplayName(floorItem.floor) }}</text>
+                      <button class="structure-delete-text tap-scale" @click.stop="removeFloor(block.id, floorItem.floor)">×</button>
                     </view>
 
-                    <view class="p-4 grid grid-cols-3 gap-2 bg-slate-50-50">
+                    <view class="floor-room-grid grid grid-cols-3 gap-2 bg-slate-50-50">
                       <view
                         v-for="room in floorItem.rooms"
                         :key="room.id"
@@ -139,9 +139,9 @@
                       >
                         <view class="flex justify-between items-start mb-1">
                           <text class="font-bold text-xs font-mono" :class="roomVisuals(room.status).text">{{ room.roomNo }}</text>
-                          <view class="delete-corner-button" @click.stop="removeRoom(block.id, floorItem.floor, room.id)"><text>x</text></view>
+                          <button class="room-delete-button tap-scale" @click.stop="removeRoom(block.id, floorItem.floor, room.id)">×</button>
                         </view>
-                        <view class="text-2xs font-medium text-slate-400 mt-2 truncate">{{ room.tenant || '未填写租客' }}</view>
+                        <view class="text-2xs font-medium text-slate-400 mt-2 truncate">{{ room.tenant || '空置待租' }}</view>
                       </view>
 
                       <view class="room-create-tile" @click.stop="openAddModal('room', { blockId: block.id, floor: floorItem.floor })">
@@ -153,7 +153,7 @@
                 </view>
               </view>
 
-              <view class="block-create-card" @click="openAddModal('block')">
+              <view class="block-create-card" @click="openQuickBuildModal">
                 <view class="block-create-plus">+</view>
                 <view class="block-create-copy">
                   <view class="block-create-title">新建楼栋</view>
@@ -189,25 +189,29 @@
             </button>
           </view>
 
-          <textarea
-            v-if="addModal.type === 'room'"
-            v-model="inputValue"
-            :placeholder="addModal.placeholder"
-            class="w-full px-4 py-4 input-soft rounded-2xl font-medium text-slate-800 modal-textarea"
-            auto-height
-            maxlength="-1"
-          />
-          <input
-            v-else
-            v-model="inputValue"
-            :type="addModal.inputType"
-            :placeholder="addModal.placeholder"
-            class="w-full px-4 py-4 input-soft rounded-xl font-medium text-slate-800 modal-input"
-            confirm-type="done"
-            @confirm="handleAddSubmit"
-          />
+          <view v-if="addModal.type === 'floor'" class="grid grid-cols-2 gap-3">
+            <view class="structure-field">
+              <view class="structure-field-label">楼层号</view>
+              <input v-model="inputValue" type="number" placeholder="例如：3" class="structure-modal-input" />
+            </view>
+            <view class="structure-field">
+              <view class="structure-field-label">初始房间数量</view>
+              <input v-model="addModal.roomCount" type="number" placeholder="例如：6" class="structure-modal-input" />
+            </view>
+          </view>
+          <view v-else class="structure-field">
+            <view class="structure-field-label">{{ addModalFieldLabel }}</view>
+            <input
+              v-model="inputValue"
+              :type="addModal.inputType"
+              :placeholder="addModal.placeholder"
+              class="w-full px-4 py-4 input-soft rounded-xl font-medium text-slate-800 modal-input"
+              confirm-type="done"
+              @confirm="handleAddSubmit"
+            />
+          </view>
 
-          <button class="w-full py-4 rounded-xl btn-blue font-semibold" @click="handleAddSubmit">{{ uiText.confirmAdd }}</button>
+          <button class="structure-modal-primary btn-blue tap-scale" @click="handleAddSubmit">{{ uiText.confirmAdd }}</button>
         </view>
       </view>
 
@@ -216,7 +220,7 @@
           <view class="flex items-start justify-between gap-3">
             <view>
               <view class="text-base font-bold text-slate-800">快速构建楼栋</view>
-              <view class="text-xs text-slate-400 mt-1">输入楼栋名称、楼层数和每层房间数，一键生成后可继续微调。</view>
+              <view class="text-xs text-slate-400 mt-1">填写楼层与每层房间数，生成后仍可继续增删楼层和房间。</view>
             </view>
             <button class="drawer-icon-button tap-scale" @click="closeQuickBuildModal">
               <view class="icon-close"><view class="icon-close-line"></view><view class="icon-close-line icon-close-line-second"></view></view>
@@ -224,14 +228,37 @@
           </view>
 
           <view class="grid grid-cols-2 gap-3">
-            <input v-model="quickBuildModal.blockName" type="text" class="quick-build-input col-span-2" placeholder="楼栋名称，例如：3号楼" />
-            <input v-model="quickBuildModal.floorCount" type="number" class="quick-build-input" placeholder="楼层数" />
-            <input v-model="quickBuildModal.roomsPerFloor" type="number" class="quick-build-input" placeholder="每层房间数" />
-            <input v-model="quickBuildModal.topFloor" type="number" class="quick-build-input" placeholder="顶层楼层号" />
-            <input v-model="quickBuildModal.roomStart" type="number" class="quick-build-input" placeholder="每层起始房号" />
+            <view class="structure-field col-span-2">
+              <view class="structure-field-label">楼栋名称</view>
+              <input v-model="quickBuildModal.blockName" type="text" class="quick-build-input" placeholder="例如：3号楼" />
+            </view>
+            <view class="structure-field">
+              <view class="structure-field-label">楼层数量</view>
+              <input v-model="quickBuildModal.floorCount" type="number" class="quick-build-input" placeholder="例如：6" />
+            </view>
+            <view class="structure-field">
+              <view class="structure-field-label">地下室</view>
+              <view class="quick-build-basement-toggle">
+                <button class="quick-build-basement-option tap-scale" :class="!quickBuildModal.hasBasement ? 'quick-build-basement-option-active' : ''" @click="setQuickBuildBasement(false)">无地下室</button>
+                <button class="quick-build-basement-option tap-scale" :class="quickBuildModal.hasBasement ? 'quick-build-basement-option-active' : ''" @click="setQuickBuildBasement(true)">有 B1</button>
+              </view>
+            </view>
           </view>
 
-          <button class="w-full py-4 rounded-xl btn-blue font-semibold" @click="submitQuickBuild">一键快速构建</button>
+          <button class="quick-build-generate-button tap-scale" @click="prepareQuickBuildFloors">生成逐层房间数</button>
+
+          <view v-if="quickBuildModal.floorRowsReady" class="quick-build-floor-title">逐层设置房间数</view>
+          <scroll-view v-if="quickBuildModal.floorRowsReady" scroll-y class="quick-build-floor-list">
+            <view v-for="row in quickBuildModal.floorRooms" :key="row.floor" class="quick-build-floor-row">
+              <text class="quick-build-floor-name">{{ getFloorDisplayName(row.floor) }}</text>
+              <view class="quick-build-floor-field">
+                <text class="quick-build-floor-field-label">房间数量</text>
+                <input v-model="row.rooms" type="number" class="quick-build-floor-input" placeholder="例如：6" />
+              </view>
+            </view>
+          </scroll-view>
+
+          <button class="structure-modal-primary btn-blue tap-scale" @click="submitQuickBuild">确认构建楼栋</button>
         </view>
       </view>
     </view>
@@ -242,6 +269,7 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { UI, getMiniStatusColor } from '../../ui/ui'
+import { getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
 import { canManageTenantData } from '../../data/authStore'
 import { fetchPropertiesTree, getCachedPropertiesTree, isPropertiesTreeFresh } from '../../api/properties'
@@ -262,6 +290,7 @@ import {
   isRoomHighlighted,
   openWorkbenchModal,
   removeWorkbenchBlock,
+  removeWorkbenchFloor,
   removeWorkbenchProperty,
   removeWorkbenchRoom,
 } from './useWorkbenchStructure'
@@ -273,6 +302,11 @@ const headerTopPadding = ref(44)
 const inputValue = ref('')
 const addModal = ref(createWorkbenchModalState())
 const quickBuildModal = ref(createQuickBuildState())
+const addModalFieldLabel = computed(() => ({
+  property: '院落名称',
+  block: '楼栋名称',
+  room: '房间名称',
+})[addModal.value.type] || '填写内容')
 const workbenchRefreshing = ref(false)
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
@@ -285,7 +319,7 @@ const syncModeLabel = computed(() => syncSummary.value?.syncMode === 'manual' ? 
 
 const uiText = {
   finishManage: '完成管理',
-  structureManage: '结构管理',
+  structureManage: '房屋管理',
   confirmAdd: '确认添加',
   finishIcon: '✓',
   manageIcon: '⚙',
@@ -394,7 +428,19 @@ function openAddModal(type, payload = {}) {
   const nextModal = openWorkbenchModal(type, payload)
   if (!nextModal) return
   addModal.value = nextModal
-  inputValue.value = ''
+  if (type === 'floor') {
+    const block = activeProperty.value?.blocks?.find((item) => item.id === payload.blockId)
+    inputValue.value = String(Math.max(0, ...(block?.floors || []).map((item) => Number(item.floor) || 0)) + 1)
+    addModal.value.roomCount = '1'
+  } else if (type === 'room') {
+    const floorItem = activeProperty.value?.blocks?.find((item) => item.id === payload.blockId)?.floors?.find((item) => item.floor === payload.floor)
+    const existingRoomNos = new Set((floorItem?.rooms || []).map((item) => String(item.roomNo || '')))
+    let roomSuffix = 1
+    while (existingRoomNos.has(getDefaultRoomNo(payload.floor, roomSuffix))) roomSuffix += 1
+    inputValue.value = getDefaultRoomNo(payload.floor, roomSuffix)
+  } else {
+    inputValue.value = ''
+  }
 }
 
 function closeAddModal() {
@@ -404,6 +450,35 @@ function closeAddModal() {
 
 function openQuickBuildModal() {
   quickBuildModal.value = { ...createQuickBuildState(), open: true }
+}
+
+function syncQuickBuildFloorRows() {
+  const floorCount = Math.max(1, Number(quickBuildModal.value.floorCount) || 1)
+  const existing = new Map((quickBuildModal.value.floorRooms || []).map((item) => [Number(item.floor), String(item.rooms || '1')]))
+  const floors = quickBuildModal.value.hasBasement
+    ? Array.from({ length: floorCount }, (_, index) => floorCount - index - 1)
+    : Array.from({ length: floorCount }, (_, index) => floorCount - index)
+  quickBuildModal.value.floorRooms = floors.map((floor) => {
+    return { floor, rooms: existing.get(floor) || '1' }
+  })
+}
+
+watch(() => [quickBuildModal.value.floorCount, quickBuildModal.value.hasBasement], () => {
+  if (quickBuildModal.value.open && quickBuildModal.value.floorRowsReady) syncQuickBuildFloorRows()
+})
+
+function setQuickBuildBasement(hasBasement) {
+  quickBuildModal.value.hasBasement = hasBasement
+}
+
+function prepareQuickBuildFloors() {
+  const floorCount = Number(quickBuildModal.value.floorCount || 0)
+  if (!Number.isInteger(floorCount) || floorCount <= 0) {
+    uni.showToast({ title: '请填写有效楼层数', icon: 'none' })
+    return
+  }
+  quickBuildModal.value.floorRowsReady = true
+  syncQuickBuildFloorRows()
 }
 
 watch(() => activeProperty.value?.id, () => {
@@ -438,6 +513,10 @@ function handleAddSubmit() {
 }
 
 function submitQuickBuild() {
+  if (!quickBuildModal.value.floorRowsReady) {
+    prepareQuickBuildFloors()
+    return
+  }
   const nextProperties = cloneProperties()
   const result = applyQuickBuild(nextProperties, activePropertyId.value, quickBuildModal.value)
   if (result.error) {
@@ -504,7 +583,7 @@ function removeBlock(blockId) {
   })
 }
 
-function removeCurrentProperty() {
+function removeProperty(propertyId) {
   if (properties.value.length <= 1) {
     uni.showToast({ title: '至少保留一个院落', icon: 'none' })
     return
@@ -517,10 +596,10 @@ function removeCurrentProperty() {
     success: (res) => {
       if (!res.confirm) return
       const nextProperties = cloneProperties()
-      const result = removeWorkbenchProperty(nextProperties, activePropertyId.value)
+      const result = removeWorkbenchProperty(nextProperties, propertyId)
       if (!result.removed) return
       setProperties(nextProperties)
-      activePropertyId.value = result.nextPropertyId
+      if (activePropertyId.value === propertyId) activePropertyId.value = result.nextPropertyId
       if (canUseCloudBackup()) {
         enqueueSyncTask({
           type: 'properties.treeSync',
@@ -529,6 +608,27 @@ function removeCurrentProperty() {
         syncSummary.value = getPendingSyncSummary()
       }
       uni.showToast({ title: '院落已删除', icon: 'none' })
+    },
+  })
+}
+
+function removeFloor(blockId, floor) {
+  uni.showModal({
+    title: '确认删除楼层',
+    content: '删除后该楼层下的所有房间会一起移除。继续吗？',
+    confirmText: '删除',
+    cancelText: '取消',
+    success: (res) => {
+      if (!res.confirm) return
+      const nextProperties = cloneProperties()
+      const removed = removeWorkbenchFloor(nextProperties, activePropertyId.value, blockId, floor)
+      if (!removed) return
+      setProperties(nextProperties)
+      if (canUseCloudBackup()) {
+        enqueueSyncTask({ type: 'properties.treeSync', payload: { tree: nextProperties } })
+        syncSummary.value = getPendingSyncSummary()
+      }
+      uni.showToast({ title: '楼层已删除', icon: 'none' })
     },
   })
 }
@@ -564,6 +664,8 @@ function formatSyncError(value) {
   min-height: 68rpx;
   padding: 0 24rpx;
   border-radius: 24rpx;
+  border: 0;
+  outline: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -591,6 +693,105 @@ function formatSyncError(value) {
   color: #e11d48;
 }
 
+.property-chip-editable { padding-right: 48rpx; }
+
+.property-chip-wrap { position: relative; display: inline-flex; align-items: center; }
+
+.property-chip-delete {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  z-index: 1;
+  width: 26rpx;
+  height: 26rpx;
+  min-width: 26rpx;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 25rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.property-chip-delete-active { color: #ffffff; }
+
+.structure-icon-action {
+  width: 68rpx;
+  min-width: 68rpx;
+  height: 68rpx;
+  padding: 0;
+  border-radius: 22rpx;
+  font-size: 38rpx;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.structure-icon-add { background: #eff6ff; color: #2563eb; }
+.structure-icon-delete { background: #fff1f2; color: #e11d48; }
+
+.structure-delete-text,
+.room-delete-button {
+  width: 40rpx;
+  height: 40rpx;
+  min-width: 40rpx;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #e11d48;
+  font-size: 32rpx;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.room-delete-button { width: 30rpx; height: 30rpx; min-width: 30rpx; font-size: 28rpx; }
+
+.structure-add-floor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 68rpx;
+  margin: 24rpx 30rpx;
+  border: 1rpx dashed #bfdbfe;
+  border-radius: 18rpx;
+  background: #f8fbff;
+  color: #2563eb;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.floor-structure-row-separated { border-top: 1rpx dashed #e2e8f0; }
+.floor-structure-header { min-height: 56rpx; }
+.floor-room-grid { padding: 18rpx 30rpx 26rpx; }
+
+.structure-modal-input {
+  width: 100%;
+  min-height: 76rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid rgba(226, 232, 240, 0.95);
+  border-radius: 18rpx;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.structure-field { min-width: 0; }
+.structure-field-label { margin: 0 0 10rpx 4rpx; color: #64748b; font-size: 23rpx; font-weight: 600; line-height: 1.2; }
+
+.structure-modal-primary {
+  width: 100%;
+  min-height: 76rpx;
+  padding: 0 24rpx;
+  border-radius: 18rpx;
+  color: #ffffff;
+  font-size: 27rpx;
+  font-weight: 600;
+  line-height: 76rpx;
+}
+
 .quick-build-input {
   width: 100%;
   min-height: 84rpx;
@@ -602,4 +803,18 @@ function formatSyncError(value) {
   color: #0f172a;
   box-sizing: border-box;
 }
+
+.quick-build-basement-toggle { display: flex; min-height: 84rpx; padding: 6rpx; border-radius: 24rpx; background: #f8fafc; border: 1rpx solid rgba(226, 232, 240, 0.95); box-sizing: border-box; }
+.quick-build-basement-option { flex: 1; min-width: 0; padding: 0 10rpx; border: 0; border-radius: 18rpx; background: transparent; color: #64748b; font-size: 22rpx; font-weight: 500; line-height: 70rpx; }
+.quick-build-basement-option-active { background: #ffffff; color: #2563eb; box-shadow: 0 4rpx 12rpx rgba(37, 99, 235, 0.1); font-weight: 600; }
+
+.quick-build-floor-title { color: #475569; font-size: 24rpx; font-weight: 600; }
+.quick-build-floor-list { max-height: 280rpx; border-radius: 18rpx; background: #f8fafc; }
+.quick-build-floor-row { display: flex; align-items: center; gap: 16rpx; min-height: 76rpx; padding: 10rpx 18rpx; border-bottom: 1rpx solid #e2e8f0; box-sizing: border-box; }
+.quick-build-floor-row:last-child { border-bottom: 0; }
+.quick-build-floor-name { min-width: 72rpx; color: #475569; font-size: 24rpx; font-weight: 600; }
+.quick-build-floor-field { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 16rpx; }
+.quick-build-floor-field-label { color: #94a3b8; font-size: 22rpx; line-height: 1; }
+.quick-build-floor-input { width: 128rpx; height: 50rpx; padding: 0 16rpx; border: 1rpx solid #e2e8f0; border-radius: 14rpx; background: #fff; color: #0f172a; font-size: 24rpx; text-align: center; box-sizing: border-box; }
+.quick-build-generate-button { width: 100%; min-height: 68rpx; padding: 0 20rpx; border: 1rpx solid #bfdbfe; border-radius: 18rpx; background: #eff6ff; color: #2563eb; font-size: 25rpx; font-weight: 600; line-height: 68rpx; }
 </style>

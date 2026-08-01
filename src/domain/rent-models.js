@@ -32,6 +32,12 @@ export const BILL_TYPE = {
   CUSTOM: 'custom',
 }
 
+export const ROOM_PHOTO_LIMIT = 9
+export const ATTACHMENT_FILE_LIMITS = {
+  idCard: 2,
+  contract: 3,
+}
+
 export function generateId(prefix) {
   return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`
 }
@@ -43,6 +49,7 @@ export function cloneDeep(value) {
 export function normalizeAttachmentFile(file, fallbackName) {
   if (!file) return null
   return {
+    id: file.id || '',
     name: file.name || fallbackName || 'unnamed_file',
     uploadedAt: file.uploadedAt || '',
     source: file.source || 'local',
@@ -52,6 +59,14 @@ export function normalizeAttachmentFile(file, fallbackName) {
     size: Number(file.size || 0) || 0,
     mimeType: file.mimeType || '',
   }
+}
+
+export function normalizeAttachmentFileList(files, fallbackName, limit = 1) {
+  const source = Array.isArray(files) ? files : (files ? [files] : [])
+  return source
+    .map((file) => normalizeAttachmentFile(file, fallbackName))
+    .filter(Boolean)
+    .slice(0, Math.max(0, Number(limit) || 0))
 }
 
 export function normalizeRoomPhoto(photo, index = 0) {
@@ -134,6 +149,58 @@ export function createDefaultRoom(roomNo = '101') {
   })
 }
 
+export function getFloorDisplayName(floor) {
+  const floorNumber = Number(floor)
+  if (!Number.isFinite(floorNumber)) return '1层'
+  return floorNumber <= 0 ? `B${Math.abs(floorNumber) + 1}` : `${floorNumber}层`
+}
+
+export function getDefaultRoomNo(floor, roomIndex = 1) {
+  const floorNumber = Number(floor)
+  const suffix = String(Math.max(1, Number(roomIndex) || 1)).padStart(2, '0')
+  if (!Number.isFinite(floorNumber)) return `101`
+  return floorNumber <= 0 ? `B${Math.abs(floorNumber) + 1}${suffix}` : `${floorNumber}${suffix}`
+}
+
+export function resolveRoomStatus(room, now = new Date()) {
+  if (room?.status === ROOM_STATUS.EMPTY) return ROOM_STATUS.EMPTY
+  const activeLease = (room?.occupancies || []).some((item) => item.status === OCCUPANCY_STATUS.ACTIVE && item.kind === OCCUPANCY_KIND.LEASE)
+  if (!activeLease) return ROOM_STATUS.EMPTY
+
+  const pendingTerms = (room?.paymentSchedule || []).filter((term) => {
+    const expected = Number(term.expectedAmount || 0)
+    const covered = Number(term.coveredAmount ?? term.paidAmount ?? 0)
+    return expected > covered
+  })
+  if (pendingTerms.length === 0) return ROOM_STATUS.RENTED
+
+  const today = formatStatusDate(now)
+  const dueSoonEnd = formatStatusDate(new Date(new Date(now).setDate(new Date(now).getDate() + 7)))
+  if (pendingTerms.some((term) => String(term.dueDate || '') < today)) return ROOM_STATUS.OVERDUE
+  if (pendingTerms.some((term) => {
+    const dueDate = String(term.dueDate || '')
+    return dueDate >= today && dueDate <= dueSoonEnd
+  })) return ROOM_STATUS.DUE_SOON
+  return ROOM_STATUS.RENTED
+}
+
+function formatStatusDate(value) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (part) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+export function createDefaultFloor(floor = 1) {
+  const rawFloor = Number(floor)
+  const floorNumber = Number.isFinite(rawFloor) ? Math.trunc(rawFloor) : 1
+  return {
+    floor: floorNumber,
+    name: getFloorDisplayName(floorNumber),
+    rooms: [createDefaultRoom(getDefaultRoomNo(floorNumber))],
+  }
+}
+
 export function normalizeRoom(room = {}) {
   const rent = Number(room.rent || 0) || 0
   const paymentCycle = Number(room.paymentCycle || 3) || 3
@@ -152,10 +219,10 @@ export function normalizeRoom(room = {}) {
     hasIdCardPic: Boolean(room.hasIdCardPic),
     hasContract: Boolean(room.hasContract),
     attachmentFiles: {
-      idCard: normalizeAttachmentFile(room.attachmentFiles?.idCard, 'id_card.jpg'),
-      contract: normalizeAttachmentFile(room.attachmentFiles?.contract, 'lease_contract.pdf'),
+      idCard: normalizeAttachmentFileList(room.attachmentFiles?.idCard, 'id_card.jpg', ATTACHMENT_FILE_LIMITS.idCard),
+      contract: normalizeAttachmentFileList(room.attachmentFiles?.contract, 'lease_contract.jpg', ATTACHMENT_FILE_LIMITS.contract),
     },
-    roomPhotos: Array.isArray(room.roomPhotos) ? room.roomPhotos.map(normalizeRoomPhoto).filter(Boolean) : [],
+    roomPhotos: Array.isArray(room.roomPhotos) ? room.roomPhotos.map(normalizeRoomPhoto).filter(Boolean).slice(0, ROOM_PHOTO_LIMIT) : [],
     leaseStart: room.leaseStart || '',
     leaseEnd: room.leaseEnd || '',
     lastWater: Number(room.lastWater || 0) || 0,
@@ -175,10 +242,14 @@ export function normalizeRoom(room = {}) {
     collections: Array.isArray(room.collections) ? room.collections.map(normalizeCollectionRecord) : [],
     meterReadings: Array.isArray(room.meterReadings) ? room.meterReadings : [],
     history: Array.isArray(room.history) ? room.history : [],
+    operationLog: Array.isArray(room.operationLog) ? room.operationLog : [],
     occupancies: Array.isArray(room.occupancies) ? room.occupancies.map(normalizeOccupancy) : [],
     activeOccupancyId: room.activeOccupancyId || '',
     paymentSchedule: Array.isArray(room.paymentSchedule) ? room.paymentSchedule.map(normalizePaymentTerm) : [],
   }
+
+  normalized.hasIdCardPic = normalized.attachmentFiles.idCard.length > 0 || normalized.hasIdCardPic
+  normalized.hasContract = normalized.attachmentFiles.contract.length > 0 || normalized.hasContract
 
   if (normalized.occupancies.length === 0) {
     if (normalized.status === ROOM_STATUS.EMPTY) {
@@ -215,6 +286,8 @@ export function normalizeRoom(room = {}) {
     normalized.activeOccupancyId = active?.id || ''
   }
 
+  normalized.status = resolveRoomStatus(normalized)
+
   return normalized
 }
 
@@ -226,10 +299,15 @@ export function normalizePropertyTree(tree = []) {
       id: block.id || generateId('b'),
       name: block.name || '未命名楼栋',
       floors: (block.floors || [])
-        .map((floorItem) => ({
-          floor: Number(floorItem.floor || 1) || 1,
+        .map((floorItem) => {
+          const rawFloor = Number(floorItem.floor)
+          const floor = Number.isFinite(rawFloor) ? Math.trunc(rawFloor) : 1
+          return {
+           floor,
+           name: floorItem.name || getFloorDisplayName(floor),
           rooms: (floorItem.rooms || []).map(normalizeRoom),
-        }))
+          }
+        })
         .sort((a, b) => b.floor - a.floor),
     })),
   }))

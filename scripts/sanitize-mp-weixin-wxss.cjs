@@ -28,6 +28,11 @@ for (const target of targets) {
     .replace(/:before\{[^}]*\}/g, '')
     .replace(/:after\{[^}]*\}/g, '')
 
+  // The generic pseudo-selector cleanup above removes WeChat's native button
+  // override as well. Re-add it last so custom button surfaces never render
+  // the platform's default hairline border.
+  content += 'button::after{border:0!important}'
+
   fs.writeFileSync(filePath, content, 'utf8')
   console.log(`Sanitized ${filePath}`)
 }

@@ -47,8 +47,8 @@ export function toLeaseRecord(room) {
     deposit: toNumber(activeLease.deposit, room.deposit),
     payment_cycle: toNumber(activeLease.paymentCycle, room.paymentCycle),
     utils_included: false,
-    id_card_pic: room.attachmentFiles?.idCard?.name || '',
-    contract_pic: room.attachmentFiles?.contract?.name || '',
+    id_card_pic: (Array.isArray(room.attachmentFiles?.idCard) ? room.attachmentFiles.idCard[0] : room.attachmentFiles?.idCard)?.name || '',
+    contract_pic: (Array.isArray(room.attachmentFiles?.contract) ? room.attachmentFiles.contract[0] : room.attachmentFiles?.contract)?.name || '',
   }
 }
 

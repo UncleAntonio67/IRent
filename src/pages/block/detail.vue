@@ -83,7 +83,7 @@
             class="floor-section overflow-hidden"
           >
             <view class="floor-section-header px-4 py-3 flex items-center justify-between">
-              <view class="font-black text-slate-700 text-sm">F {{ floorItem.floor }}</view>
+              <view class="font-black text-slate-700 text-sm">{{ floorItem.name || `${floorItem.floor}层` }}</view>
               <view class="text-2xs text-slate-400 font-bold">共 {{ floorItem.rooms.length }} 间</view>
             </view>
 
@@ -110,7 +110,7 @@
                   <view v-if="room.status === 'empty'" class="text-2xs font-medium text-slate-400 mt-2">空置待租</view>
                   <view v-else>
                     <view class="text-xs font-medium truncate" :class="getRoomVisuals(room.status).text">
-                      {{ room.tenant || '未填写租客' }}
+                      {{ room.tenant || '空置待租' }}
                     </view>
                     <view v-if="room.status === 'overdue'" class="text-2xs text-rose-600 font-bold mt-1 inline-block">欠费待收</view>
                     <view v-else class="text-2xs text-slate-500 font-mono mt-1 opacity-70">￥{{ room.rent || 0 }}/期</view>

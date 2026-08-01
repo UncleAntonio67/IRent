@@ -47,3 +47,6 @@ project.swan.json
 
 # Test / coverage
 coverage/
+
+# Local visual-regression captures. Baselines are intentionally versioned.
+tests/ui-inspection/current/

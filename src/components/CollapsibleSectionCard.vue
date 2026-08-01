@@ -31,7 +31,7 @@ const emit = defineEmits(['toggle'])
   padding: 28rpx;
   border-radius: 28rpx;
   background: #ffffff;
-  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.055);
+  box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.045);
 }
 
 .section-card-trigger {
@@ -39,8 +39,8 @@ const emit = defineEmits(['toggle'])
 }
 
 .collapse-chevron {
-  width: 14rpx;
-  height: 14rpx;
+  width: 16rpx;
+  height: 16rpx;
   border-right: 2rpx solid #94a3b8;
   border-bottom: 2rpx solid #94a3b8;
   transform: rotate(-45deg);
@@ -53,7 +53,7 @@ const emit = defineEmits(['toggle'])
 }
 
 .collapse-indicator {
-  min-width: 104rpx;
+  min-width: 112rpx;
 }
 </style>
 

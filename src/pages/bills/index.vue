@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <view class="h-screen bg-slate-50 text-slate-800">
     <view class="mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
       <view class="bg-white-80 px-5 pb-3 relative shrink-0 sticky-header z-20 shadow-soft" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view>
           <view class="font-black text-slate-900 text-lg">账务流水</view>
-          <view class="text-xs text-slate-400 font-medium mt-0_5">按类型、房号和租客快速查询已收记录</view>
+          <view class="text-xs text-slate-400 font-medium mt-0_5">汇总所有房间的实际收费流水</view>
         </view>
 
         <view class="mt-4 p-4 rounded-2xl bills-hero relative overflow-hidden shadow-soft">
@@ -70,7 +70,7 @@
                 confirm-type="search"
                 @confirm="applySearch"
                 class="w-full text-xs font-medium text-slate-700 bill-search-input"
-                placeholder="搜索房号、租客或流水标题"
+                placeholder="搜索房号、租客或收费内容"
                 placeholder-class="bill-search-placeholder"
               />
             </view>
@@ -113,7 +113,7 @@
 
             <view v-else class="rounded-xl bg-white shadow-soft overflow-hidden bills-history-card">
               <view class="px-3 py-2 bg-slate-50 flex items-center justify-between text-3xs font-semibold tracking-wide text-slate-500 uppercase">
-                <view class="bills-section-title font-bold">历史流水</view>
+                <view class="bills-section-title font-bold">收费流水</view>
                 <view class="flex items-center gap-3 normal-case tracking-normal">
                   <view class="bills-sort-button" :class="sortKey === 'date' ? 'bills-sort-button-active' : ''" @click="toggleSort('date')">
                     时间{{ sortKey === 'date' ? (sortOrder === 'desc' ? '↓' : '↑') : '' }}
@@ -157,7 +157,7 @@
         </view>
       </scroll-view>
 
-      <DateSelectionModal :open="dateDrawerOpen" title="设置日期范围" subtitle="支持快捷范围和手动输入 YYYY-MM-DD" @close="closeDateDrawer">
+      <DateSelectionModal :open="dateDrawerOpen" title="设置日期范围" subtitle="手工填写日期，自动保存为 YYYY-MM-DD" @close="closeDateDrawer">
         <view class="stack-3">
           <view class="grid grid-cols-4 gap-2">
             <button
@@ -174,11 +174,11 @@
           <view class="stack-2">
             <view class="bills-search-field">
               <view class="text-xs font-semibold text-slate-500">开始日期</view>
-              <input v-model="startDateDraft" type="text" class="w-full text-xs font-medium text-slate-700 bill-search-input mt-0_5" placeholder="YYYY-MM-DD" placeholder-class="bill-search-placeholder" />
+              <input v-model="startDateDraft" type="text" class="w-full text-xs font-medium text-slate-700 bill-search-input mt-0_5" placeholder="YYYY-MM-DD" placeholder-class="bill-search-placeholder" @blur="normalizeDateDraft('start')" />
             </view>
             <view class="bills-search-field">
               <view class="text-xs font-semibold text-slate-500">结束日期</view>
-              <input v-model="endDateDraft" type="text" class="w-full text-xs font-medium text-slate-700 bill-search-input mt-0_5" placeholder="YYYY-MM-DD" placeholder-class="bill-search-placeholder" />
+              <input v-model="endDateDraft" type="text" class="w-full text-xs font-medium text-slate-700 bill-search-input mt-0_5" placeholder="YYYY-MM-DD" placeholder-class="bill-search-placeholder" @blur="normalizeDateDraft('end')" />
             </view>
           </view>
 
@@ -225,6 +225,7 @@ import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { previewChosenImage, resolveOfflineImageSrc } from '../../utils/media'
 import { hasCloudApiBaseUrl } from '../../config/cloud'
+import { normalizeDateInput } from '../../utils/validation'
 
 const headerTopPadding = ref(44)
 const typeTab = ref('all')
@@ -363,10 +364,7 @@ const activeQuickDate = computed(() => {
 })
 
 function applySearch() {
-  if (!isValidDateInput(startDateDraft.value) || !isValidDateInput(endDateDraft.value)) {
-    uni.showToast({ title: '日期格式应为 YYYY-MM-DD', icon: 'none' })
-    return
-  }
+  if (!normalizeDateDraft('start') || !normalizeDateDraft('end')) return
   if (startDateDraft.value && endDateDraft.value && startDateDraft.value > endDateDraft.value) {
     uni.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' })
     return
@@ -421,9 +419,16 @@ function parseDateValue(value, endOfDay = false) {
 }
 
 function isValidDateInput(value) {
-  const text = String(value || '').trim()
-  if (!text) return true
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) && Boolean(parseDateValue(text))
+  return !String(value || '').trim() || Boolean(normalizeDateInput(value))
+}
+
+function normalizeDateDraft(kind) {
+  const target = kind === 'start' ? startDateDraft : endDateDraft
+  if (!String(target.value || '').trim()) return true
+  const normalized = normalizeDateInput(target.value)
+  if (!normalized) { uni.showToast({ title: '请输入有效日期', icon: 'none' }); return false }
+  target.value = normalized
+  return true
 }
 
 function toggleTypeMenu() {
@@ -472,10 +477,7 @@ function applyQuickDate(value) {
 }
 
 function confirmDateDrawer() {
-  if (!isValidDateInput(startDateDraft.value) || !isValidDateInput(endDateDraft.value)) {
-    uni.showToast({ title: '日期格式应为 YYYY-MM-DD', icon: 'none' })
-    return
-  }
+  if (!normalizeDateDraft('start') || !normalizeDateDraft('end')) return
   if (startDateDraft.value && endDateDraft.value && startDateDraft.value > endDateDraft.value) {
     uni.showToast({ title: '开始日期不能晚于结束日期', icon: 'none' })
     return
@@ -634,6 +636,7 @@ function formatSyncError(value) {
 .bill-search-placeholder {
   color: #94a3b8;
 }
+
 
 .bills-query-button {
   min-height: 28px;

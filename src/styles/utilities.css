@@ -243,6 +243,48 @@
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Reset WeChat's button pseudo-border. It otherwise appears as a stray hairline
+ * around custom buttons on some Android devices and DevTools skins. */
+button {
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  background: transparent;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  vertical-align: middle;
+}
+
+button::after {
+  border: 0 !important;
+}
+
+/* White buttons need a visible edge against white cards. Prefer a soft slate
+ * surface for secondary actions; this fallback covers utility-class buttons. */
+button.bg-white,
+button.btn-soft {
+  border: 1rpx solid rgba(203, 213, 225, 0.9);
+}
+
+.button-secondary-slate {
+  min-height: 64rpx;
+  padding: 0 20rpx;
+  border: 0;
+  border-radius: 16rpx;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
 .nav-icon-button {
   width: 72rpx;
   height: 72rpx;
@@ -327,6 +369,14 @@
   border-top: 1px solid rgba(255, 255, 255, 0.6);
 }
 
+.drawer-action-bar {
+  flex-shrink: 0;
+  padding: 20rpx 40rpx calc(env(safe-area-inset-bottom) + 20rpx);
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1rpx solid rgba(226, 232, 240, 0.7);
+  box-shadow: 0 -8rpx 20rpx rgba(15, 23, 42, 0.035);
+}
+
 .drawer-scroll-area {
   flex: 1;
   min-height: 0;
@@ -342,7 +392,7 @@
 .surface-card {
   background: #ffffff;
   border: 0;
-  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.055);
+  box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.045);
 }
 
 .surface-muted {

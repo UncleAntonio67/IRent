@@ -3,10 +3,10 @@
     title="当前租客"
     :expanded="expanded"
     title-class="text-sm text-slate-700 font-bold"
-    body-class="flex items-end justify-between gap-2 mt-3"
+    body-class="flex items-end justify-between gap-2 mt-2"
     @toggle="emit('toggle')"
   >
-    <view class="min-w-0 flex-1">
+    <view class="tenant-edit-fields min-w-0 flex-1">
       <input
         :value="tenant"
         type="text"
@@ -22,42 +22,37 @@
         @input="emit('update:phone', $event.detail.value)"
       />
     </view>
-    <button
-      v-if="idCard || canManage"
-      class="detail-side-button tap-scale"
-      :class="idCard ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'"
-      @click="emit('pick-id-card')"
-    >
-      <view class="detail-side-button-text" :class="idCard ? 'text-emerald-800' : 'text-slate-700'">
-        {{ idCard ? '查看身份证' : '上传身份证' }}
+    <view class="tenant-attachment-row">
+      <view class="tenant-attachment-group">
+        <button class="detail-side-button tap-scale" :class="idCardCount ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="idCardCount ? emit('preview-id-card') : emit('pick-id-card')">
+          <view class="detail-side-button-text" :class="idCardCount ? 'text-emerald-800' : 'text-slate-700'">{{ idCardCount ? '身份证已上传' : '上传身份证' }}</view>
+        </button>
       </view>
-    </button>
-    <button
-      v-if="contract || canManage"
-      class="detail-side-button tap-scale"
-      :class="contract ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'"
-      @click="emit('pick-contract')"
-    >
-      <view class="detail-side-button-text" :class="contract ? 'text-emerald-800' : 'text-slate-700'">
-        {{ contract ? '查看合同' : '上传合同' }}
+      <view class="tenant-attachment-group">
+        <button class="detail-side-button tap-scale" :class="contractCount ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="contractCount ? emit('preview-contract') : emit('pick-contract')">
+          <view class="detail-side-button-text" :class="contractCount ? 'text-emerald-800' : 'text-slate-700'">{{ contractCount ? '合同已上传' : '上传合同' }}</view>
+        </button>
       </view>
-    </button>
+    </view>
   </CollapsibleSectionCard>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import CollapsibleSectionCard from './CollapsibleSectionCard.vue'
 
-defineProps({
+const props = defineProps({
   expanded: { type: Boolean, default: true },
   tenant: { type: String, default: '' },
   phone: { type: String, default: '' },
-  idCard: { type: Object, default: null },
-  contract: { type: Object, default: null },
+  idCards: { type: Array, default: () => [] },
+  contracts: { type: Array, default: () => [] },
   canManage: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['toggle', 'update:tenant', 'update:phone', 'pick-id-card', 'pick-contract'])
+const idCardCount = computed(() => props.idCards.length)
+const contractCount = computed(() => props.contracts.length)
+const emit = defineEmits(['toggle', 'update:tenant', 'update:phone', 'pick-id-card', 'pick-contract', 'preview-id-card', 'preview-contract'])
 </script>
 
 <style>
@@ -93,4 +88,13 @@ const emit = defineEmits(['toggle', 'update:tenant', 'update:phone', 'pick-id-ca
   line-height: 1.15;
   font-weight: 600;
 }
+
+.tenant-attachment-row { display: flex; gap: 10rpx; flex-shrink: 0; }
+
+.tenant-attachment-group { min-width: 0; }
+
+.tenant-attachment-group .detail-side-button {
+  min-width: 128rpx;
+}
+
 </style>

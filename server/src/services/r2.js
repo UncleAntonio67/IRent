@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { config } from '../config.js'
 
@@ -114,4 +114,10 @@ export async function putObjectText({ storageKey, body, contentType = 'text/plai
     storageKey,
     fileUrl: buildPublicFileUrl(storageKey),
   }
+}
+
+export async function deleteStorageObject(storageKey) {
+  if (!storageKey) return
+  const client = getR2Client()
+  await client.send(new DeleteObjectCommand({ Bucket: config.r2.bucket, Key: storageKey }))
 }

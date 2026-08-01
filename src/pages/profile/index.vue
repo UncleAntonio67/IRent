@@ -1,4 +1,4 @@
-﻿
+
 <template>
   <view class="h-screen bg-slate-50 text-slate-800">
     <view class="mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
@@ -178,11 +178,11 @@
                   </view>
                   <view class="flex gap-2">
                     <button
-                      class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold"
+                      class="flex-1 button-secondary-slate tap-scale"
                       @click="openAttachment(doc.identityFile, doc.identityTitle, '暂无证件')"
                     >{{ doc.identityFile ? '查看身份证' : '暂无证件' }}</button>
                     <button
-                      class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold"
+                      class="flex-1 button-secondary-slate tap-scale"
                       @click="openAttachment(doc.contractFile, doc.contractTitle, '暂无合同')"
                     >{{ doc.contractFile ? '查看电子合同' : '暂无合同' }}</button>
                   </view>
@@ -221,34 +221,6 @@
                   />
                 </view>
               </view>
-            </view>
-          </view>
-
-          <view v-else-if="subPage === 'contractLibrary'" class="stack-3">
-            <view class="surface-card" :class="UI.card">
-              <view class="p-4 stack-3">
-                <view class="text-xs text-slate-500 leading-6">上传与预览合同模板，便于后续快速归档使用。</view>
-                <button
-                  class="w-full py-3 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
-                  @click="showTemplateUploadTip"
-                >上传新的合同模板扫描件</button>
-              </view>
-            </view>
-
-            <view class="surface-card" :class="UI.card">
-              <view v-if="contractTemplates.length" class="divide-y divide-slate-100">
-                <view v-for="item in contractTemplates" :key="item.id" class="p-3 flex items-center justify-between gap-3">
-                  <view class="min-w-0">
-                    <view class="font-bold text-slate-900 text-sm truncate">{{ item.name }}</view>
-                    <view class="text-3xs text-slate-400 mt-1">最近使用 {{ item.updatedAt || '未记录' }}</view>
-                  </view>
-                  <button
-                    class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold"
-                    @click="openTemplatePreview(item)"
-                  >预览</button>
-                </view>
-              </view>
-              <view v-else class="p-6 text-center text-sm text-slate-400">暂无已归档的标准模板</view>
             </view>
           </view>
 
@@ -507,7 +479,6 @@ const stats = computed(() => {
 const pageTitle = computed(() => ({
   allDocuments: '租客证件与合同归档',
   utilityTemplate: '默认水电单价模板',
-  contractLibrary: '电子租赁合同库',
   autoReminder: '到期提醒机制',
   exportReport: '数据报表导出',
 }[subPage.value] || '我的'))
@@ -515,7 +486,6 @@ const pageTitle = computed(() => ({
 const pageSubtitle = computed(() => ({
   allDocuments: '按姓名、房号、手机号搜索',
   utilityTemplate: '统一模板，房间可覆盖',
-  contractLibrary: '上传与预览模板',
   autoReminder: '仅自我管理，不生成催缴文案',
   exportReport: '导出 Excel 存档',
 }[subPage.value] || '账号与基础设置'))
@@ -523,7 +493,6 @@ const pageSubtitle = computed(() => ({
 const menuA = [
   { id: 'allDocuments', label: '租客证件与合同归档', desc: '查看身份证、合同与归档状态', icon: '档', bg: 'bg-blue-50', color: 'text-blue-600' },
   { id: 'utilityTemplate', label: '默认水电单价模板', desc: '统一配置默认水电价格', icon: '水', bg: 'bg-amber-50', color: 'text-amber-600', managerOnly: true },
-  { id: 'contractLibrary', label: '电子租赁合同库', desc: '管理合同模板与预览入口', icon: '合', bg: 'bg-indigo-50', color: 'text-indigo-600' },
 ]
 
 const menuB = [
@@ -566,28 +535,6 @@ const filteredDocs = computed(() => {
   return allDocs.value.filter((item) => [item.tenantName, item.phone, item.roomLabel].some((field) => String(field || '').includes(keyword)))
 })
 
-const contractTemplates = computed(() => {
-  const list = []
-  for (const property of properties.value) {
-    for (const block of property.blocks || []) {
-      for (const floor of block.floors || []) {
-        for (const room of floor.rooms || []) {
-          for (const file of room.attachments || []) {
-            const name = String(file?.name || '')
-            if (!name.includes('合同')) continue
-            list.push({ id: file.id || `${room.id}_${name}`, name, updatedAt: file.uploadedAt || file.updatedAt || '', file })
-          }
-        }
-      }
-    }
-  }
-  const seen = new Set()
-  return list.filter((item) => {
-    if (seen.has(item.name)) return false
-    seen.add(item.name)
-    return true
-  })
-})
 
 const exportTransactions = computed(() => {
   const targetRoomId = exportMode.value === 'room' ? selectedExportRoomId.value : ''
@@ -862,7 +809,6 @@ function openAttachment(file, title, emptyTitle) {
   attachmentModalOpen.value = true
 }
 
-function openTemplatePreview(item) { openAttachment(item?.file, item?.name || '合同模板', '暂无模板') }
 function closeAttachment() { attachmentModalOpen.value = false; activeAttachment.value = null; attachmentModalTitle.value = '' }
 function previewAttachmentImage() { if (activeAttachment.value) previewChosenImage(activeAttachment.value) }
 function resolveAttachmentImageSrc(file) { return resolveOfflineImageSrc(file) }
@@ -965,7 +911,6 @@ async function copyExportLink(url) {
   }
 }
 
-function showTemplateUploadTip() { uni.showToast({ title: '该功能下一步完善', icon: 'none' }) }
 
 onLoad(() => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
