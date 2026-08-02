@@ -315,6 +315,7 @@ const addModalFieldLabel = computed(() => ({
   room: '房间名称',
 })[addModal.value.type] || '填写内容')
 const workbenchRefreshing = ref(false)
+const cloudBootstrapPrompted = ref(false)
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
   const counts = syncSummary.value?.pendingTypeCounts || {}
@@ -363,9 +364,28 @@ async function syncCloudProperties() {
   try {
     const localSnapshot = cloneProperties()
     let next = await fetchFullPropertiesSnapshot()
-    if (!next.length && localSnapshot.length) {
-      next = await migrateLocalPropertiesSnapshot(localSnapshot)
-      uni.showToast({ title: '本机历史数据已迁移至云端', icon: 'none' })
+    if (!next.length && localSnapshot.length && !cloudBootstrapPrompted.value) {
+      cloudBootstrapPrompted.value = true
+      const roomCount = localSnapshot.reduce(
+        (total, property) => total + (property.blocks || []).reduce(
+          (blockTotal, block) => blockTotal + (block.floors || []).reduce(
+            (floorTotal, floor) => floorTotal + (floor.rooms || []).length,
+            0
+          ),
+          0
+        ),
+        0
+      )
+      const decision = await uni.showModal({
+        title: '云端尚未初始化',
+        content: `本机有 ${roomCount} 个房间数据。云端将成为唯一数据源，是否将本机数据初始化到云端？`,
+        confirmText: '初始化云端',
+        cancelText: '暂不上传',
+      })
+      if (decision.confirm) {
+        next = await migrateLocalPropertiesSnapshot(localSnapshot)
+        uni.showToast({ title: '本机历史数据已迁移至云端', icon: 'none' })
+      }
     }
     if (Array.isArray(next) && next.length) {
       setProperties(next)
