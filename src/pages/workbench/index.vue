@@ -59,6 +59,13 @@
             </view>
             <text class="loading-pill-text">待同步 {{ syncSummary.count }} 条本地变更</text>
           </view>
+          <view v-if="cloudBootstrapRequired" class="px-3 py-3 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-between gap-3">
+            <view class="min-w-0">
+              <view class="text-xs font-semibold text-blue-800">云端尚未初始化</view>
+              <view class="text-3xs text-blue-600 mt-1">确认后将本机现有数据设为共享数据源。</view>
+            </view>
+            <button class="shrink-0 px-3 py-2 rounded-lg btn-blue text-2xs font-semibold" @click="initializeCloudFromLocal">初始化云端</button>
+          </view>
           <view v-if="syncSummary.failedCount > 0 || syncSummary.lastError" class="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
             <view class="text-2xs font-semibold text-amber-700">
               {{ syncSummary.failedCount > 0 ? `同步暂未完成，正在重试 ${syncSummary.failedCount} 条` : '同步正在处理中' }}
@@ -313,6 +320,7 @@ const addModalFieldLabel = computed(() => ({
 })[addModal.value.type] || '填写内容')
 const workbenchRefreshing = ref(false)
 const cloudBootstrapPrompted = ref(false)
+const cloudBootstrapRequired = ref(false)
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
   const counts = syncSummary.value?.pendingTypeCounts || {}
@@ -361,31 +369,9 @@ async function syncCloudProperties() {
   try {
     const localSnapshot = cloneProperties()
     let next = await fetchFullPropertiesSnapshot()
-    if (!next.length && localSnapshot.length && !cloudBootstrapPrompted.value) {
-      cloudBootstrapPrompted.value = true
-      const roomCount = localSnapshot.reduce(
-        (total, property) => total + (property.blocks || []).reduce(
-          (blockTotal, block) => blockTotal + (block.floors || []).reduce(
-            (floorTotal, floor) => floorTotal + (floor.rooms || []).length,
-            0
-          ),
-          0
-        ),
-        0
-      )
-      const decision = await uni.showModal({
-        title: '云端尚未初始化',
-        content: `本机有 ${roomCount} 个房间数据。云端将成为唯一数据源，是否将本机数据初始化到云端？`,
-        confirmText: '初始化云端',
-        cancelText: '暂不上传',
-      })
-      if (decision.confirm) {
-        next = await migrateLocalPropertiesSnapshot(localSnapshot)
-        clearPendingSyncTasks()
-        uni.showToast({ title: '本机历史数据已迁移至云端', icon: 'none' })
-      }
-    }
+    cloudBootstrapRequired.value = !next.length && localSnapshot.length > 0
     if (Array.isArray(next) && next.length) {
+      cloudBootstrapRequired.value = false
       setProperties(next)
       warmVisibleRoomCache()
     }
@@ -397,6 +383,47 @@ async function syncCloudProperties() {
       if (next.length) setProperties(next)
     }
   } finally {
+    workbenchRefreshing.value = false
+  }
+}
+
+function countLocalRooms(tree) {
+  return tree.reduce(
+    (total, property) => total + (property.blocks || []).reduce(
+      (blockTotal, block) => blockTotal + (block.floors || []).reduce(
+        (floorTotal, floor) => floorTotal + (floor.rooms || []).length,
+        0
+      ),
+      0
+    ),
+    0
+  )
+}
+
+async function initializeCloudFromLocal() {
+  if (cloudBootstrapPrompted.value) return
+  const localSnapshot = cloneProperties()
+  if (!localSnapshot.length) return
+  cloudBootstrapPrompted.value = true
+  try {
+    const decision = await uni.showModal({
+      title: '初始化共享云端数据',
+      content: `将本机 ${countLocalRooms(localSnapshot)} 个房间及其账务、入住记录上传到云端。完成后云端将成为两台设备的唯一数据源。`,
+      confirmText: '确认初始化',
+      cancelText: '取消',
+    })
+    if (!decision.confirm) return
+    workbenchRefreshing.value = true
+    const next = await migrateLocalPropertiesSnapshot(localSnapshot)
+    clearPendingSyncTasks()
+    cloudBootstrapRequired.value = false
+    setProperties(next)
+    warmVisibleRoomCache()
+    uni.showToast({ title: '云端初始化完成', icon: 'success' })
+  } catch (error) {
+    uni.showToast({ title: error?.message || '云端初始化失败', icon: 'none' })
+  } finally {
+    cloudBootstrapPrompted.value = false
     workbenchRefreshing.value = false
   }
 }
