@@ -47,15 +47,12 @@
             </view>
             <text class="loading-pill-text">待同步 {{ syncSummary.count }} 条本地变更</text>
           </view>
-          <view v-if="syncSummary.count > 0 || syncSummary.failedCount > 0 || syncSummary.lastError" class="text-3xs text-slate-400 -mt-2">
-            当前模式：{{ syncModeLabel }}
-          </view>
           <view v-if="syncSummary.failedCount > 0 || syncSummary.lastError" class="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
             <view class="text-2xs font-semibold text-amber-700">
-              {{ syncSummary.failedCount > 0 ? `待重试 ${syncSummary.failedCount} 条` : '备份待处理' }}
+              {{ syncSummary.failedCount > 0 ? `同步暂未完成，正在重试 ${syncSummary.failedCount} 条` : '同步正在处理中' }}
               <text v-if="syncPendingTypeText"> · {{ syncPendingTypeText }}</text>
             </view>
-            <view class="text-3xs text-amber-600 mt-1">可前往“我的 > 云端备份中心”统一处理。</view>
+            <view class="text-3xs text-amber-600 mt-1">请保持网络连接，完成后会自动更新。</view>
           </view>
           <view class="p-3 rounded-2xl surface-card stack-2 bills-toolbar bills-toolbar-fixed">
             <view class="flex items-center justify-between gap-3">
@@ -267,7 +264,6 @@ const syncPendingTypeText = computed(() => {
   if (!firstKey) return ''
   return `${syncTaskTypeLabel(firstKey)} ${Number(counts[firstKey] || 0)}`
 })
-const syncModeLabel = computed(() => syncSummary.value?.syncMode === 'manual' ? '仅手动同步' : '自动同步')
 
 const typeOptions = [
   { label: '全部', value: 'all' },

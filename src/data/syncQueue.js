@@ -198,6 +198,17 @@ export function getPendingSyncTasks() {
   return loadQueue()
 }
 
+// A successful full-snapshot bootstrap already contains every local mutation.
+// Drop obsolete incremental tasks so they cannot replay against the new cloud source.
+export function clearPendingSyncTasks() {
+  saveQueue([])
+  saveMeta({
+    ...loadMeta(),
+    lastSuccessAt: Date.now(),
+    lastError: '',
+  })
+}
+
 export function getPendingSyncSummary() {
   const tasks = loadQueue()
   const meta = loadMeta()
