@@ -1,0 +1,2 @@
+ALTER TABLE "Occupancy"
+ADD COLUMN IF NOT EXISTS "archiveJson" JSONB;

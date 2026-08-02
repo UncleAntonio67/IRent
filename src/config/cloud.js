@@ -1,7 +1,6 @@
 const API_BASE_STORAGE_KEY = 'irent_cloud_api_base_v1'
-// The current delivery is a standalone local application. Keep cloud adapters
-// in the codebase for a later deployment, but never expose them to runtime.
-const LOCAL_ONLY_MODE = true
+const DEFAULT_CLOUD_API_BASE_URL = 'https://irent.antoniolq.top'
+const LOCAL_ONLY_MODE = false
 
 function getStoredCloudApiBaseUrl() {
   try {
@@ -14,7 +13,7 @@ function getStoredCloudApiBaseUrl() {
     if (envBase) return envBase.replace(/\/+$/, '')
   } catch {}
 
-  return ''
+  return DEFAULT_CLOUD_API_BASE_URL
 }
 
 export function getCloudApiBaseUrl() {

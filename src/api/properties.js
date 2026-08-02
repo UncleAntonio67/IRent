@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import { mapServerPropertyTree } from './mappers'
+import { mapServerFullPropertySnapshot, mapServerPropertyTree } from './mappers'
 import { buildTenantStorageKey } from '../data/authStore.js'
 
 const PROPERTY_TREE_CACHE_KEY = 'property_tree_cache_v1'
@@ -46,6 +46,13 @@ export function isPropertiesTreeFresh(maxAge = PROPERTY_TREE_CACHE_MAX_AGE) {
 export async function fetchPropertiesTree() {
   const result = await apiRequest('/properties')
   const nextTree = mapServerPropertyTree(result.items || [])
+  savePropertyTreeCache(nextTree)
+  return nextTree
+}
+
+export async function fetchFullPropertiesSnapshot() {
+  const result = await apiRequest('/properties/full-snapshot')
+  const nextTree = mapServerFullPropertySnapshot(result.items || [])
   savePropertyTreeCache(nextTree)
   return nextTree
 }
@@ -100,6 +107,44 @@ function serializePropertyTreeForServer(tree = []) {
       })),
     })),
   }))
+}
+
+function serializeFullRoomForServer(room = {}) {
+  return {
+    ...serializeRoomForServer(room),
+    paymentSchedule: Array.isArray(room.paymentSchedule) ? room.paymentSchedule : [],
+    bills: Array.isArray(room.bills) ? room.bills : [],
+    collections: Array.isArray(room.collections) ? room.collections : [],
+    meterReadings: Array.isArray(room.meterReadings) ? room.meterReadings : [],
+    occupancies: Array.isArray(room.occupancies) ? room.occupancies : [],
+    history: Array.isArray(room.history) ? room.history : [],
+  }
+}
+
+function serializeFullPropertyTreeForServer(tree = []) {
+  return (tree || []).map((property) => ({
+    id: property.id,
+    name: property.name,
+    blocks: (property.blocks || []).map((block) => ({
+      id: block.id,
+      name: block.name,
+      floors: (block.floors || []).map((floorItem) => ({
+        id: floorItem.id || `${block.id}_floor_${floorItem.floor}`,
+        floor: Number(floorItem.floor || floorItem.floorNo || 0) || 0,
+        rooms: (floorItem.rooms || []).map(serializeFullRoomForServer),
+      })),
+    })),
+  }))
+}
+
+export async function migrateLocalPropertiesSnapshot(tree = []) {
+  const result = await apiRequest('/properties/migrate-local', {
+    method: 'POST',
+    data: { items: serializeFullPropertyTreeForServer(tree) },
+  })
+  const nextTree = mapServerFullPropertySnapshot(result.items || [])
+  savePropertyTreeCache(nextTree)
+  return nextTree
 }
 
 export async function submitPropertiesTreeSnapshot(tree = []) {

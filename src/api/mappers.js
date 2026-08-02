@@ -85,6 +85,23 @@ export function mapServerPropertyTree(properties) {
   }))
 }
 
+export function mapServerFullPropertySnapshot(properties) {
+  return (properties || []).map((property) => ({
+    id: property.id,
+    name: property.name || '未命名院落',
+    blocks: (property.blocks || []).map((block) => ({
+      id: block.id,
+      name: block.name || '未命名楼栋',
+      floors: (block.floors || []).map((floor) => ({
+        id: floor.id,
+        floor: Number(floor.floorNo || floor.floor || 1) || 1,
+        name: floor.name || '',
+        rooms: (floor.rooms || []).map(mapServerRoomDetail),
+      })),
+    })),
+  }))
+}
+
 export function mapServerRoomDetail(room) {
   const attachments = Array.isArray(room.attachments) ? room.attachments : []
   const attachmentsByType = (type) => attachments.filter((item) => lower(item.type) === type)
@@ -137,7 +154,7 @@ export function mapServerRoomDetail(room) {
     electricRead: Number(reading.electricReading || 0) || 0,
     gasRead: Number(reading.gasReading || 0) || 0,
     total: Number(reading.totalAmount || 0) || 0,
-    billId: '',
+    billId: reading.billId || '',
   }))
 
   const occupancies = (room.occupancies || []).map((item) => ({
@@ -153,6 +170,7 @@ export function mapServerRoomDetail(room) {
     deposit: Number(item.depositAmount || 0) || 0,
     paymentCycle: Number(item.paymentCycleMonths || 0) || 0,
     remark: item.remark || '',
+    archive: item.archive || null,
   }))
 
   const summary = mapServerRoomSummary(room)

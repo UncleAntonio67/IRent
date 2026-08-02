@@ -215,6 +215,8 @@ model Occupancy {
   startDate           DateTime?
   endDate             DateTime?
   remark              String?
+  /// Snapshot retained for a completed local lease (including its archived bills).
+  archiveJson         Json?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   room                Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)

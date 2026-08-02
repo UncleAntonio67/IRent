@@ -232,7 +232,7 @@ import BaseCenteredModal from '../../components/BaseCenteredModal.vue'
 import DateSelectionModal from '../../components/DateSelectionModal.vue'
 import { properties, setProperties } from '../../data/rentStore'
 import { getCachedBillEntriesSnapshot, refreshBillEntriesSnapshot } from '../../data/billSnapshots.js'
-import { fetchPropertiesTree, getCachedPropertiesTree, isPropertiesTreeFresh } from '../../api/properties'
+import { fetchFullPropertiesSnapshot, getCachedPropertiesTree } from '../../api/properties'
 import { getPendingSyncSummary } from '../../data/syncQueue.js'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
@@ -303,7 +303,7 @@ async function syncCloudProperties() {
   if (!hasCloudApiBaseUrl()) return
   billsRefreshing.value = true
   try {
-    const next = await fetchPropertiesTree()
+    const next = await fetchFullPropertiesSnapshot()
     if (Array.isArray(next)) {
       setProperties(next)
     }

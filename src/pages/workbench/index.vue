@@ -279,7 +279,7 @@ import { UI, getMiniStatusColor } from '../../ui/ui'
 import { getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
 import { canManageTenantData, isLoggedIn } from '../../data/authStore'
-import { fetchPropertiesTree, getCachedPropertiesTree, isPropertiesTreeFresh } from '../../api/properties'
+import { fetchFullPropertiesSnapshot, getCachedPropertiesTree, migrateLocalPropertiesSnapshot } from '../../api/properties'
 import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
@@ -361,12 +361,24 @@ async function syncCloudProperties() {
   if (!hasCloudApiBaseUrl()) return
   workbenchRefreshing.value = true
   try {
-    const next = await fetchPropertiesTree()
+    const localSnapshot = cloneProperties()
+    let next = await fetchFullPropertiesSnapshot()
+    if (!next.length && localSnapshot.length) {
+      next = await migrateLocalPropertiesSnapshot(localSnapshot)
+      uni.showToast({ title: '本机历史数据已迁移至云端', icon: 'none' })
+    }
     if (Array.isArray(next) && next.length) {
       setProperties(next)
       warmVisibleRoomCache()
     }
-  } catch {} finally {
+  } catch (error) {
+    // A second device may race with the first one. Read the protected cloud
+    // snapshot again instead of ever overwriting the established source.
+    if (error?.code === 'CLOUD_DATA_EXISTS') {
+      const next = await fetchFullPropertiesSnapshot()
+      if (next.length) setProperties(next)
+    }
+  } finally {
     workbenchRefreshing.value = false
   }
 }

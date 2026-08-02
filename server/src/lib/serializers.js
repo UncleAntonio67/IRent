@@ -110,6 +110,7 @@ export function serializeOccupancy(occupancy) {
     startDate: toIsoString(occupancy.startDate),
     endDate: toIsoString(occupancy.endDate),
     remark: occupancy.remark || null,
+    archive: occupancy.archiveJson || null,
   }
 }
 
