@@ -321,7 +321,10 @@ const addModalFieldLabel = computed(() => ({
 const workbenchRefreshing = ref(false)
 const cloudBootstrapPrompted = ref(false)
 const cloudBootstrapRequired = ref(false)
-const CLOUD_SOURCE_READY_KEY = 'cloud_source_ready_v1'
+// Bump this epoch whenever a legacy offline queue format must be retired.
+// Devices that installed an earlier package can otherwise retain obsolete
+// attachment/checkout tasks forever even after the cloud becomes authoritative.
+const CLOUD_SOURCE_READY_KEY = 'cloud_source_ready_v2'
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
   const counts = syncSummary.value?.pendingTypeCounts || {}
