@@ -10,6 +10,8 @@ RUN npx prisma generate
 
 COPY src ./src
 
+RUN mkdir -p /app/uploads
+
 ENV NODE_ENV=production
 ENV PORT=8080
 

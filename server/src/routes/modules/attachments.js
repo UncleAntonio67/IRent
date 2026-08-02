@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
 import { requireTenant, requireTenantRole } from '../../lib/tenant.js'
 import { confirmAttachmentUpload, deleteAttachment, presignAttachmentUpload } from '../../services/attachments.js'
+import { saveLocalAttachment } from '../../services/r2.js'
 
 const attachmentTypeSchema = z.enum([
   'ROOM_PHOTO',
@@ -31,6 +32,10 @@ const confirmSchema = z.object({
   meterReadingId: z.string().trim().min(1).optional(),
 })
 
+const localUploadSchema = presignSchema.extend({
+  contentBase64: z.string().min(1).max(28 * 1024 * 1024),
+})
+
 export const attachmentRouter = express.Router()
 
 attachmentRouter.use(requireAuth)
@@ -57,6 +62,23 @@ attachmentRouter.post('/presign', async (req, res, next) => {
       ok: true,
       ...upload,
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+attachmentRouter.post('/local-upload', async (req, res, next) => {
+  const parsed = localUploadSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ ok: false, code: 'INVALID_PAYLOAD', message: 'Invalid local attachment payload' })
+    return
+  }
+  try {
+    requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
+    const tenant = requireTenant(req.auth)
+    const { contentBase64, ...file } = parsed.data
+    const uploaded = await saveLocalAttachment({ tenantId: tenant.id, ...file, base64: contentBase64 })
+    res.json({ ok: true, ...uploaded })
   } catch (error) {
     next(error)
   }

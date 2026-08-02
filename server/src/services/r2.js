@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { config } from '../config.js'
@@ -21,6 +23,35 @@ function assertR2Configured() {
     error.code = 'R2_CONFIG_MISSING'
     throw error
   }
+}
+
+function hasR2Config() {
+  return Boolean(config.r2.accountId && config.r2.accessKeyId && config.r2.secretAccessKey && config.r2.bucket)
+}
+
+function localPublicBaseUrl() {
+  const configured = String(config.uploads.publicBaseUrl || '').replace(/\/$/, '')
+  if (configured) return configured
+  return `${String(config.appBaseUrl || '').replace(/\/$/, '')}/uploads`
+}
+
+function localPath(storageKey) {
+  const root = path.resolve(config.uploads.directory)
+  const target = path.resolve(root, storageKey)
+  if (target !== root && !target.startsWith(`${root}${path.sep}`)) {
+    const error = new Error('Invalid storage key')
+    error.statusCode = 400
+    error.code = 'INVALID_STORAGE_KEY'
+    throw error
+  }
+  return target
+}
+
+async function putLocalObject(storageKey, body) {
+  const target = localPath(storageKey)
+  await mkdir(path.dirname(target), { recursive: true })
+  await writeFile(target, body)
+  return { storageKey, fileUrl: `${localPublicBaseUrl()}/${storageKey}` }
 }
 
 let clientSingleton = null
@@ -62,8 +93,11 @@ export function buildStorageKey({ tenantId, type, fileName }) {
 }
 
 export function buildPublicFileUrl(storageKey) {
-  if (!config.r2.publicBaseUrl) return null
-  return `${config.r2.publicBaseUrl.replace(/\/$/, '')}/${storageKey}`
+  if (hasR2Config()) {
+    if (!config.r2.publicBaseUrl) return null
+    return `${config.r2.publicBaseUrl.replace(/\/$/, '')}/${storageKey}`
+  }
+  return `${localPublicBaseUrl()}/${storageKey}`
 }
 
 export async function createPresignedUpload({
@@ -73,6 +107,12 @@ export async function createPresignedUpload({
   mimeType,
   fileSize,
 }) {
+  if (!hasR2Config()) {
+    const error = new Error('Local upload endpoint required')
+    error.statusCode = 409
+    error.code = 'LOCAL_UPLOAD_REQUIRED'
+    throw error
+  }
   const storageKey = buildStorageKey({ tenantId, type, fileName })
   const client = getR2Client()
   const command = new PutObjectCommand({
@@ -99,7 +139,27 @@ export async function createPresignedUpload({
   }
 }
 
+export async function saveLocalAttachment({ tenantId, type, fileName, base64 }) {
+  const storageKey = buildStorageKey({ tenantId, type, fileName })
+  const normalized = String(base64 || '').replace(/^data:[^;]+;base64,/, '')
+  if (!normalized) {
+    const error = new Error('Attachment content is required')
+    error.statusCode = 400
+    error.code = 'ATTACHMENT_CONTENT_REQUIRED'
+    throw error
+  }
+  const body = Buffer.from(normalized, 'base64')
+  if (!body.length) {
+    const error = new Error('Attachment content is invalid')
+    error.statusCode = 400
+    error.code = 'ATTACHMENT_CONTENT_INVALID'
+    throw error
+  }
+  return putLocalObject(storageKey, body)
+}
+
 export async function putObjectText({ storageKey, body, contentType = 'text/plain; charset=utf-8' }) {
+  if (!hasR2Config()) return putLocalObject(storageKey, body)
   const client = getR2Client()
   await client.send(
     new PutObjectCommand({
@@ -118,6 +178,10 @@ export async function putObjectText({ storageKey, body, contentType = 'text/plai
 
 export async function deleteStorageObject(storageKey) {
   if (!storageKey) return
+  if (!hasR2Config()) {
+    await rm(localPath(storageKey), { force: true })
+    return
+  }
   const client = getR2Client()
   await client.send(new DeleteObjectCommand({ Bucket: config.r2.bucket, Key: storageKey }))
 }

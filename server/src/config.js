@@ -19,6 +19,12 @@ export const config = {
     bucket: process.env.R2_BUCKET || '',
     publicBaseUrl: process.env.R2_PUBLIC_BASE_URL || '',
   },
+  uploads: {
+    // Local storage is the default for a self-hosted IRent deployment. Set
+    // R2 credentials to opt into object storage instead.
+    directory: process.env.UPLOAD_DIR || '/app/uploads',
+    publicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || '',
+  },
   allowedOrigins: String(process.env.ALLOWED_ORIGINS || '*')
     .split(',')
     .map((item) => item.trim())

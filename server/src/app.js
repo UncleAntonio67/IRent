@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express from 'express'
+import { mkdirSync } from 'node:fs'
 import { config } from './config.js'
 import { registerRoutes } from './routes/index.js'
 
@@ -21,7 +22,10 @@ export function createApp() {
       credentials: true,
     })
   )
-  app.use(express.json({ limit: '2mb' }))
+  // Base64 uploads need headroom over the original file size.
+  app.use(express.json({ limit: '28mb' }))
+  mkdirSync(config.uploads.directory, { recursive: true })
+  app.use('/uploads', express.static(config.uploads.directory, { fallthrough: false, maxAge: '7d' }))
 
   app.get('/health', (_req, res) => {
     res.json({

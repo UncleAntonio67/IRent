@@ -10,7 +10,7 @@ function toAttachmentType(type) {
   return 'RECEIPT'
 }
 
-function readLocalFile(filePath) {
+function readLocalFileBase64(filePath) {
   return new Promise((resolve, reject) => {
     const fs = getFileSystemManagerSafe()
     if (!fs) {
@@ -19,27 +19,8 @@ function readLocalFile(filePath) {
     }
     fs.readFile({
       filePath,
-      success: (res) => resolve(res.data),
-      fail: reject,
-    })
-  })
-}
-
-function sendPresignedPut(uploadUrl, data, headers = {}) {
-  return new Promise((resolve, reject) => {
-    uni.request({
-      url: uploadUrl,
-      method: 'PUT',
-      data,
-      header: headers,
-      success: (res) => {
-        const statusCode = Number(res?.statusCode || 0)
-        if (statusCode >= 200 && statusCode < 300) {
-          resolve(res)
-          return
-        }
-        reject(new Error(`UPLOAD_FAILED_${statusCode}`))
-      },
+      encoding: 'base64',
+      success: (res) => resolve(String(res.data || '')),
       fail: reject,
     })
   })
@@ -47,18 +28,18 @@ function sendPresignedPut(uploadUrl, data, headers = {}) {
 
 export async function uploadAttachmentForRoom({ roomId, type, file }) {
   const attachmentType = toAttachmentType(type)
-  const presigned = await apiRequest('/attachments/presign', {
+  const contentBase64 = await readLocalFileBase64(file.filePath || file.url || '')
+  const localUpload = await apiRequest('/attachments/local-upload', {
     method: 'POST',
     data: {
       type: attachmentType,
       fileName: file.name || 'image.jpg',
       mimeType: file.mimeType || 'image/jpeg',
       fileSize: Number(file.size || 1) || 1,
+      contentBase64,
     },
+    timeout: 60000,
   })
-
-  const binary = await readLocalFile(file.filePath || file.url || '')
-  await sendPresignedPut(presigned.uploadUrl, binary, presigned.headers || {})
 
   const confirmed = await apiRequest('/attachments/confirm', {
     method: 'POST',
@@ -67,7 +48,7 @@ export async function uploadAttachmentForRoom({ roomId, type, file }) {
       fileName: file.name || 'image.jpg',
       mimeType: file.mimeType || 'image/jpeg',
       fileSize: Number(file.size || 1) || 1,
-      storageKey: presigned.storageKey,
+      storageKey: localUpload.storageKey,
       roomId,
     },
   })

@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: irent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: irent
+      POSTGRES_USER: irent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - irent_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U irent -d irent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./repo/server
+    container_name: irent-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18082:8080"
+    volumes:
+      # Keep identity documents, contracts, receipts and exports after image rebuilds.
+      - ./uploads:/app/uploads
+
+volumes:
+  irent_postgres_data:
