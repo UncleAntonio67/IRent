@@ -297,6 +297,7 @@ onLoad(() => {
 onShow(() => {
   cachedEntries.value = getCachedBillEntriesSnapshot().entries
   syncSummary.value = getPendingSyncSummary()
+  void syncCloudProperties()
 })
 
 async function syncCloudProperties() {

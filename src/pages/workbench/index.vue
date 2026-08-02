@@ -356,6 +356,7 @@ onLoad(() => {
 
 onShow(() => {
   syncSummary.value = getPendingSyncSummary()
+  void syncCloudProperties()
 })
 
 async function syncCloudProperties() {
