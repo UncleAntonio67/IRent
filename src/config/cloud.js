@@ -3,17 +3,17 @@ const DEFAULT_CLOUD_API_BASE_URL = 'https://irent.antoniolq.top'
 const LOCAL_ONLY_MODE = false
 
 function getStoredCloudApiBaseUrl() {
+  // Production uses one fixed, verified HTTPS endpoint. Earlier preview builds
+  // stored a retired Cloud Run URL under this key; never let that stale value
+  // redirect a current client away from the Tencent deployment.
+  const officialBase = DEFAULT_CLOUD_API_BASE_URL
   try {
     const stored = String(uni.getStorageSync(API_BASE_STORAGE_KEY) || '').trim()
-    if (stored) return stored.replace(/\/+$/, '')
+    if (stored && stored.replace(/\/+$/, '') !== officialBase) {
+      uni.setStorageSync(API_BASE_STORAGE_KEY, officialBase)
+    }
   } catch {}
-
-  try {
-    const envBase = String(import.meta.env.VITE_API_BASE_URL || '').trim()
-    if (envBase) return envBase.replace(/\/+$/, '')
-  } catch {}
-
-  return DEFAULT_CLOUD_API_BASE_URL
+  return officialBase
 }
 
 export function getCloudApiBaseUrl() {
@@ -47,7 +47,8 @@ export function hasCloudApiBaseUrl() {
 }
 
 export function setCloudApiBaseUrl(nextUrl) {
-  const normalized = String(nextUrl || '').trim().replace(/\/+$/, '')
+  const requested = String(nextUrl || '').trim().replace(/\/+$/, '')
+  const normalized = requested === DEFAULT_CLOUD_API_BASE_URL ? requested : DEFAULT_CLOUD_API_BASE_URL
   try {
     uni.setStorageSync(API_BASE_STORAGE_KEY, normalized)
   } catch {}
