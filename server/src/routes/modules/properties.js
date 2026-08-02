@@ -43,6 +43,10 @@ function safeId(value, fallback) {
   return id || fallback
 }
 
+function scopedRecordId(roomId, value, fallback) {
+  return `${roomId}__${safeId(value, fallback)}`
+}
+
 function serializeFullPropertyTree(property) {
   return {
     ...serializePropertyTree(property),
@@ -121,7 +125,7 @@ async function migrateLocalSnapshot(tx, tenantId, userId, propertyItems) {
           for (const [termIndex, item] of terms.entries()) {
             if (!dateOrNull(item?.startDate) || !dateOrNull(item?.endDate) || !dateOrNull(item?.dueDate || item?.startDate)) continue
             await tx.paymentTerm.create({ data: {
-              id: safeId(item?.id, `${roomId}_term_${termIndex + 1}`), roomId, termNo: Math.max(1, Math.trunc(Number(item?.term || termIndex + 1))),
+              id: scopedRecordId(roomId, item?.id, `term_${termIndex + 1}`), roomId, termNo: Math.max(1, Math.trunc(Number(item?.term || termIndex + 1))),
               startDate: dateOrNull(item.startDate), endDate: dateOrNull(item.endDate), dueDate: dateOrNull(item.dueDate || item.startDate),
               expectedAmount: Number(item?.expectedAmount || 0), paidAmount: Number(item?.paidAmount || 0), coveredAmount: Number(item?.coveredAmount ?? item?.paidAmount ?? 0),
               status: enumValue(item?.status, ['UNPAID', 'PAID', 'DUE_SOON', 'OVERDUE'], 'UNPAID'), paidAt: dateOrNull(item?.payDate),
@@ -129,24 +133,27 @@ async function migrateLocalSnapshot(tx, tenantId, userId, propertyItems) {
           }
           const bills = Array.isArray(roomInput?.bills) ? roomInput.bills : []
           for (const [billIndex, item] of bills.entries()) await tx.bill.create({ data: {
-            id: safeId(item?.id, `${roomId}_bill_${billIndex + 1}`), roomId,
+            id: scopedRecordId(roomId, item?.id, `bill_${billIndex + 1}`), roomId,
             type: enumValue(item?.type, ['RENT', 'WATER', 'ELECTRIC', 'GAS', 'HEATING', 'CUSTOM', 'DEPOSIT'], 'CUSTOM'),
             title: String(item?.title || '费用'), amount: Number(item?.amount || 0),
             status: enumValue(item?.status, ['UNPAID', 'PAID', 'DUE_SOON', 'OVERDUE'], 'UNPAID'), dueDate: dateOrNull(item?.dueDate), paidAt: dateOrNull(item?.payDate),
           } })
           const collections = Array.isArray(roomInput?.collections) ? roomInput.collections : []
           for (const [collectionIndex, item] of collections.entries()) await tx.collection.create({ data: {
-            id: safeId(item?.id, `${roomId}_collection_${collectionIndex + 1}`), roomId,
+            id: scopedRecordId(roomId, item?.id, `collection_${collectionIndex + 1}`), roomId,
             billType: enumValue(item?.kind, ['RENT', 'WATER', 'ELECTRIC', 'GAS', 'HEATING', 'CUSTOM', 'DEPOSIT'], 'CUSTOM'),
             title: String(item?.title || '收款'), amount: Number(item?.amount || 0), note: toNullableString(item?.note), coverageLabel: toNullableString(item?.coverageLabel),
-            paidAt: dateOrNull(item?.paidAt) || new Date(), relatedBillId: toNullableString(item?.billId), relatedTermId: Array.isArray(item?.termIds) ? toNullableString(item.termIds[0]) : null,
+            paidAt: dateOrNull(item?.paidAt) || new Date(), relatedBillId: item?.billId ? scopedRecordId(roomId, item.billId, 'bill') : null,
+            relatedTermId: Array.isArray(item?.termIds) && item.termIds[0] ? scopedRecordId(roomId, item.termIds[0], 'term') : null,
           } })
           for (const [readingIndex, item] of (Array.isArray(roomInput?.meterReadings) ? roomInput.meterReadings : []).entries()) await tx.meterReading.create({ data: {
-            id: safeId(item?.id, `${roomId}_meter_${readingIndex + 1}`), roomId, waterReading: toNullableNumber(item?.waterRead), electricReading: toNullableNumber(item?.electricRead),
+            id: scopedRecordId(roomId, item?.id, `meter_${readingIndex + 1}`), roomId, waterReading: toNullableNumber(item?.waterRead), electricReading: toNullableNumber(item?.electricRead),
             gasReading: toNullableNumber(item?.gasRead), totalAmount: toNullableNumber(item?.total), recordedAt: dateOrNull(item?.date) || new Date(),
           } })
           for (const [occupancyIndex, item] of (Array.isArray(roomInput?.occupancies) ? roomInput.occupancies : []).entries()) await tx.occupancy.create({ data: {
-            id: safeId(item?.id, `${roomId}_occupancy_${occupancyIndex + 1}`), roomId,
+            // Local demo/history data can reuse an occupancy id across rooms.
+            // Database ids are global, so namespace it by room during import.
+            id: scopedRecordId(roomId, item?.id, `occupancy_${occupancyIndex + 1}`), roomId,
             kind: enumValue(item?.kind, ['LEASE', 'IDLE'], 'LEASE'), status: enumValue(item?.status, ['ACTIVE', 'COMPLETED', 'IDLE'], 'COMPLETED'),
             tenantName: toNullableString(item?.tenant), phone: toNullableString(item?.phone), idCardNo: toNullableString(item?.idCard), rentAmount: toNullableNumber(item?.rent), depositAmount: toNullableNumber(item?.deposit),
             paymentCycleMonths: Math.max(1, Math.trunc(Number(item?.paymentCycle || 3) || 3)), startDate: dateOrNull(item?.startDate), endDate: dateOrNull(item?.endDate), remark: toNullableString(item?.remark), archiveJson: item?.archive || null,
