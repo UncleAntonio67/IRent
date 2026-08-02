@@ -282,7 +282,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { UI, getMiniStatusColor } from '../../ui/ui'
 import { getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
-import { canManageTenantData, isLoggedIn } from '../../data/authStore'
+import { buildTenantStorageKey, canManageTenantData, isLoggedIn } from '../../data/authStore'
 import { fetchFullPropertiesSnapshot, getCachedPropertiesTree, migrateLocalPropertiesSnapshot } from '../../api/properties'
 import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateTo } from '../../utils/navigation'
@@ -321,6 +321,7 @@ const addModalFieldLabel = computed(() => ({
 const workbenchRefreshing = ref(false)
 const cloudBootstrapPrompted = ref(false)
 const cloudBootstrapRequired = ref(false)
+const CLOUD_SOURCE_READY_KEY = 'cloud_source_ready_v1'
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
   const counts = syncSummary.value?.pendingTypeCounts || {}
@@ -371,6 +372,7 @@ async function syncCloudProperties() {
     let next = await fetchFullPropertiesSnapshot()
     cloudBootstrapRequired.value = !next.length && localSnapshot.length > 0
     if (Array.isArray(next) && next.length) {
+      markCloudSourceReadyAndClearLegacyQueue()
       cloudBootstrapRequired.value = false
       setProperties(next)
       warmVisibleRoomCache()
@@ -384,6 +386,17 @@ async function syncCloudProperties() {
     }
   } finally {
     workbenchRefreshing.value = false
+  }
+}
+
+function markCloudSourceReadyAndClearLegacyQueue() {
+  const storageKey = buildTenantStorageKey(CLOUD_SOURCE_READY_KEY)
+  try {
+    if (uni.getStorageSync(storageKey)) return
+    clearPendingSyncTasks()
+    uni.setStorageSync(storageKey, true)
+  } catch {
+    // If storage is unavailable, the cloud snapshot is still applied safely.
   }
 }
 
@@ -416,6 +429,7 @@ async function initializeCloudFromLocal() {
     workbenchRefreshing.value = true
     const next = await migrateLocalPropertiesSnapshot(localSnapshot)
     clearPendingSyncTasks()
+    try { uni.setStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY), true) } catch {}
     cloudBootstrapRequired.value = false
     setProperties(next)
     warmVisibleRoomCache()
