@@ -118,6 +118,10 @@ export function normalizeOccupancy(occ = {}) {
     deposit: Number(occ.deposit || (rent ? rent : 0)) || 0,
     paymentCycle,
     remark: occ.remark || '',
+    attachmentFiles: {
+      idCard: normalizeAttachmentFileList(occ.attachmentFiles?.idCard, 'id_card.jpg', ATTACHMENT_FILE_LIMITS.idCard),
+      contract: normalizeAttachmentFileList(occ.attachmentFiles?.contract, 'lease_contract.pdf', ATTACHMENT_FILE_LIMITS.contract),
+    },
     archive: occ.archive || null,
   }
 }

@@ -57,7 +57,7 @@
             </view>
             <view class="text-3xs text-amber-600 mt-1">可前往“我的 > 云端备份中心”统一处理。</view>
           </view>
-          <view class="p-3 rounded-2xl surface-card stack-2 bills-toolbar">
+          <view class="p-3 rounded-2xl surface-card stack-2 bills-toolbar bills-toolbar-fixed">
             <view class="flex items-center justify-between gap-3">
             <view class="bills-section-title font-bold">查询条件</view>
               <view class="text-2xs text-slate-400 font-medium">{{ items.length }} 条结果</view>
@@ -124,7 +124,7 @@
                 </view>
               </view>
             <view
-              v-for="item in items"
+              v-for="item in pagedItems"
               :key="item.key"
               class="bills-history-row px-3 py-3 flex items-center gap-3"
             >
@@ -151,6 +151,12 @@
               </view>
             </view>
             <view class="h-3 bg-white"></view>
+          </view>
+
+          <view v-if="totalPages > 1" class="bills-pagination">
+            <button class="bills-page-button" :disabled="currentPage === 1" @click="currentPage -= 1">上一页</button>
+            <text>{{ currentPage }} / {{ totalPages }}</text>
+            <button class="bills-page-button" :disabled="currentPage === totalPages" @click="currentPage += 1">下一页</button>
           </view>
 
           <view class="h-4"></view>
@@ -208,6 +214,13 @@
           </view>
         </view>
       </BaseCenteredModal>
+      <view v-if="!isLoggedIn" class="absolute inset-0 z-50 bg-slate-50 flex items-center justify-center px-8">
+        <view class="w-full rounded-3xl bg-white p-6 text-center shadow-soft">
+          <view class="text-lg font-black text-slate-900">请先登录</view>
+          <view class="mt-2 text-sm text-slate-400">登录后才可查看账务流水。</view>
+          <button class="mt-5 w-full py-3 rounded-xl btn-blue text-sm font-semibold" @click="uni.switchTab({ url: '/pages/profile/index' })">前往我的登录</button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -226,6 +239,7 @@ import { getPageHeaderTopPadding } from '../../utils/layout'
 import { previewChosenImage, resolveOfflineImageSrc } from '../../utils/media'
 import { hasCloudApiBaseUrl } from '../../config/cloud'
 import { normalizeDateInput } from '../../utils/validation'
+import { isLoggedIn } from '../../data/authStore.js'
 
 const headerTopPadding = ref(44)
 const typeTab = ref('all')
@@ -242,6 +256,8 @@ const typeMenuOpen = ref(false)
 const dateDrawerOpen = ref(false)
 const receiptOpen = ref(false)
 const receiptItem = ref(null)
+const currentPage = ref(1)
+const PAGE_SIZE = 20
 const cachedEntries = ref(getCachedBillEntriesSnapshot().entries)
 const billsRefreshing = ref(false)
 const syncSummary = ref(getPendingSyncSummary())
@@ -337,6 +353,10 @@ const items = computed(() => {
   list.sort((a, b) => compareItems(a, b, sortKey.value, sortOrder.value))
   return list
 })
+const totalPages = computed(() => Math.max(1, Math.ceil(items.value.length / PAGE_SIZE)))
+const pagedItems = computed(() => items.value.slice((currentPage.value - 1) * PAGE_SIZE, currentPage.value * PAGE_SIZE))
+
+watch(items, () => { currentPage.value = 1 })
 
 const currentTypeLabel = computed(() => typeOptions.find((item) => item.value === typeDraft.value)?.label || '全部')
 
@@ -580,6 +600,9 @@ function formatSyncError(value) {
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 24%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
 }
+.bills-toolbar-fixed { position: sticky; top: 0; z-index: 10; }
+.bills-pagination { display: flex; align-items: center; justify-content: center; gap: 20rpx; color: #64748b; font-size: 22rpx; font-weight: 600; }
+.bills-page-button { min-width: 116rpx; height: 58rpx; padding: 0 18rpx; border-radius: 16rpx; background: #ffffff; color: #334155; font-size: 22rpx; font-weight: 600; border: 1rpx solid #e2e8f0; display: flex; align-items: center; justify-content: center; }.bills-page-button[disabled] { color: #cbd5e1; background: #f8fafc; }
 
 .bills-section-title {
   color: #94a3b8;

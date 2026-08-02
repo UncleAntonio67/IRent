@@ -76,6 +76,43 @@ function hydrateScenarioData(tree) {
       { id: 'h_r3_2', type: 'meter', date: '2026-03-31 18:12', remark: '录入抄表并生成 3 月水电杂费' },
       { id: 'h_r3_3', type: 'writeoff', date: '2026-04-01 20:16', remark: '记收 2026-03 水电杂费 186.5 元' },
     ]
+    // Enough realistic rows to exercise the 20-item pagination in 财务与导出。
+    const sampleCollections = Array.from({ length: 24 }, (_, index) => {
+      const isRent = index % 3 === 0
+      const isWater = index % 3 === 1
+      const month = String(7 - Math.floor(index / 3)).padStart(2, '0')
+      const day = String(28 - (index % 8)).padStart(2, '0')
+      return {
+        id: `demo_col_r3_${index + 1}`,
+        kind: isRent ? 'rent' : 'utilities',
+        title: isRent ? `2026-${month} 房租收款` : (isWater ? `2026-${month} 水费` : `2026-${month} 电费`),
+        amount: isRent ? 3400 : (isWater ? 86.5 + index : 128 + index),
+        paidAt: `2026-${month}-${day} 10:${String(index).padStart(2, '0')}`,
+        receiptPic: index % 2 === 0,
+        note: '模拟收费流水，用于分页验证',
+      }
+    })
+    r3.collections = sampleCollections
+    const extraArchivedOccupancies = Array.from({ length: 12 }, (_, index) => normalizeOccupancy({
+      id: `oc_r3_demo_${index + 1}`,
+      kind: 'lease',
+      status: 'completed',
+      tenant: `模拟租客${index + 1}号`,
+      phone: `1390000${String(1000 + index).slice(-4)}`,
+      startDate: `201${8 + (index % 2)}-03-01`,
+      endDate: `201${9 + (index % 2)}-02-28`,
+      rent: 2600 + index * 50,
+      deposit: 5200 + index * 100,
+      paymentCycle: 3,
+      remark: '模拟归档资料，用于分页验证',
+      archive: {
+        attachmentFiles: index % 2 === 0 ? {
+          idCard: [{ id: `demo_id_${index}`, name: `模拟租客${index + 1}_身份证.jpg`, previewText: '模拟身份证资料' }],
+          contract: [{ id: `demo_contract_${index}`, name: `模拟租客${index + 1}_合同.jpg`, previewText: '模拟合同资料' }],
+        } : { idCard: [], contract: [] },
+      },
+    }))
+    r3.occupancies.push(...extraArchivedOccupancies)
   }
 
   const r4 = room('r4')

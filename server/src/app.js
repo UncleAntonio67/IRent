@@ -5,6 +5,9 @@ import { registerRoutes } from './routes/index.js'
 
 export function createApp() {
   const app = express()
+  // The production service sits behind Nginx; this lets Express retain the
+  // client address forwarded by that reverse proxy for login auditing.
+  app.set('trust proxy', 1)
 
   app.use(
     cors({

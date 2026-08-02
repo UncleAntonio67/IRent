@@ -447,36 +447,54 @@ export async function collectUtility({
       throw error
     }
 
-    const bill = await tx.bill.create({
-      data: {
-        roomId,
-        type: billType,
-        title: buildUtilityBillTitle(billType, paidDate),
-        amount: paidAmount,
-        status: 'PAID',
-        dueDate: paidDate,
-        paidAt: paidDate,
-      },
+    const unpaidBills = await tx.bill.findMany({
+      where: { roomId, type: billType, status: 'UNPAID' },
+      orderBy: { createdAt: 'asc' },
     })
+    const outstandingAmount = unpaidBills.reduce((sum, bill) => sum + toDecimalNumber(bill.amount), 0)
+    const hasMeterReceivable = outstandingAmount > 0
+    if (hasMeterReceivable && Math.abs(paidAmount - outstandingAmount) >= 0.005) {
+      const error = new Error('Collection amount must match the outstanding metered utility fees')
+      error.statusCode = 422
+      error.code = 'UTILITY_COLLECTION_AMOUNT_MISMATCH'
+      throw error
+    }
 
-    const collection = await tx.collection.create({
+    const settledBills = hasMeterReceivable
+      ? await Promise.all(unpaidBills.map((bill) => tx.bill.update({
+        where: { id: bill.id },
+        data: { status: 'PAID', paidAt: paidDate },
+      })))
+      : [await tx.bill.create({
+        data: {
+          roomId,
+          type: billType,
+          title: buildUtilityBillTitle(billType, paidDate),
+          amount: paidAmount,
+          status: 'PAID',
+          dueDate: paidDate,
+          paidAt: paidDate,
+        },
+      })]
+
+    const collections = await Promise.all(settledBills.map((bill) => tx.collection.create({
       data: {
         roomId,
         billType,
         title: bill.title,
-        amount: paidAmount,
+        amount: hasMeterReceivable ? toDecimalNumber(bill.amount) : paidAmount,
         note: note || null,
         coverageLabel: null,
         paidAt: paidDate,
         relatedBillId: bill.id,
       },
-    })
+    })))
 
     await attachFilesToEntity(tx, {
       tenantId,
       attachmentIds,
       roomId,
-      collectionId: collection.id,
+      collectionId: collections[0]?.id,
     })
 
     await writeOperationLog(tx, {
@@ -484,7 +502,7 @@ export async function collectUtility({
       roomId,
       userId,
       action: 'room.collect_utility',
-      detail: `附加收费：${currentRoom.roomNo} ${bill.title} ￥${paidAmount}`,
+      detail: `附加收费：${currentRoom.roomNo} ${settledBills.map((bill) => bill.title).join('、')} ￥${paidAmount}`,
     })
 
     return findScopedRoomOrThrow(tx, roomId, tenantId)

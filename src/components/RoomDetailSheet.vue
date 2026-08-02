@@ -143,8 +143,6 @@
             <RoomRentSection
               :visible="detailSectionsReady && room.status !== 'empty'"
               :expanded="rentExpanded"
-              :outstanding-count="overallOutstandingCount"
-              :status-lamp-class="rentStatusLampClass"
               :progress-pct="overallProgressPct"
               :paid="overallPaid"
               :expected="overallExpected"
@@ -201,7 +199,6 @@
       <ChargeCollectDrawer
         :open="rentCollectOpen"
         :title="selectedRentTerm ? `第${selectedRentTerm.term}期费用收取` : '租金收款'"
-        :subtitle="rentCollectDocumentNo"
         hero-label="应收总额"
         :hero-badge="rentCollectStatusLabel"
         :hero-amount="rentCollectExpectedAmount"
@@ -226,7 +223,6 @@
       <ChargeCollectDrawer
         :open="utilitiesCollectOpen"
         :title="utilityCollectTitle"
-        :subtitle="utilityCollectDocumentNo"
         hero-label="费用应收"
         :hero-badge="utilityCollectStatusLabel"
         :hero-amount="utilityCollectExpectedAmount"
@@ -241,7 +237,7 @@
         :receipt-file-name="receiptFile?.name || '未上传凭证'"
         confirm-label="确认提交收款"
         :confirm-disabled="!canSubmitUtilityCollection"
-        :helper-text="utilitySupportsMeter ? '水费、电费可先抄表生成费用单，再回来确认收款。' : ''"
+        :helper-text="utilityCollectHelperText"
         hero-tone="amber"
         @close="utilitiesCollectOpen = false"
         @update:modelValue="utilityQuickForm.amount = $event"
@@ -384,7 +380,7 @@ function initializeDetailState() {
   roomOverviewExpanded.value = true
   currentTenantExpanded.value = true
   rentExpanded.value = true
-  utilityExpanded.value = true
+  utilityExpanded.value = !['water', 'electric', 'gas', 'heating'].every((type) => room.value?.utilityChargeConfig?.[type] === 'included')
   collectionsExpanded.value = true
   rentQuickForm.value = { amount: '', note: '' }
   utilityQuickForm.value = { type: 'water', amount: '', note: '' }
@@ -504,11 +500,9 @@ const rentPaid = computed(() => collectionSummary.value.rent.paid)
 const rentProgressPct = computed(() => collectionSummary.value.rent.progressPct)
 const overallExpected = computed(() => collectionSummary.value.overall.expected)
 const overallPaid = computed(() => collectionSummary.value.overall.paid)
-const overallOutstandingCount = computed(() => collectionSummary.value.overall.outstandingCount)
 const overallProgressPct = computed(() => collectionSummary.value.overall.progressPct)
 const allCollectionRows = computed(() => [...collectionSummary.value.rent.recentCollections, ...collectionSummary.value.utilities.recentCollections, ...collectionSummary.value.custom.recentCollections].sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || ''))).slice(0, 8))
 const meterCalc = computed(() => computeMeterCharge(room.value, meterForm.value))
-const rentStatusLampClass = computed(() => (!room.value || room.value.status === 'empty') ? 'status-lamp-slate' : room.value.status === 'overdue' ? 'status-lamp-rose' : room.value.status === 'due_soon' ? 'status-lamp-amber' : 'status-lamp-emerald')
 const selectedRentTerm = computed(() => rentTerms.value.find((term) => term.id === selectedRentTermId.value) || null)
 const checkoutRentOutstanding = computed(() => Number(collectionSummary.value.rent.outstandingAmount || 0))
 const checkoutUtilityOutstanding = computed(() => Number(collectionSummary.value.utilities.outstandingAmount || 0))
@@ -527,7 +521,6 @@ const rentCollectInputAmount = computed(() => Number(rentQuickForm.value.amount 
 const rentCollectOverpaid = computed(() => rentCollectInputAmount.value > rentCollectRemainingAmount.value && rentCollectRemainingAmount.value > 0)
 const canSubmitRentCollection = computed(() => Number.isFinite(rentCollectInputAmount.value) && rentCollectInputAmount.value > 0)
 const rentCollectStatusLabel = computed(() => rentCollectRemainingAmount.value <= 0 ? '已收齐' : rentCollectReceivedAmount.value > 0 ? '补收中' : '待收中')
-const rentCollectDocumentNo = computed(() => `单据编号：${selectedRentTerm.value?.id || room.value?.id || 'ROOM'}-${String(selectedRentTerm.value?.term || 1).padStart(2, '0')}`)
 const previewTypeLabel = computed(() => attachmentPreview.value?.type === 'roomPhoto' ? '房屋照片' : attachmentPreview.value?.type === 'idCard' ? '身份证文件' : attachmentPreview.value?.type === 'contract' ? '合同文件' : '资料文件')
 const utilityCards = computed(() => ['water', 'electric', 'gas', 'heating'].map((type) => {
   const row = collectionSummary.value.utilities.byType.find((item) => item.type === type) || { expected: 0, paid: 0, outstanding: 0 }
@@ -541,8 +534,15 @@ const utilityCollectExpectedAmount = computed(() => Number(selectedUtilityCard.v
 const utilityCollectPaidAmount = computed(() => Number(selectedUtilityCard.value?.paid || 0))
 const utilityCollectOutstandingAmount = computed(() => Number(selectedUtilityCard.value?.outstanding || 0))
 const utilityCollectStatusLabel = computed(() => utilityCollectOutstandingAmount.value <= 0 ? '已收齐' : utilityCollectPaidAmount.value > 0 ? '补收中' : '待收中')
-const utilityCollectDocumentNo = computed(() => `单据编号：UTIL-${room.value?.id || 'ROOM'}-${utilityQuickForm.value.type || 'item'}`)
-const canSubmitUtilityCollection = computed(() => Number.isFinite(Number(utilityQuickForm.value.amount || 0)) && Number(utilityQuickForm.value.amount || 0) > 0)
+const utilityCollectHelperText = computed(() => {
+  if (utilityCollectOutstandingAmount.value > 0) return '已抄表费用请按待收金额一次结清；收费后不会重复生成费用。'
+  return utilitySupportsMeter.value ? '水费、电费可先抄表生成费用单，再回来确认收款。' : ''
+})
+const canSubmitUtilityCollection = computed(() => {
+  const amount = Number(utilityQuickForm.value.amount || 0)
+  const outstanding = utilityCollectOutstandingAmount.value
+  return Number.isFinite(amount) && amount > 0 && (outstanding <= 0 || Math.abs(amount - outstanding) < 0.005)
+})
 const utilityTableRows = computed(() => utilityCards.value.map((item) => ({
   ...item,
   supportsMeter: item.type === 'water' || item.type === 'electric',
@@ -844,8 +844,8 @@ async function confirmMeter() {
   const succeeded = await runRoomMutation({
     cloudAction: () => submitMeterReading(roomId.value, {
       recordedAt: nowString(),
-      waterReading: meterCalc.value.currentWater,
-      electricReading: meterCalc.value.currentElectric,
+      waterReading: meterCalc.value.waterNow,
+      electricReading: meterCalc.value.electricNow,
       gasReading: null,
       attachmentIds,
     }),
@@ -853,8 +853,8 @@ async function confirmMeter() {
       type: 'room.meterReading',
       payload: {
         recordedAt: nowString(),
-        waterReading: meterCalc.value.currentWater,
-        electricReading: meterCalc.value.currentElectric,
+        waterReading: meterCalc.value.waterNow,
+        electricReading: meterCalc.value.electricNow,
         gasReading: null,
         attachmentIds,
         meterPhotoFiles: meterPhotoFiles.value,

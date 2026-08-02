@@ -14,7 +14,7 @@
             :value="waterBase"
             type="number"
             class="checkin-input utility-inline-base-input"
-            placeholder="输入底数"
+            :placeholder="baseHint"
             @input="emit('update:waterBase', $event.detail.value)"
           />
           <view v-else class="utility-inline-base-disabled">底数已包含</view>
@@ -40,7 +40,7 @@
             :value="electricBase"
             type="number"
             class="checkin-input utility-inline-base-input"
-            placeholder="输入底数"
+            :placeholder="baseHint"
             @input="emit('update:electricBase', $event.detail.value)"
           />
           <view v-else class="utility-inline-base-disabled">底数已包含</view>
@@ -103,6 +103,7 @@ defineProps({
   heatingChargeMode: { type: String, default: 'separate' },
   waterBase: { type: String, default: '' },
   electricBase: { type: String, default: '' },
+  baseHint: { type: String, default: '填入底数' },
 })
 
 const emit = defineEmits([

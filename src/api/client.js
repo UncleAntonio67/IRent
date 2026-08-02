@@ -62,6 +62,42 @@ async function requestRaw(url, options = {}) {
   throw lastError || new Error('REQUEST_FAILED')
 }
 
+function getDeviceInfo() {
+  try {
+    const info = uni.getSystemInfoSync()
+    return JSON.stringify({
+      brand: info.brand || '',
+      model: info.model || '',
+      system: info.system || '',
+      platform: info.platform || '',
+      version: info.version || '',
+      SDKVersion: info.SDKVersion || '',
+    })
+  } catch {
+    return ''
+  }
+}
+
+export async function recordPublicAccountLogin() {
+  const baseUrl = getCloudApiBaseUrl()
+  if (!baseUrl || !isCloudBackupAccessEnabled()) return false
+
+  const response = await requestRaw(`${baseUrl}/api/auth/public/login`, {
+    method: 'POST',
+    data: { deviceInfo: getDeviceInfo() },
+    header: { 'Content-Type': 'application/json' },
+    timeout: DEFAULT_REQUEST_TIMEOUT,
+    retries: 2,
+  })
+  const statusCode = Number(response?.statusCode || 0)
+  const data = response?.data || {}
+  if (statusCode >= 200 && statusCode < 300 && data?.ok !== false && data?.token) {
+    setAccessToken(data.token)
+    return true
+  }
+  return false
+}
+
 async function ensureDevCloudSession() {
   if (autoAuthInFlight) return autoAuthInFlight
 
@@ -69,21 +105,7 @@ async function ensureDevCloudSession() {
   if (!baseUrl) return false
 
   autoAuthInFlight = (async () => {
-    const response = await requestRaw(`${baseUrl}/api/auth/wechat/login`, {
-      method: 'POST',
-      data: { code: 'dev:local-user' },
-      header: { 'Content-Type': 'application/json' },
-      timeout: DEFAULT_REQUEST_TIMEOUT,
-      retries: 2,
-    })
-
-    const statusCode = Number(response?.statusCode || 0)
-    const data = response?.data || {}
-    if (statusCode >= 200 && statusCode < 300 && data?.ok !== false && data?.token) {
-      setAccessToken(data.token)
-      return true
-    }
-    return false
+    return recordPublicAccountLogin()
   })()
 
   try {
@@ -117,7 +139,7 @@ export async function apiRequest(path, options = {}) {
     ? path
     : `/api${path.startsWith('/') ? path : `/${path}`}`
 
-  if (!getAccessToken() && normalizedPath !== '/api/auth/wechat/login') {
+  if (!getAccessToken() && normalizedPath !== '/api/auth/wechat/login' && normalizedPath !== '/api/auth/public/login') {
     await ensureDevCloudSession()
   }
 
@@ -137,7 +159,7 @@ export async function apiRequest(path, options = {}) {
     throw error
   }
 
-  if (Number(response?.statusCode || 0) === 401 && normalizedPath !== '/api/auth/wechat/login') {
+  if (Number(response?.statusCode || 0) === 401 && normalizedPath !== '/api/auth/wechat/login' && normalizedPath !== '/api/auth/public/login') {
     const relogged = await ensureDevCloudSession()
     if (relogged) {
       try {

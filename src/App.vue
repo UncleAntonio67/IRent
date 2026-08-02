@@ -1,7 +1,10 @@
 <script>
+import { initializePublicAccount } from './data/authStore.js'
+
 export default {
   onLaunch() {
     console.log('App Launch')
+    initializePublicAccount()
   },
   onShow() {
     console.log('App Show')
@@ -17,8 +20,8 @@ export default {
 @import "./styles/utilities.css";
 
 page {
-  background-color: #f8fafc; /* slate-50 */
-  color: #0f172a; /* slate-900 */
+  background-color: #f8fafc;
+  color: #0f172a;
 }
 
 button {
@@ -42,11 +45,6 @@ textarea {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-input {
-  border-radius: 12px;
-}
-
-textarea {
-  border-radius: 16px;
-}
+input { border-radius: 12px; }
+textarea { border-radius: 16px; }
 </style>

@@ -183,6 +183,22 @@ export function computeCollectionSummary(room) {
   const collections = room?.collections || []
   const utilityBills = (room?.bills || []).filter((bill) => UTILITY_BILL_TYPES.includes(bill.type))
   const customBills = (room?.bills || []).filter((bill) => bill.type === BILL_TYPE.CUSTOM)
+  // Older versions created a second paid bill instead of settling the bill made by
+  // the meter reading. Treat an equal same-day paid bill as its settlement so the
+  // legacy duplicate never remains visible as a receivable.
+  const legacySettledBillIds = new Set()
+  utilityBills.filter((bill) => bill.status === PAYMENT_STATUS.PAID).forEach((paidBill) => {
+    const unpaidBill = utilityBills.find((bill) => (
+      bill.status !== PAYMENT_STATUS.PAID
+      && !legacySettledBillIds.has(bill.id)
+      && bill.type === paidBill.type
+      && String(bill.dueDate || '') === String(paidBill.dueDate || '')
+      && Math.abs(Number(bill.amount || 0) - Number(paidBill.amount || 0)) < 0.005
+    ))
+    if (unpaidBill) legacySettledBillIds.add(unpaidBill.id)
+  })
+  const unpaidUtilityBills = utilityBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID && !legacySettledBillIds.has(bill.id))
+  const unpaidCustomBills = customBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID)
 
   const rentCollectionSource = collections.some((item) => item.kind === BILL_TYPE.RENT)
     ? collections.filter((item) => item.kind === BILL_TYPE.RENT)
@@ -196,12 +212,14 @@ export function computeCollectionSummary(room) {
   ).length
 
   const utilityExpected = sum(utilityBills, (bill) => Number(bill.amount || 0))
-  const utilityPaid = sum(collections.filter((item) => UTILITY_BILL_TYPES.includes(item.kind)), (item) => Number(item.amount || 0))
-  const utilityOutstandingCount = utilityBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID).length
+  const utilityOutstandingAmount = sum(unpaidUtilityBills, (bill) => Number(bill.amount || 0))
+  const utilityPaid = Math.max(0, Number((utilityExpected - utilityOutstandingAmount).toFixed(2)))
+  const utilityOutstandingCount = unpaidUtilityBills.length
 
   const customExpected = sum(customBills, (bill) => Number(bill.amount || 0))
-  const customPaid = sum(collections.filter((item) => item.kind === BILL_TYPE.CUSTOM), (item) => Number(item.amount || 0))
-  const customOutstandingCount = customBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID).length
+  const customOutstandingAmount = sum(unpaidCustomBills, (bill) => Number(bill.amount || 0))
+  const customPaid = Math.max(0, Number((customExpected - customOutstandingAmount).toFixed(2)))
+  const customOutstandingCount = unpaidCustomBills.length
 
   const totalExpected = Math.round((rentExpected + utilityExpected + customExpected) * 100) / 100
   const totalPaid = Math.round((rentPaid + utilityPaid + customPaid) * 100) / 100
@@ -224,7 +242,7 @@ export function computeCollectionSummary(room) {
     utilities: {
       expected: utilityExpected,
       paid: utilityPaid,
-      outstandingAmount: Math.max(0, Math.round((utilityExpected - utilityPaid) * 100) / 100),
+      outstandingAmount: utilityOutstandingAmount,
       outstandingCount: utilityOutstandingCount,
       progressPct: progress(utilityPaid, utilityExpected),
       recentCollections: collections
@@ -233,19 +251,23 @@ export function computeCollectionSummary(room) {
         .sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || ''))),
       byType: UTILITY_BILL_TYPES.map((type) => {
         const expected = sum(utilityBills.filter((bill) => bill.type === type), (bill) => Number(bill.amount || 0))
-        const paid = sum(collections.filter((item) => item.kind === type), (item) => Number(item.amount || 0))
+        const unpaid = sum(
+          unpaidUtilityBills.filter((bill) => bill.type === type),
+          (bill) => Number(bill.amount || 0)
+        )
+        const paid = Math.max(0, Number((expected - unpaid).toFixed(2)))
         return {
           type,
           expected,
           paid,
-          outstanding: Math.max(0, Math.round((expected - paid) * 100) / 100),
+          outstanding: unpaid,
         }
       }),
     },
     custom: {
       expected: customExpected,
       paid: customPaid,
-      outstandingAmount: Math.max(0, Math.round((customExpected - customPaid) * 100) / 100),
+      outstandingAmount: customOutstandingAmount,
       outstandingCount: customOutstandingCount,
       recentCollections: collections
         .filter((item) => item.kind === BILL_TYPE.CUSTOM)
@@ -473,6 +495,40 @@ export function recordDirectUtilityCollection(room, { type = BILL_TYPE.WATER, am
   const paidAmount = Number(amount || 0)
   if (!Number.isFinite(paidAmount) || paidAmount <= 0) return false
 
+  const unpaidBills = (room.bills || []).filter((bill) => bill.type === type && bill.status !== PAYMENT_STATUS.PAID)
+  const outstandingAmount = Number(unpaidBills.reduce((sum, bill) => sum + Number(bill.amount || 0), 0).toFixed(2))
+  if (outstandingAmount > 0) {
+    // Meter readings create the receivable and move the meter baseline. Collection
+    // must settle that receivable instead of creating a second, paid bill.
+    if (Math.abs(paidAmount - outstandingAmount) >= 0.005) return false
+
+    unpaidBills.forEach((bill) => {
+      bill.status = PAYMENT_STATUS.PAID
+      bill.payDate = now
+      bill.receiptPic = Boolean(receiptPicked)
+      bill.receiptFile = receiptFile || null
+      ensureCollections(room).unshift({
+        id: generateId('col'),
+        kind: type,
+        title: bill.title || `${now.slice(0, 10)} ${type}`,
+        amount: Number(Number(bill.amount || 0).toFixed(2)),
+        paidAt: now,
+        receiptPic: Boolean(receiptPicked),
+        receiptFile: receiptFile || null,
+        termIds: [],
+        billId: bill.id,
+        note,
+      })
+    })
+    room.history.unshift({
+      id: generateId('h'),
+      type: 'utility_collect',
+      date: now,
+      remark: `收取已抄表费用：￥${outstandingAmount}${note ? `，${note}` : ''}`,
+    })
+    return true
+  }
+
   const resolvedTitle = title || `${now.slice(0, 10)} ${type}`
   const billId = generateId('bill')
   room.bills.unshift({
@@ -619,6 +675,13 @@ export function uploadRoomAttachment(room, type, { now, file = null }) {
   attachments[type].push(next)
   if (type === 'idCard') room.hasIdCardPic = true
   if (type === 'contract') room.hasContract = true
+  const activeOccupancy = (room.occupancies || []).find((item) => item.status === OCCUPANCY_STATUS.ACTIVE)
+  if (activeOccupancy) {
+    activeOccupancy.attachmentFiles = {
+      idCard: [...attachments.idCard],
+      contract: [...attachments.contract],
+    }
+  }
 
   room.history.unshift({
     id: generateId('h'),
@@ -726,6 +789,11 @@ export function checkInRoom(room, payload, { now, paymentSchedule, attachments, 
   }
   room.hasIdCardPic = room.attachmentFiles.idCard.length > 0
   room.hasContract = room.attachmentFiles.contract.length > 0
+  const activeOccupancy = room.occupancies.find((item) => item.id === occupancyId)
+  if (activeOccupancy) activeOccupancy.attachmentFiles = {
+    idCard: [...room.attachmentFiles.idCard],
+    contract: [...room.attachmentFiles.contract],
+  }
   room.status = ROOM_STATUS.RENTED
 
   const firstPaymentAmount = Number.isFinite(Number(initialCollectionAmount))
@@ -753,6 +821,7 @@ export function checkoutRoom(room, payload, { now }) {
       meterReadings: room.meterReadings || [],
       paymentSchedule: room.paymentSchedule || [],
       collections: room.collections || [],
+      attachmentFiles: activeOccupancy.attachmentFiles || room.attachmentFiles || { idCard: [], contract: [] },
     }
     activeOccupancy.remark = activeOccupancy.remark || '已完成退租归档'
   }

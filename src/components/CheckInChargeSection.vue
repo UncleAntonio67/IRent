@@ -13,7 +13,7 @@
         </view>
         <button class="checkin-charge-button tap-scale shrink-0" :class="rentCharged ? 'checkin-charge-button-done' : ''" @click="emit('rent-collect')">{{ rentCharged ? '已收费' : '收费' }}</button>
       </view>
-      <view class="p-3 rounded-2xl surface-muted flex items-center justify-between gap-3">
+      <view v-if="depositVisible" class="p-3 rounded-2xl surface-muted flex items-center justify-between gap-3">
         <view class="min-w-0 flex items-baseline gap-2">
           <view class="text-xs text-slate-500 font-bold shrink-0">押金应收</view>
           <view class="text-sm text-slate-900 font-bold truncate">￥{{ depositAmount }}</view>
@@ -31,6 +31,7 @@ defineProps({
   expanded: { type: Boolean, default: true },
   rentAmount: { type: String, default: '0.00' },
   depositAmount: { type: String, default: '0.00' },
+  depositVisible: { type: Boolean, default: false },
   rentCharged: Boolean,
   depositCharged: Boolean,
 })

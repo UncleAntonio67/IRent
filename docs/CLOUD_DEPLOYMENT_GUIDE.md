@@ -158,8 +158,9 @@ npm run deploy:cloudrun
 1. Cloud Run 服务健康检查可用
 2. `GET /health` 正常
 3. `POST /api/auth/wechat/login` 能进入后端逻辑
-4. `POST /api/attachments/presign` 能返回上传签名
-5. 小程序端能读取院落树和房间详情
+4. `POST /api/auth/public/login` 可返回公共账户会话，并在 `LoginAudit` 表新增一条审计记录
+5. `POST /api/attachments/presign` 能返回上传签名
+6. 小程序端能读取院落树和房间详情
 
 ## 9. 小程序端还要配置
 

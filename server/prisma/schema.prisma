@@ -77,8 +77,23 @@ model User {
   tenantMemberships TenantUser[]
   exportTasks      ExportTask[]
   operationLogs    OperationLog[]
+  loginAudits      LoginAudit[]
 
   @@index([activeTenantId])
+}
+
+model LoginAudit {
+  id         String   @id @default(cuid())
+  userId     String
+  username   String
+  ipAddress  String?
+  userAgent  String?
+  deviceInfo String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 model Tenant {

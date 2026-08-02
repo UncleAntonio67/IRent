@@ -6,10 +6,6 @@
     title-class="text-sm text-slate-700 font-bold"
     @toggle="emit('toggle')"
   >
-    <view class="flex items-center gap-2">
-      <view class="status-lamp" :class="statusLampClass"></view>
-      <view class="text-2xs text-slate-500 font-semibold">{{ outstandingCount === 0 ? '已覆盖' : `待收 ${outstandingCount}` }}</view>
-    </view>
     <view class="mt-3 p-3 rounded-2xl surface-muted">
       <view class="flex items-center justify-between text-xs font-bold text-slate-500"><view>房租收费进度</view><view>{{ progressPct }}%</view></view>
       <view class="mt-2 h-2 rounded-full bg-slate-100 overflow-hidden"><view class="h-2 rounded-full bg-blue-600" :style="{ width: progressPct + '%' }"></view></view>
@@ -29,7 +25,7 @@
 
 <script setup>
 import CollapsibleSectionCard from './CollapsibleSectionCard.vue'
-defineProps({ visible: Boolean, expanded: Boolean, outstandingCount: Number, statusLampClass: String, progressPct: Number, paid: Number, expected: Number, terms: { type: Array, default: () => [] } })
+defineProps({ visible: Boolean, expanded: Boolean, progressPct: Number, paid: Number, expected: Number, terms: { type: Array, default: () => [] } })
 const emit = defineEmits(['toggle', 'collect'])
 </script>
 

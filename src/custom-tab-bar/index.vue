@@ -1,12 +1,12 @@
 <template>
   <view class="custom-tabbar-wrap">
     <view class="custom-tabbar-shell">
-      <view
+      <button
         v-for="item in tabs"
         :key="item.pagePath"
         class="tab-item"
         :class="{ active: selected === item.pagePath }"
-        @click="switchTo(item)"
+        @tap="switchTo(item)"
       >
         <view class="tab-pill" :class="{ active: selected === item.pagePath }">
           <view class="tab-icon" :class="[`icon-${item.key}`, selected === item.pagePath ? 'active' : '']">
@@ -20,19 +20,21 @@
               <view class="receipt-line line-2"></view>
               <view class="receipt-line line-3"></view>
             </view>
-            <view v-else class="icon-user">
+          <view v-else class="icon-user">
               <view class="user-head"></view>
               <view class="user-body"></view>
             </view>
           </view>
           <text class="tab-label">{{ item.text }}</text>
         </view>
-      </view>
+      </button>
     </view>
   </view>
 </template>
 
 <script>
+import { isLoggedIn } from '../data/authStore.js'
+
 export default {
   data() {
     return {
@@ -60,6 +62,12 @@ export default {
       this.selected = current.route || 'pages/workbench/index'
     },
     switchTo(item) {
+      if (item.key !== 'profile' && !isLoggedIn.value) {
+        uni.showToast({ title: '请先登录后再操作', icon: 'none' })
+        this.selected = 'pages/profile/index'
+        uni.switchTab({ url: '/pages/profile/index' })
+        return
+      }
       if (this.selected === item.pagePath) return
       this.selected = item.pagePath
       uni.switchTab({
@@ -101,6 +109,15 @@ export default {
 .tab-item {
   flex: 1;
   min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: normal;
+}
+
+.tab-item::after {
+  border: 0;
 }
 
 .tab-pill {
@@ -127,6 +144,7 @@ export default {
   background: #f8fafc;
   border: 0;
 }
+.tab-icon > view > view { pointer-events: none; }
 
 .tab-icon.active {
   background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);

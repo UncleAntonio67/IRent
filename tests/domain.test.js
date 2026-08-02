@@ -6,6 +6,7 @@ import {
   computeCollectionSummary,
   getCollectedDepositAmount,
   computeMeterCharge,
+  createUtilitiesBillFromMeter,
   recordDirectUtilityCollection,
   recordRentCollection,
   checkInRoom,
@@ -107,6 +108,38 @@ test('recordDirectUtilityCollection creates paid utility bill and collection', (
   assert.equal(room.bills[0].status, PAYMENT_STATUS.PAID)
   assert.equal(room.collections[0].kind, BILL_TYPE.GAS)
   assert.equal(room.collections[0].amount, 88.4)
+})
+
+test('collecting metered utilities settles generated bills without creating duplicates', () => {
+  const room = buildRoom()
+  const meter = computeMeterCharge(room, { water: 126, electric: 325 })
+  createUtilitiesBillFromMeter(room, meter, { now: '2026-04-11 10:00' })
+
+  const outstanding = room.bills.reduce((sum, bill) => sum + bill.amount, 0)
+  const changed = recordDirectUtilityCollection(room, {
+    type: BILL_TYPE.WATER,
+    amount: meter.waterCost,
+    now: '2026-04-11 10:10',
+  })
+
+  assert.equal(changed, true)
+  assert.equal(room.bills.filter((bill) => bill.type === BILL_TYPE.WATER).length, 1)
+  assert.equal(room.bills.find((bill) => bill.type === BILL_TYPE.WATER).status, PAYMENT_STATUS.PAID)
+  assert.equal(room.lastWater, 126)
+  assert.equal(room.bills.reduce((sum, bill) => sum + bill.amount, 0), outstanding)
+  assert.equal(computeCollectionSummary(room).utilities.byType.find((item) => item.type === BILL_TYPE.WATER).outstanding, 0)
+})
+
+test('legacy duplicate metered utility records do not remain receivable', () => {
+  const room = buildRoom({
+    bills: [
+      { id: 'meter_water', type: BILL_TYPE.WATER, amount: 50, status: PAYMENT_STATUS.UNPAID, dueDate: '2026-04-11' },
+      { id: 'legacy_water_collection', type: BILL_TYPE.WATER, amount: 50, status: PAYMENT_STATUS.PAID, dueDate: '2026-04-11' },
+    ],
+  })
+  const summary = computeCollectionSummary(room)
+  assert.equal(summary.utilities.outstandingAmount, 0)
+  assert.equal(summary.utilities.byType.find((item) => item.type === BILL_TYPE.WATER).outstanding, 0)
 })
 
 test('computeMeterCharge supports water electric gas in one pass', () => {

@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { fetchCurrentSession, loginWithWeChatCode, clearCloudSession } from '../api/auth'
+import { fetchCurrentSession, loginWithWeChatCode, clearCloudSession, recordPublicAccountLogin } from '../api/auth'
 import { apiRequest } from '../api/client'
 import { hasCloudApiBaseUrl } from '../config/cloud'
 
@@ -7,6 +7,12 @@ const USERS_STORAGE_KEY = 'irent_users_v1'
 const ACTIVE_USER_STORAGE_KEY = 'irent_active_user_v1'
 const PROFILE_STORAGE_KEY = 'irent_profile_v1'
 const CLOUD_SESSION_SNAPSHOT_KEY = 'irent_cloud_session_snapshot_v1'
+const PUBLIC_ACCOUNT = Object.freeze({
+  username: 'admin',
+  password: '1qaz2wsx',
+  id: 'public_admin',
+  avatarUrl: '',
+})
 
 function generateTenantId() {
   return `tenant_${Date.now()}_${Math.floor(Math.random() * 100000)}`
@@ -31,16 +37,25 @@ function persistValue(key, value) {
   } catch {}
 }
 
-const initialUsers = loadStoredValue(USERS_STORAGE_KEY, [])
+function createPublicProfile() {
+  return {
+    id: PUBLIC_ACCOUNT.id,
+    nickName: PUBLIC_ACCOUNT.username,
+    avatarUrl: PUBLIC_ACCOUNT.avatarUrl,
+    createdAt: new Date().toISOString(),
+  }
+}
 
-export const users = ref(Array.isArray(initialUsers) ? initialUsers : [])
-export const activeUserId = ref(String(loadStoredValue(ACTIVE_USER_STORAGE_KEY, '')))
-export const currentProfile = ref(loadStoredValue(PROFILE_STORAGE_KEY, null))
+// This is a shared internal mini-program. It always enters the common
+// workspace directly; guest and logout states are intentionally unavailable.
+export const users = ref([{ id: PUBLIC_ACCOUNT.id, nickName: PUBLIC_ACCOUNT.username, role: 'OWNER' }])
+export const activeUserId = ref(PUBLIC_ACCOUNT.id)
+export const currentProfile = ref(createPublicProfile())
 export const currentUser = computed(() => currentProfile.value)
 export const currentTenant = computed(() => users.value.find((item) => item.id === activeUserId.value) || users.value[0] || null)
-export const currentTenantRole = computed(() => String(currentTenant.value?.role || 'OWNER').toUpperCase())
-export const canManageTenantData = computed(() => ['OWNER', 'MANAGER'].includes(currentTenantRole.value))
-export const isLoggedIn = computed(() => Boolean(currentUser.value))
+export const isLoggedIn = computed(() => true)
+export const currentTenantRole = computed(() => String(currentTenant.value?.role || '').toUpperCase())
+export const canManageTenantData = computed(() => isLoggedIn.value && ['OWNER', 'MANAGER'].includes(currentTenantRole.value))
 
 function persistUsers() {
   persistValue(USERS_STORAGE_KEY, users.value)
@@ -117,6 +132,43 @@ export function createLocalTenant(profile = {}) {
   return user
 }
 
+// This mini-program uses one shared local account. Credentials are kept here
+// solely for the local login gate; the password is never persisted.
+export function loginPublicAccount(credentials = {}) {
+  const username = String(credentials.username || PUBLIC_ACCOUNT.username)
+  const password = String(credentials.password || PUBLIC_ACCOUNT.password)
+  if (username !== PUBLIC_ACCOUNT.username || password !== PUBLIC_ACCOUNT.password) {
+    const error = new Error('账号或密码错误')
+    error.code = 'INVALID_PUBLIC_CREDENTIALS'
+    throw error
+  }
+
+  const user = {
+    id: PUBLIC_ACCOUNT.id,
+    nickName: PUBLIC_ACCOUNT.username,
+    avatarUrl: PUBLIC_ACCOUNT.avatarUrl,
+    createdAt: new Date().toISOString(),
+  }
+  currentProfile.value = user
+  users.value = [{ id: user.id, nickName: user.nickName, role: 'OWNER' }]
+  activeUserId.value = user.id
+  persistProfile()
+  persistUsers()
+  persistActiveUser()
+  persistCloudSessionSnapshot()
+  return user
+}
+
+export async function initializePublicAccount() {
+  const user = loginPublicAccount()
+  try {
+    await recordPublicAccountLogin()
+  } catch {
+    // Local-only development remains usable when the server is unavailable.
+  }
+  return user
+}
+
 export async function restoreCloudSession() {
   if (!hasCloudApiBaseUrl()) return false
   restoreCloudSessionSnapshot()
@@ -126,13 +178,7 @@ export async function restoreCloudSession() {
     return true
   } catch {
     clearCloudSession()
-    currentProfile.value = null
-    users.value = []
-    activeUserId.value = ''
-    persistProfile()
-    persistUsers()
-    persistActiveUser()
-    persistValue(CLOUD_SESSION_SNAPSHOT_KEY, null)
+    loginPublicAccount()
     return false
   }
 }
@@ -157,14 +203,8 @@ export async function switchTenant(userId) {
 }
 
 export function logoutTenant() {
-  clearCloudSession()
-  activeUserId.value = ''
-  currentProfile.value = null
-  users.value = []
-  persistActiveUser()
-  persistProfile()
-  persistUsers()
-  persistValue(CLOUD_SESSION_SNAPSHOT_KEY, null)
+  // Compatibility for older callers: the shared account remains available.
+  return loginPublicAccount()
 }
 
 export function loginWithWeChatProfile() {

@@ -8,7 +8,6 @@
     <view class="charge-drawer-section">
       <view class="charge-drawer-label">{{ inputLabel }}</view>
       <view class="charge-drawer-entry-row"><view class="charge-drawer-input-wrap"><view class="charge-drawer-currency">￥</view><input :value="modelValue" type="number" class="charge-drawer-input" :placeholder="placeholder" @input="emit('update:modelValue', $event.detail.value)" /></view><button class="charge-drawer-upload-button tap-scale" :class="receiptPicked ? 'charge-drawer-upload-button-done' : ''" @click="emit('pick-receipt')">{{ receiptPicked ? '重新上传' : '上传凭证' }}</button></view>
-      <view class="charge-drawer-inline-status" :class="receiptPicked ? 'charge-drawer-inline-status-done' : ''">{{ receiptPicked ? '凭证已上传' : receiptPendingText }}</view>
       <view v-if="helperText" class="charge-drawer-helper">{{ helperText }}</view>
     </view>
     <template #footer><ActionFooterRow secondary-label="取消" :primary-label="confirmLabel" :primary-disabled="confirmDisabled" @secondary="emit('close')" @primary="emit('confirm')" /></template>
@@ -25,7 +24,7 @@ const props = defineProps({
   heroLabel: { type: String, default: '应收总额' }, heroBadge: { type: String, default: '待收费' }, heroAmount: { type: [String, Number], default: '' },
   leftLabel: { type: String, default: '已收金额' }, leftValue: String, rightLabel: { type: String, default: '本次待收' }, rightValue: String,
   inputLabel: { type: String, default: '本次实收金额' }, modelValue: { type: [String, Number], default: '' }, placeholder: { type: String, default: '0.00' },
-  receiptPicked: Boolean, receiptFileName: { type: String, default: '未上传凭证' }, receiptPendingText: { type: String, default: '凭证可选，支持 JPG、PNG 或 PDF' },
+  receiptPicked: Boolean, receiptFileName: { type: String, default: '未上传凭证' }, receiptPendingText: { type: String, default: '' },
   confirmLabel: { type: String, default: '确认收款' }, confirmDisabled: Boolean, helperText: String, heroTone: { type: String, default: 'blue' },
 })
 const emit = defineEmits(['close', 'confirm', 'pick-receipt', 'update:modelValue'])

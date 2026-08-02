@@ -11,7 +11,6 @@
               <view class="text-xs text-slate-400 font-medium mt-0_5 truncate">{{ roomLocationText }}</view>
             </view>
           </view>
-          <view v-if="room" class="text-xs font-bold px-3 py-1 rounded-full chip-soft text-slate-700">{{ room.roomNo }} {{ room.status === 'empty' ? '空置' : '已租' }}</view>
         </view>
         <view class="mt-3">
           <view class="p-1 surface-muted rounded-2xl flex gap-1">
@@ -71,6 +70,7 @@
               :expanded="chargeExpanded"
               :rent-amount="formattedCheckInCharge"
               :deposit-amount="formattedDepositCharge"
+              :deposit-visible="defaultDepositCharge > 0"
               :rent-charged="checkInChargeConfirmed"
               :deposit-charged="depositChargeConfirmed"
               @toggle="chargeExpanded=!chargeExpanded"
@@ -87,6 +87,7 @@
               :heating-charge-mode="form.heatingChargeMode"
               :water-base="form.waterBase"
               :electric-base="form.electricBase"
+              :base-hint="'填入底数'"
               @toggle="utilityExpanded=!utilityExpanded"
               @update:waterChargeMode="form.waterChargeMode = $event"
               @update:electricChargeMode="form.electricChargeMode = $event"
@@ -102,8 +103,8 @@
       <view v-if="room && room.status==='empty' && tab==='current'" class="drawer-action-bar"><ActionFooterRow secondary-label="重置" primary-label="确认收款并入住" primary-class="checkin-primary-action" @secondary="resetForm" @primary="confirmCheckIn" /></view>
     </view>
 
-    <ChargeCollectDrawer :open="checkInCollectOpen" title="入住收费" subtitle="填写本次收费，凭证可选上传" hero-label="首期应收" :hero-badge="checkInChargeConfirmed?'已确认':'待收费'" :hero-amount="formattedCheckInCharge" left-label="支付周期" :left-value="paymentCycleLabel" right-label="租期开始" :right-value="form.leaseStart" input-label="本次实收金额" :model-value="checkInChargeAmount" placeholder="0.00" :receipt-picked="checkInReceiptPicked" :receipt-file-name="checkInReceiptFile?.name || '未上传凭证'" confirm-label="确认收费" :confirm-disabled="!canConfirmCheckInCharge" @close="checkInCollectOpen=false" @update:modelValue="checkInChargeAmount=$event" @pick-receipt="pickCheckInReceipt" @confirm="confirmCheckInCharge" />
-    <ChargeCollectDrawer :open="depositCollectOpen" title="押金收费" subtitle="填写本次押金，凭证可选上传" hero-label="押金应收" :hero-badge="depositReceiptPicked?'已配置':'待收费'" :hero-amount="formattedDepositCharge" left-label="押金约定" :left-value="`￥${Number(form.deposit || 0).toFixed(2)}`" right-label="租期开始" :right-value="form.leaseStart" input-label="本次押金金额" :model-value="depositChargeAmount" placeholder="0.00" :receipt-picked="depositReceiptPicked" :receipt-file-name="depositReceiptFile?.name || '未上传凭证'" confirm-label="确认收费" :confirm-disabled="!canConfirmDepositCharge" @close="depositCollectOpen=false" @update:modelValue="depositChargeAmount=$event" @pick-receipt="pickDepositReceipt" @confirm="confirmDepositCharge" />
+    <ChargeCollectDrawer :open="checkInCollectOpen" title="入住收费" hero-label="首期应收" :hero-badge="checkInChargeConfirmed?'已确认':'待收费'" :hero-amount="formattedCheckInCharge" left-label="支付周期" :left-value="paymentCycleLabel" right-label="租期开始" :right-value="form.leaseStart" input-label="本次实收金额" :model-value="checkInChargeAmount" placeholder="0.00" :receipt-picked="checkInReceiptPicked" confirm-label="确认收费" :confirm-disabled="!canConfirmCheckInCharge" @close="checkInCollectOpen=false" @update:modelValue="checkInChargeAmount=$event" @pick-receipt="pickCheckInReceipt" @confirm="confirmCheckInCharge" />
+    <ChargeCollectDrawer v-if="defaultDepositCharge > 0" :open="depositCollectOpen" title="押金收费" hero-label="押金应收" :hero-badge="depositReceiptPicked?'已配置':'待收费'" :hero-amount="formattedDepositCharge" left-label="押金约定" :left-value="`￥${Number(form.deposit || 0).toFixed(2)}`" right-label="租期开始" :right-value="form.leaseStart" input-label="本次押金金额" :model-value="depositChargeAmount" placeholder="0.00" :receipt-picked="depositReceiptPicked" confirm-label="确认收费" :confirm-disabled="!canConfirmDepositCharge" @close="depositCollectOpen=false" @update:modelValue="depositChargeAmount=$event" @pick-receipt="pickDepositReceipt" @confirm="confirmDepositCharge" />
   </view>
 </template>
 
@@ -154,6 +155,7 @@ const roomPhotos = computed(() => room.value?.roomPhotos || [])
 const roomLocationText = computed(() => [property.value?.name, block.value?.name].filter(Boolean).join(' · '))
 const historyOccupancies = computed(() => (room.value?.occupancies || []).filter((item) => item.kind === 'lease'))
 const historyTimelineItems = computed(() => historyOccupancies.value.map((item) => ({ ...item, rentTotal: occupancyRentTotal(item), extraTotal: occupancyExtraCollectionTotal(item) })))
+const hasPreviousCheckout = computed(() => historyOccupancies.value.some((item) => item.status === 'completed' && item.endDate))
 
 const cycleOptions = [{ value: 1, label: '月付' }, { value: 3, label: '季付' }, { value: 6, label: '半年付' }, { value: 12, label: '年付' }]
 const utilityChargeOptions = [{ value: 'included', label: '房租已包含' }, { value: 'separate', label: '单独收费' }]
@@ -206,8 +208,8 @@ function initializeCheckInState() {
     electricChargeMode: room.value.utilityChargeConfig?.electric || 'separate',
     gasChargeMode: room.value.utilityChargeConfig?.gas || 'separate',
     heatingChargeMode: room.value.utilityChargeConfig?.heating || 'separate',
-    waterBase: String(room.value.lastWater ?? ''),
-    electricBase: String(room.value.lastElectric ?? ''),
+    waterBase: hasPreviousCheckout.value ? String(room.value.lastWater ?? '') : '',
+    electricBase: hasPreviousCheckout.value ? String(room.value.lastElectric ?? '') : '',
   }
   attachments.value = { idCard: [], contract: [] }
   checkInChargeAmount.value = defaultCheckInCharge.value > 0 ? String(defaultCheckInCharge.value) : ''
@@ -231,6 +233,11 @@ watch(() => [form.value.rent, form.value.paymentCycle, form.value.deposit], (nex
   if (!depositReceiptPicked.value) depositChargeAmount.value = defaultDepositCharge.value > 0 ? String(defaultDepositCharge.value) : ''
   if (previous && (next[0] !== previous[0] || next[1] !== previous[1])) checkInChargeConfirmed.value = false
   if (previous && next[2] !== previous[2]) depositChargeConfirmed.value = false
+  if (defaultDepositCharge.value <= 0) {
+    depositCollectOpen.value = false
+    depositChargeConfirmed.value = false
+    depositReceiptFile.value = null
+  }
 })
 
 function nowString() {
@@ -415,8 +422,8 @@ function resetForm() {
     electricChargeMode: room.value.utilityChargeConfig?.electric || 'separate',
     gasChargeMode: room.value.utilityChargeConfig?.gas || 'separate',
     heatingChargeMode: room.value.utilityChargeConfig?.heating || 'separate',
-    waterBase: String(room.value.lastWater ?? ''),
-    electricBase: String(room.value.lastElectric ?? ''),
+    waterBase: hasPreviousCheckout.value ? String(room.value.lastWater ?? '') : '',
+    electricBase: hasPreviousCheckout.value ? String(room.value.lastElectric ?? '') : '',
   }
   attachments.value = { idCard: [], contract: [] }
   checkInReceiptFile.value = null

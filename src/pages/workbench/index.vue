@@ -1,6 +1,6 @@
 <template>
-  <view class="min-h-screen bg-slate-50 text-slate-800">
-    <view class="mx-auto max-w-md min-h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
+  <view class="workbench-page h-screen bg-slate-50 text-slate-800">
+    <view class="workbench-shell mx-auto max-w-md h-screen flex flex-col shadow-2xl bg-slate-50 relative overflow-hidden">
       <view class="bg-white-80 px-5 pb-3 relative shrink-0 z-20 shadow-soft sticky-header" :style="{ paddingTop: headerTopPadding + 'px' }">
         <view class="flex items-center gap-3">
           <view class="w-11 h-11 rounded-2xl flex items-center justify-center border shadow-soft" :class="editMode ? 'bg-amber-50 border-amber-100 text-amber-500' : 'bg-blue-50-50 border-blue-100 text-blue-600'">
@@ -41,7 +41,7 @@
         </scroll-view>
       </view>
 
-      <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true">
+      <scroll-view scroll-y class="page-scroll workbench-content-scroll" :scroll-with-animation="true">
         <view class="p-5 stack-5" style="padding-bottom: 168rpx;">
           <view v-if="workbenchRefreshing" class="loading-pill loading-pill-blue">
             <view class="loading-pill-dots">
@@ -261,6 +261,13 @@
           <button class="structure-modal-primary btn-blue tap-scale" @click="submitQuickBuild">确认构建楼栋</button>
         </view>
       </view>
+      <view v-if="!isLoggedIn" class="absolute inset-0 z-50 bg-slate-50 flex items-center justify-center px-8">
+        <view class="w-full rounded-3xl bg-white p-6 text-center shadow-soft">
+          <view class="text-lg font-black text-slate-900">请先登录</view>
+          <view class="mt-2 text-sm text-slate-400">登录后才可查看和管理房源数据。</view>
+          <button class="mt-5 w-full py-3 rounded-xl btn-blue text-sm font-semibold" @click="uni.switchTab({ url: '/pages/profile/index' })">前往我的登录</button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -271,7 +278,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { UI, getMiniStatusColor } from '../../ui/ui'
 import { getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
-import { canManageTenantData } from '../../data/authStore'
+import { canManageTenantData, isLoggedIn } from '../../data/authStore'
 import { fetchPropertiesTree, getCachedPropertiesTree, isPropertiesTreeFresh } from '../../api/properties'
 import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateTo } from '../../utils/navigation'
@@ -420,6 +427,11 @@ function handleRoomClick(blockId, room) {
 }
 
 function goBlock(blockId) {
+  if (!isLoggedIn.value) {
+    uni.showToast({ title: '请先登录后再操作', icon: 'none' })
+    uni.switchTab({ url: '/pages/profile/index' })
+    return
+  }
   if (editMode.value) return
   safeNavigateTo(`/pages/block/detail?propertyId=${activePropertyId.value}&blockId=${blockId}`)
 }
@@ -659,6 +671,22 @@ function formatSyncError(value) {
 </script>
 
 <style>
+.workbench-page {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.workbench-shell {
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+}
+
+.workbench-content-scroll {
+  min-height: 0;
+}
+
 .property-chip {
   max-width: 220rpx;
   min-height: 68rpx;

@@ -29,14 +29,13 @@
           <view class="flex items-center gap-3 relative z-10">
             <view
               class="w-12 h-12 bg-white-20 rounded-full flex items-center justify-center text-white font-semibold text-lg"
-            >{{ profileInitial }}</view>
+            ><image v-if="currentUser?.avatarUrl" :src="currentUser.avatarUrl" mode="aspectFill" class="profile-avatar-image" />{{ currentUser?.avatarUrl ? '' : profileInitial }}</view>
             <view class="min-w-0 flex-1">
               <view class="text-lg font-black truncate">{{ profileName }}</view>
               <view class="flex gap-1_5 mt-1_5 flex-wrap">
-                <view class="profile-hero-chip">{{ currentUser ? '微信已登录' : '本地访客' }}</view>
+                <view class="profile-hero-chip">{{ currentUser ? '公共账户已登录' : '未登录' }}</view>
                 <view class="profile-hero-chip">{{ tenantRoleLabel }}</view>
-                <view class="profile-hero-chip">租户隔离</view>
-                <view class="profile-hero-chip">本地优先</view>
+                <view class="profile-hero-chip">公共账户</view>
               </view>
             </view>
           </view>
@@ -58,6 +57,10 @@
         </view>
       </view>
 
+      <view v-if="subPage === 'allDocuments'" class="profile-doc-search shrink-0">
+        <view class="profile-doc-search-row"><input v-model="docKeyword" class="doc-input" placeholder="搜索姓名、房号或手机号" placeholder-class="doc-placeholder" confirm-type="search" @confirm="docKeyword = docKeyword.trim()" /><button class="profile-doc-search-button" @click="docKeyword = docKeyword.trim()">搜索</button></view>
+      </view>
+
       <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true">
         <view class="p-4 stack-4" :style="{ paddingBottom: !subPage ? '176rpx' : '64rpx' }">
           <view v-if="!subPage" class="stack-4">
@@ -65,25 +68,16 @@
               <view class="p-3 stack-3">
                 <view class="flex items-center justify-between gap-3">
                   <view class="min-w-0">
-                    <view class="font-bold text-slate-800 text-sm">{{ currentUser ? '当前租户' : '微信登录' }}</view>
+                    <view class="font-bold text-slate-800 text-sm">{{ currentUser ? '当前账户：admin' : '公共账户登录' }}</view>
                     <view class="text-3xs text-slate-400 mt-1">
-                      {{ currentUser ? '切换后将自动切到该租户的独立本地数据。' : '登录后可恢复当前微信用户的租户空间。' }}
+                      {{ currentUser ? '当前为唯一公共管理账户。' : '点击登录即可进入公共管理账户。' }}
                     </view>
                   </view>
                   <button
                     v-if="!currentUser"
                     class="px-3 py-2 rounded-xl btn-blue text-xs font-semibold tap-scale shrink-0"
                     @click="loginTenant"
-                  >微信登录</button>
-                </view>
-                <view v-if="users.length" class="flex gap-2 overflow-x-auto whitespace-nowrap">
-                  <button
-                    v-for="user in users"
-                    :key="user.id"
-                    class="px-3 py-2 rounded-xl border text-xs font-semibold tap-scale shrink-0"
-                    :class="user.id === selectedTenantId ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600'"
-                    @click="switchTenantUser(user.id)"
-                  >{{ user.nickName }}</button>
+                  >登录</button>
                 </view>
               </view>
             </view>
@@ -137,59 +131,36 @@
             </view>
 
             <button
+              v-if="false"
               class="w-full py-3 rounded-xl bg-white border border-rose-200 text-rose-500 text-sm font-semibold tap-scale"
               @click="logout"
             >退出登录</button>
           </view>
           <view v-else-if="subPage === 'allDocuments'" class="stack-3">
             <view class="surface-card" :class="UI.card">
-              <view class="p-3 stack-3">
-                <input
-                  v-model="docKeyword"
-                  class="doc-input"
-                  placeholder="搜索姓名、房号或手机号"
-                  placeholder-class="doc-placeholder"
-                />
-                <button class="w-full py-3 rounded-xl btn-blue text-sm font-semibold tap-scale" @click="docKeyword = docKeyword.trim()">
-                  查询
-                </button>
-              </view>
-            </view>
-
-            <view class="surface-card" :class="UI.card">
+              <view class="doc-table-head"><text>租客</text><text>房间</text><text>状态</text><text>资料</text></view>
               <view v-if="filteredDocs.length" class="divide-y divide-slate-100">
-                <view v-for="doc in filteredDocs" :key="doc.id" class="p-3 stack-2">
-                  <view class="flex items-start justify-between gap-3">
-                    <view class="min-w-0">
-                      <view class="font-bold text-slate-900 text-sm">{{ doc.tenantName || '未填写租客' }}</view>
-                      <view class="text-3xs text-slate-400 mt-1">
-                        {{ doc.roomLabel }}<text v-if="doc.phone"> · {{ doc.phone }}</text>
-                      </view>
-                    </view>
-                    <view class="text-3xs text-slate-400">{{ doc.statusText }}</view>
-                  </view>
-                  <view class="flex flex-wrap gap-2">
-                    <view class="doc-badge" :class="doc.identityFile ? 'doc-badge-ok' : 'doc-badge-empty'">
-                      {{ doc.identityFile ? '身份证已归档' : '身份证缺失' }}
-                    </view>
-                    <view class="doc-badge" :class="doc.contractFile ? 'doc-badge-ok' : 'doc-badge-empty'">
-                      {{ doc.contractFile ? '合同已归档' : '合同缺失' }}
-                    </view>
-                  </view>
-                  <view class="flex gap-2">
+                <view v-for="doc in pagedDocs" :key="doc.id" class="doc-list-row">
+                  <view class="doc-tenant-cell"><view class="font-bold text-slate-900 text-sm truncate">{{ doc.tenantName || '未填写租客' }}</view></view>
+                  <view class="doc-room-cell text-2xs text-slate-400 truncate">{{ doc.roomShortLabel }}</view>
+                  <view class="doc-status-cell text-2xs text-slate-400 truncate">{{ doc.statusText }}</view>
+                  <view class="doc-list-actions">
                     <button
-                      class="flex-1 button-secondary-slate tap-scale"
-                      @click="openAttachment(doc.identityFile, doc.identityTitle, '暂无证件')"
-                    >{{ doc.identityFile ? '查看身份证' : '暂无证件' }}</button>
+                      class="flex-1 doc-file-button tap-scale"
+                      :class="doc.identityFiles.length ? 'doc-file-button-ready' : 'doc-file-button-empty'"
+                      @click="handleDocumentAction(doc, 'idCard')"
+                    >{{ doc.identityFiles.length ? '查看身份证' : '补录身份证' }}</button>
                     <button
-                      class="flex-1 button-secondary-slate tap-scale"
-                      @click="openAttachment(doc.contractFile, doc.contractTitle, '暂无合同')"
-                    >{{ doc.contractFile ? '查看电子合同' : '暂无合同' }}</button>
+                      class="flex-1 doc-file-button tap-scale"
+                      :class="doc.contractFiles.length ? 'doc-file-button-ready' : 'doc-file-button-empty'"
+                      @click="handleDocumentAction(doc, 'contract')"
+                    >{{ doc.contractFiles.length ? '查看合同' : '补录合同' }}</button>
                   </view>
                 </view>
               </view>
               <view v-else class="p-6 text-center text-sm text-slate-400">暂无匹配的档案记录</view>
             </view>
+            <view v-if="docTotalPages > 1" class="profile-pagination"><button class="profile-page-button" :disabled="docPage === 1" @click="docPage -= 1">上一页</button><text>{{ docPage }} / {{ docTotalPages }}</text><button class="profile-page-button" :disabled="docPage === docTotalPages" @click="docPage += 1">下一页</button></view>
           </view>
 
           <view v-else-if="subPage === 'utilityTemplate'" class="stack-3">
@@ -270,14 +241,15 @@
           </view>
 
           <view v-else-if="subPage === 'exportReport'" class="stack-3">
-            <view class="surface-card" :class="UI.card">
-              <view class="p-4 text-xs text-slate-500 leading-6">
-                支持导出单个房间或全部房间的流水明细，并带租金与附加费汇总。
+            <view class="profile-export-toolbar">
+              <view class="surface-card" :class="UI.card">
+                <view class="p-4 text-xs text-slate-500 leading-6">
+                  支持导出单个房间或全部房间的流水明细，并带租金与附加费汇总。
+                </view>
               </view>
-            </view>
 
-            <view class="surface-card" :class="UI.card">
-              <view class="p-4 stack-3">
+              <view class="surface-card mt-3" :class="UI.card">
+                <view class="p-4 stack-3">
                 <view>
                   <view class="text-xs font-semibold text-slate-500 mb-2">导出范围</view>
                   <view class="grid grid-cols-2 gap-2">
@@ -327,8 +299,24 @@
                     </view>
                   </view>
                 </view>
+                </view>
               </view>
             </view>
+            <view class="surface-card" :class="UI.card">
+              <view class="px-3 py-2 bg-slate-50 text-3xs font-semibold text-slate-500">导出流水（{{ exportTransactions.length }} 条）</view>
+              <view class="export-table-head"><text>房间</text><text>项目</text><text>时间</text><text>金额</text></view>
+              <view v-if="pagedExportTransactions.length" class="divide-y divide-slate-100">
+                <view v-for="item in pagedExportTransactions" :key="item.id" class="export-table-row">
+                  <view class="text-xs font-semibold text-slate-700 truncate">{{ item.roomNo }}</view>
+                  <view class="min-w-0"><view class="text-xs font-semibold text-slate-700 truncate">{{ item.title }}</view><view class="text-2xs text-slate-400 truncate">{{ item.tenant || '未填写租客' }}</view></view>
+                  <view class="text-2xs text-slate-400 font-mono truncate">{{ item.payDate || '-' }}</view>
+                  <view class="font-mono text-xs font-bold text-emerald-700 text-right">¥{{ fmtMoney(item.amount) }}</view>
+                </view>
+              </view>
+              <view v-else class="p-4 text-center text-sm text-slate-400">暂无流水</view>
+            </view>
+            <view v-if="exportTotalPages > 1" class="profile-pagination"><button class="profile-page-button" :disabled="exportPage === 1" @click="exportPage -= 1">上一页</button><text>{{ exportPage }} / {{ exportTotalPages }}</text><button class="profile-page-button" :disabled="exportPage === exportTotalPages" @click="exportPage += 1">下一页</button></view>
+            <view v-if="exportFilePath" class="export-file-path">已生成文件：{{ exportFilePath }}</view>
             <view v-if="isCloudConfigured" class="surface-card" :class="UI.card">
               <view class="p-3 flex items-center justify-between gap-3 border-b border-slate-100">
                 <view>
@@ -380,30 +368,14 @@
         <button class="page-footer-primary" @click="exportReportFile">导出为 CSV</button>
       </view>
 
-      <BaseCenteredModal
-        :open="attachmentModalOpen"
-        title="资料预览"
-        subtitle="查看身份证、合同或模板图片"
-        @close="closeAttachment"
-      >
-        <view v-if="activeAttachment" class="stack-3">
-          <view class="rounded-2xl bg-slate-50 border border-slate-200 p-3 stack-2">
-            <view class="text-xs font-semibold text-slate-500">标题</view>
-            <view class="font-bold text-slate-900 text-sm">{{ attachmentModalTitle }}</view>
-          </view>
-          <view class="rounded-2xl bg-white border border-slate-200 p-3 stack-3">
-            <view class="text-xs font-semibold text-slate-500">预览</view>
-            <image
-              v-if="resolveAttachmentImageSrc(activeAttachment)"
-              :src="resolveAttachmentImageSrc(activeAttachment)"
-              mode="aspectFit"
-              class="preview-image"
-              @click="previewAttachmentImage"
-            />
-            <view v-else class="preview-empty">暂无图片预览</view>
-          </view>
+      <view v-if="!isLoggedIn" class="absolute inset-0 z-50 bg-slate-50 flex items-center justify-center px-8">
+        <view class="w-full rounded-3xl bg-white p-6 text-center shadow-soft">
+          <view class="text-lg font-black text-slate-900">登录公共账户</view>
+          <view class="mt-2 text-sm text-slate-400">登录后可查看房源、账务和租客资料。</view>
+          <button class="mt-5 w-full py-3 rounded-xl btn-blue text-sm font-semibold" @click="loginTenant">立即登录</button>
         </view>
-      </BaseCenteredModal>
+      </view>
+
     </view>
   </view>
 </template>
@@ -411,7 +383,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import BaseCenteredModal from '../../components/BaseCenteredModal.vue'
 import { createCloudExportTask, fetchCloudExportTasks, getCachedCloudExportTasks } from '../../api/exports.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl, isCloudApiConfigured, withCloudBackupAccess } from '../../config/cloud'
 import {
@@ -420,16 +391,19 @@ import {
   currentProfile,
   currentTenantRole,
   currentUser,
-  loginWithWeChatProfile,
+  isLoggedIn,
+  loginPublicAccount,
   logoutTenant,
   switchTenant,
   users,
 } from '../../data/authStore.js'
-import { globalConfig, properties, saveGlobalConfig } from '../../data/rentStore'
+import { cloneProperties, globalConfig, properties, saveGlobalConfig, setProperties } from '../../data/rentStore'
+import { buildBillEntriesSnapshot } from '../../data/billSnapshots.js'
+import { ATTACHMENT_FILE_LIMITS } from '../../domain/rent-models.js'
 import { getPendingSyncSummary, getSyncMode, processSyncQueue, setSyncMode } from '../../data/syncQueue.js'
 import { UI } from '../../ui/ui'
 import { getPageHeaderTopPadding } from '../../utils/layout'
-import { previewChosenImage, resolveOfflineImageSrc } from '../../utils/media'
+import { chooseImages, previewChosenImages } from '../../utils/media'
 import { getFileSystemManagerSafe, getUserDataPathSafe } from '../../utils/platform-files'
 
 const REMINDER_STORAGE_KEY = 'irent_reminder_settings_v1'
@@ -437,9 +411,10 @@ const REMINDER_STORAGE_KEY = 'irent_reminder_settings_v1'
 const headerTopPadding = ref(44)
 const subPage = ref('')
 const docKeyword = ref('')
-const attachmentModalOpen = ref(false)
-const activeAttachment = ref(null)
-const attachmentModalTitle = ref('')
+const docPage = ref(1)
+const exportPage = ref(1)
+const exportFilePath = ref('')
+const PAGE_SIZE = 20
 const selectedTenantId = ref('')
 const cloudExportTasks = ref([])
 const cloudExportLoading = ref(false)
@@ -456,7 +431,7 @@ const utilityForm = ref({
 const reminderForm = ref(loadReminderSettings())
 const isCloudConfigured = computed(() => isCloudApiConfigured())
 const profileName = computed(() => currentUser.value?.nickName || currentProfile.value?.nickName || '微信用户')
-const profileInitial = computed(() => String(profileName.value || '微').slice(0, 1))
+const profileInitial = computed(() => currentUser.value ? '管' : '访')
 const tenantRoleLabel = computed(() => {
   switch (String(currentTenantRole.value || '').toUpperCase()) {
     case 'MANAGER': return '管理员'
@@ -508,20 +483,35 @@ const allDocs = computed(() => {
     for (const block of property.blocks || []) {
       for (const floor of block.floors || []) {
         for (const room of floor.rooms || []) {
-          const attachments = Array.isArray(room.attachments) ? room.attachments : []
-          const identityFile = room.identityCardFile || attachments.find((item) => String(item?.type || '').includes('identity')) || attachments.find((item) => String(item?.name || '').includes('身份证')) || null
-          const contractFile = room.contractFile || attachments.find((item) => String(item?.type || '').includes('contract')) || attachments.find((item) => String(item?.name || '').includes('合同')) || null
-          docs.push({
-            id: room.id,
-            tenantName: room.tenantName || room.tenant || '',
-            phone: room.phone || room.tenantPhone || '',
-            roomLabel: `${property.name} · ${block.name} · ${room.roomNo}`,
-            statusText: room.status === 'empty' ? '空置' : '已归档',
-            identityFile,
-            contractFile,
-            identityTitle: `${room.roomNo} 身份证`,
-            contractTitle: `${room.roomNo} 合同`,
-          })
+          const roomLabel = `${property.name} · ${block.name} · ${room.roomNo}`
+          const roomShortLabel = `${block.name} · ${room.roomNo}`
+          const addDocument = (occupancy, attachmentFiles, statusText) => {
+            if (!occupancy?.tenant && !room.tenant) return
+            const files = attachmentFiles || {}
+            docs.push({
+              id: `${room.id}_${occupancy?.id || 'current'}`,
+              roomId: room.id,
+              occupancyId: occupancy?.id || '',
+              isActiveOccupancy: occupancy?.status === 'active' || (!occupancy && room.status !== 'empty'),
+              tenantName: occupancy?.tenant || room.tenantName || room.tenant || '',
+              phone: occupancy?.phone || room.phone || room.tenantPhone || '',
+              roomLabel,
+              roomShortLabel,
+              statusText,
+              identityFiles: Array.isArray(files.idCard) ? files.idCard : (files.idCard ? [files.idCard] : []),
+              contractFiles: Array.isArray(files.contract) ? files.contract : (files.contract ? [files.contract] : []),
+            })
+          }
+          const occupancies = (room.occupancies || []).filter((item) => item.kind === 'lease')
+          if (occupancies.length) {
+            occupancies.forEach((occupancy) => addDocument(
+              occupancy,
+              occupancy.status === 'active' ? room.attachmentFiles : (occupancy.archive?.attachmentFiles || occupancy.attachmentFiles),
+              occupancy.status === 'active' ? '在住' : '已退租归档',
+            ))
+          } else if (room.tenant) {
+            addDocument(null, room.attachmentFiles, room.status === 'empty' ? '空置归档' : '在住')
+          }
         }
       }
     }
@@ -534,34 +524,31 @@ const filteredDocs = computed(() => {
   if (!keyword) return allDocs.value
   return allDocs.value.filter((item) => [item.tenantName, item.phone, item.roomLabel].some((field) => String(field || '').includes(keyword)))
 })
+const docTotalPages = computed(() => Math.max(1, Math.ceil(filteredDocs.value.length / PAGE_SIZE)))
+const pagedDocs = computed(() => filteredDocs.value.slice((docPage.value - 1) * PAGE_SIZE, docPage.value * PAGE_SIZE))
+watch(filteredDocs, () => { docPage.value = 1 })
 
 
 const exportTransactions = computed(() => {
   const targetRoomId = exportMode.value === 'room' ? selectedExportRoomId.value : ''
-  const rows = []
+  const roomLocations = new Map()
   for (const property of properties.value) {
     for (const block of property.blocks || []) {
       for (const floor of block.floors || []) {
         for (const room of floor.rooms || []) {
-          if (targetRoomId && room.id !== targetRoomId) continue
-          for (const item of room.collections || []) {
-            rows.push({
-              id: item.id || `${room.id}_${item.createdAt || item.payDate || Math.random()}`,
-              roomId: room.id,
-              roomNo: room.roomNo,
-              tenant: room.tenantName || room.tenant || '',
-              title: item.title || buildCollectionTitle(item.kind),
-              kind: item.kind || 'custom',
-              amount: Number(item.amount || 0),
-              payDate: item.payDate || item.createdAt || '',
-              receiptFile: item.receiptFile || null,
-            })
-          }
+          roomLocations.set(room.id, {
+            propertyName: property.name || '',
+            blockName: block.name || '',
+            roomNo: room.roomNo || '',
+          })
         }
       }
     }
   }
-  return rows.sort((a, b) => String(b.payDate || '').localeCompare(String(a.payDate || '')))
+  return buildBillEntriesSnapshot(properties.value).entries
+    .filter((item) => !targetRoomId || item.roomId === targetRoomId)
+    .map((item) => ({ ...item, ...(roomLocations.get(item.roomId) || {}), payDate: item.payDate || '' }))
+    .sort((a, b) => String(b.payDate || '').localeCompare(String(a.payDate || '')))
 })
 
 const exportRoomOptions = computed(() => {
@@ -590,6 +577,9 @@ const exportPreviewSummary = computed(() => exportTransactions.value.reduce((sum
   else summary.utilityTotal += Number(item.amount || 0)
   return summary
 }, { count: 0, rentTotal: 0, utilityTotal: 0 }))
+const exportTotalPages = computed(() => Math.max(1, Math.ceil(exportTransactions.value.length / PAGE_SIZE)))
+const pagedExportTransactions = computed(() => exportTransactions.value.slice((exportPage.value - 1) * PAGE_SIZE, exportPage.value * PAGE_SIZE))
+watch(exportTransactions, () => { exportPage.value = 1 })
 
 const syncPendingTypeItems = computed(() => Object.entries(syncSummary.value.pendingTypeCounts || {})
   .map(([type, count]) => ({ type, count, label: syncTaskTypeLabel(type) }))
@@ -742,6 +732,10 @@ function updateSyncMode(mode) {
 }
 
 function openSubPage(id) {
+  if (!isLoggedIn.value) {
+    uni.showToast({ title: '请先登录后再操作', icon: 'none' })
+    return
+  }
   const managerOnlyPages = ['utilityTemplate', 'autoReminder', 'exportReport']
   if (managerOnlyPages.includes(id) && !canManageTenantData.value) {
     uni.showToast({ title: '当前角色无权进入该页面', icon: 'none' })
@@ -777,7 +771,7 @@ function saveReminder() {
 
 async function loginTenant() {
   try {
-    await loginWithWeChatProfile()
+    loginPublicAccount()
     selectedTenantId.value = users.value[0]?.id || ''
     uni.showToast({ title: '登录成功', icon: 'success' })
     refreshSyncSummary()
@@ -799,19 +793,56 @@ async function switchTenantUser(userId) {
   }
 }
 
-function openAttachment(file, title, emptyTitle) {
-  if (!file) {
-    uni.showToast({ title: emptyTitle || '暂无资料', icon: 'none' })
+async function handleDocumentAction(doc, type) {
+  const documentFiles = type === 'idCard' ? doc.identityFiles : doc.contractFiles
+  if (documentFiles.length) {
+    if (!previewChosenImages(documentFiles)) uni.showToast({ title: '当前文件暂不支持预览', icon: 'none' })
     return
   }
-  activeAttachment.value = file
-  attachmentModalTitle.value = title || file.name || '资料预览'
-  attachmentModalOpen.value = true
+  if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权补录资料', icon: 'none' })
+  try {
+    const fileKey = type === 'idCard' ? 'idCard' : 'contract'
+    const fileLimit = ATTACHMENT_FILE_LIMITS[fileKey] || 1
+    const selected = await chooseImages({ fallbackPrefix: fileKey, count: fileLimit })
+    if (!selected.length) return
+    const nextProperties = cloneProperties()
+    let targetRoom = null
+    for (const property of nextProperties) {
+      for (const block of property.blocks || []) {
+        for (const floor of block.floors || []) {
+          const found = (floor.rooms || []).find((room) => room.id === doc.roomId)
+          if (found) { targetRoom = found; break }
+        }
+        if (targetRoom) break
+      }
+      if (targetRoom) break
+    }
+    if (!targetRoom) return uni.showToast({ title: '房间资料不存在', icon: 'none' })
+    const prepared = selected.map((picked, index) => ({
+      ...picked,
+      id: picked.id || `${fileKey}_${Date.now()}_${index}`,
+      uploadedAt: picked.uploadedAt || new Date().toISOString().slice(0, 16).replace('T', ' '),
+    }))
+    const occupancy = (targetRoom.occupancies || []).find((item) => item.id === doc.occupancyId)
+    if (occupancy && occupancy.status !== 'active') {
+      occupancy.archive = occupancy.archive || {}
+      occupancy.archive.attachmentFiles = occupancy.archive.attachmentFiles || { idCard: [], contract: [] }
+      const files = occupancy.archive.attachmentFiles[fileKey]
+      occupancy.archive.attachmentFiles[fileKey] = (Array.isArray(files) ? files : (files ? [files] : [])).concat(prepared).slice(0, fileLimit)
+    } else {
+      targetRoom.attachmentFiles = targetRoom.attachmentFiles || { idCard: [], contract: [] }
+      const files = targetRoom.attachmentFiles[fileKey]
+      targetRoom.attachmentFiles[fileKey] = (Array.isArray(files) ? files : (files ? [files] : [])).concat(prepared).slice(0, fileLimit)
+      if (fileKey === 'idCard') targetRoom.hasIdCardPic = true
+      else targetRoom.hasContract = true
+      if (occupancy) occupancy.attachmentFiles = { ...targetRoom.attachmentFiles }
+    }
+    setProperties(nextProperties)
+    uni.showToast({ title: '资料已补录', icon: 'success' })
+  } catch (error) {
+    if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
+  }
 }
-
-function closeAttachment() { attachmentModalOpen.value = false; activeAttachment.value = null; attachmentModalTitle.value = '' }
-function previewAttachmentImage() { if (activeAttachment.value) previewChosenImage(activeAttachment.value) }
-function resolveAttachmentImageSrc(file) { return resolveOfflineImageSrc(file) }
 
 function logout() {
   logoutTenant()
@@ -828,9 +859,15 @@ function handleRoomPickerChange(event) {
 }
 
 function buildCsvContent(rows) {
-  const lines = ['房间,租客,项目,类型,金额,记收时间']
+  const lines = ['iRent 收款流水报表']
+  lines.push(`导出时间,${new Date().toLocaleString()}`)
+  lines.push(`导出范围,${exportMode.value === 'room' ? selectedExportRoomLabel.value : '全部房间'}`)
+  lines.push('')
+  lines.push('院落,楼栋,房间,租客,项目,类型,金额,记收时间')
   rows.forEach((item) => {
     lines.push([
+      item.propertyName,
+      item.blockName,
       item.roomNo,
       item.tenant || '未填写租客',
       item.title,
@@ -880,8 +917,19 @@ async function exportReportFile() {
   const filePath = `${userDataPath}/irent_export_${Date.now()}.csv`
   try {
     fs.writeFileSync(filePath, `\ufeff${buildCsvContent(rows)}`, 'utf8')
-    await uni.setClipboardData({ data: filePath })
-    uni.showToast({ title: '文件已生成', icon: 'success' })
+    let savedPath = filePath
+    if (typeof uni.saveFile === 'function') {
+      try {
+        const saved = await new Promise((resolve, reject) => uni.saveFile({ tempFilePath: filePath, success: resolve, fail: reject }))
+        savedPath = saved?.savedFilePath || filePath
+      } catch {
+        // USER_DATA_PATH is already persistent; some mini-program runtimes only
+        // allow saveFile for temporary paths.
+      }
+    }
+    await uni.setClipboardData({ data: savedPath })
+    exportFilePath.value = savedPath
+    uni.showToast({ title: '报表已生成，路径已复制', icon: 'success' })
   } catch {
     uni.showToast({ title: '导出失败', icon: 'none' })
   }
@@ -927,7 +975,7 @@ onShow(() => {
 
 <style>
 .profile-hero { background: linear-gradient(135deg, #2563eb 0%, #3b82f6 58%, #60a5fa 100%); }
-.profile-hero-chip { padding: 6rpx 14rpx; border-radius: 9999rpx; background: rgba(255,255,255,0.18); border: 0; font-size: 20rpx; line-height: 1.2; font-weight: 600; color: #eff6ff; }
+.profile-hero-chip { padding: 6rpx 14rpx; border-radius: 9999rpx; background: rgba(255,255,255,0.18); border: 0; font-size: 20rpx; line-height: 1.2; font-weight: 600; color: #eff6ff; }.profile-avatar-image { width: 96rpx; height: 96rpx; border-radius: 999rpx; }
 .sync-chip { padding: 6rpx 14rpx; border-radius: 9999rpx; background: #f8fafc; border: 0; color: #475569; font-size: 20rpx; line-height: 1.2; font-weight: 600; }
 .doc-input, .setting-input { width: 100%; min-height: 84rpx; padding: 0 24rpx; border-radius: 24rpx; border: 1rpx solid #e2e8f0; background: #f8fafc; color: #0f172a; font-size: 28rpx; font-weight: 500; box-sizing: border-box; }
 .setting-input-center { text-align: center; }
@@ -939,4 +987,10 @@ onShow(() => {
 .page-footer-primary { width: 100%; height: 88rpx; padding: 0; border-radius: 24rpx; background: #2563eb; color: #ffffff; font-size: 28rpx; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .preview-image { width: 100%; height: 360rpx; border-radius: 24rpx; background: #f8fafc; border: 1rpx solid #e2e8f0; }
 .preview-empty { height: 360rpx; border-radius: 24rpx; background: #f8fafc; border: 1rpx solid #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 26rpx; font-weight: 600; }
+.profile-doc-search { padding: 16rpx 32rpx; background: rgba(248,250,252,.98); border-bottom: 1rpx solid #e2e8f0; }.profile-doc-search-row { display: flex; align-items: center; gap: 12rpx; }.profile-doc-search-row .doc-input { flex: 1; min-width: 0; }.profile-doc-search-button { width: 96rpx; height: 76rpx; padding: 0; border-radius: 20rpx; background: #2563eb; color: #fff; font-size: 24rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.profile-export-toolbar { position: sticky; top: 0; z-index: 12; padding-bottom: 8rpx; background: #f8fafc; }
+.export-table-head,.export-table-row { display: grid; grid-template-columns: 64rpx minmax(0,1.3fr) minmax(0,1.35fr) minmax(0,.85fr); gap: 12rpx; align-items: center; }.export-table-head { padding: 16rpx 24rpx; background: #f8fafc; color: #94a3b8; font-size: 20rpx; font-weight: 600; }.export-table-row { padding: 18rpx 24rpx; }
+.doc-table-head,.doc-list-row { display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.1fr) 86rpx 252rpx; gap: 12rpx; align-items: center; }.doc-table-head { padding: 16rpx 20rpx; background: #f8fafc; color: #94a3b8; font-size: 20rpx; font-weight: 600; }.doc-list-row { padding: 18rpx 20rpx; }.doc-tenant-cell,.doc-room-cell,.doc-status-cell { min-width: 0; }.doc-list-actions { display: flex; gap: 8rpx; }.doc-list-actions .doc-file-button { width: 122rpx; min-width: 0; }
+.doc-file-button { height: 54rpx; border-radius: 14rpx; font-size: 20rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }.doc-file-button-ready { background: #dcfce7; color: #166534; }.doc-file-button-empty { background: #f8fafc; color: #94a3b8; }
+.profile-pagination { display: flex; align-items: center; justify-content: center; gap: 20rpx; color: #64748b; font-size: 22rpx; font-weight: 600; }.profile-page-button { min-width: 116rpx; height: 58rpx; border-radius: 16rpx; background: #fff; color: #334155; border: 1rpx solid #e2e8f0; font-size: 22rpx; }.profile-page-button[disabled] { color: #cbd5e1; background: #f8fafc; }.export-file-path { padding: 18rpx; border-radius: 18rpx; background: #f8fafc; color: #64748b; font-size: 20rpx; line-height: 1.4; word-break: break-all; }
 </style>

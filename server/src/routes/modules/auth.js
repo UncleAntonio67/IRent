@@ -1,7 +1,7 @@
 import express from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
-import { buildAuthMePayload, loginWithWeChat } from '../../services/auth.js'
+import { buildAuthMePayload, loginWithPublicAccount, loginWithWeChat } from '../../services/auth.js'
 
 export const authRouter = express.Router()
 
@@ -27,6 +27,23 @@ authRouter.post('/wechat/login', async (req, res, next) => {
       ok: true,
       ...result,
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+authRouter.post('/public/login', async (req, res, next) => {
+  const deviceInfo = typeof req.body?.deviceInfo === 'string' ? req.body.deviceInfo.slice(0, 2000) : null
+  const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+  const ipAddress = forwardedFor || req.ip || req.socket?.remoteAddress || null
+
+  try {
+    const result = await loginWithPublicAccount({
+      ipAddress,
+      userAgent: String(req.get('user-agent') || '').slice(0, 1000),
+      deviceInfo,
+    })
+    res.json({ ok: true, ...result })
   } catch (error) {
     next(error)
   }
