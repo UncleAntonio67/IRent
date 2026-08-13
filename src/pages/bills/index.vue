@@ -29,8 +29,8 @@
         </view>
       </view>
 
-      <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true">
-        <view class="p-5 stack-3" style="padding-bottom: 176rpx;">
+      <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true" :refresher-enabled="true" refresher-default-style="black" :refresher-triggered="pullRefreshing" @refresherrefresh="handlePullRefresh">
+        <view class="p-4 stack-3" style="padding-bottom: 152rpx;">
           <SyncNotice />
           <view class="p-3 rounded-2xl surface-card stack-2 bills-toolbar bills-toolbar-fixed">
             <view class="flex items-center justify-between gap-3">
@@ -209,7 +209,7 @@ import DateSelectionModal from '../../components/DateSelectionModal.vue'
 import { properties, setProperties } from '../../data/rentStore'
 import { getCachedBillEntriesSnapshot, refreshBillEntriesSnapshot } from '../../data/billSnapshots.js'
 import { fetchFullPropertiesSnapshot, getCachedPropertiesTree } from '../../api/properties'
-import { getPendingSyncSummary } from '../../data/syncQueue.js'
+import { getPendingSyncSummary, processSyncQueue } from '../../data/syncQueue.js'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { previewChosenImage, resolveOfflineImageSrc } from '../../utils/media'
@@ -236,6 +236,7 @@ const currentPage = ref(1)
 const PAGE_SIZE = 20
 const cachedEntries = ref(getCachedBillEntriesSnapshot().entries)
 const billsRefreshing = ref(false)
+const pullRefreshing = ref(false)
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
   const counts = syncSummary.value?.pendingTypeCounts || {}
@@ -285,6 +286,20 @@ async function syncCloudProperties() {
     }
   } catch {} finally {
     billsRefreshing.value = false
+  }
+}
+
+async function handlePullRefresh() {
+  if (pullRefreshing.value) return
+  pullRefreshing.value = true
+  try {
+    await processSyncQueue({ source: 'auto', force: true })
+    await syncCloudProperties()
+    cachedEntries.value = refreshBillEntriesSnapshot(properties.value).entries
+    syncSummary.value = getPendingSyncSummary()
+  } finally {
+    pullRefreshing.value = false
+    try { uni.stopPullDownRefresh() } catch {}
   }
 }
 

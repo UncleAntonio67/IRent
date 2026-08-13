@@ -41,8 +41,8 @@
         </scroll-view>
       </view>
 
-      <scroll-view scroll-y class="page-scroll workbench-content-scroll" :scroll-with-animation="true">
-        <view class="p-5 stack-5" style="padding-bottom: 168rpx;">
+      <scroll-view scroll-y class="page-scroll workbench-content-scroll" :scroll-with-animation="true" :refresher-enabled="true" refresher-default-style="black" :refresher-triggered="pullRefreshing" @refresherrefresh="handlePullRefresh">
+        <view class="p-4 stack-4" style="padding-bottom: 144rpx;">
           <SyncNotice />
           <view v-if="cloudBootstrapRequired" class="px-3 py-3 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-between gap-3">
             <view class="min-w-0">
@@ -267,7 +267,7 @@ import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { canUseCloudBackup, hasCloudApiBaseUrl } from '../../config/cloud'
-import { clearPendingSyncTasks, enqueueSyncTask, getPendingSyncSummary } from '../../data/syncQueue.js'
+import { clearPendingSyncTasks, enqueueSyncTask, getPendingSyncSummary, processSyncQueue } from '../../data/syncQueue.js'
 import {
   applyQuickBuild,
   applyWorkbenchStructureChange,
@@ -298,6 +298,7 @@ const addModalFieldLabel = computed(() => ({
   room: '房间名称',
 })[addModal.value.type] || '填写内容')
 const workbenchRefreshing = ref(false)
+const pullRefreshing = ref(false)
 const cloudBootstrapPrompted = ref(false)
 const cloudBootstrapRequired = ref(false)
 // Bump this epoch whenever a legacy offline queue format must be retired.
@@ -368,6 +369,19 @@ async function syncCloudProperties() {
     }
   } finally {
     workbenchRefreshing.value = false
+  }
+}
+
+async function handlePullRefresh() {
+  if (pullRefreshing.value) return
+  pullRefreshing.value = true
+  try {
+    await processSyncQueue({ source: 'auto', force: true })
+    await syncCloudProperties()
+    syncSummary.value = getPendingSyncSummary()
+  } finally {
+    pullRefreshing.value = false
+    try { uni.stopPullDownRefresh() } catch {}
   }
 }
 
