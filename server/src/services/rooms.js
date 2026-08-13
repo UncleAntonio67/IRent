@@ -241,6 +241,9 @@ export async function checkInRoom({
   lastWaterReading,
   lastElectricReading,
   lastGasReading,
+  initialRentAmount = 0,
+  initialDepositCollectionAmount = 0,
+  initialPaidAt,
   attachmentIds = [],
 }) {
   const leaseStart = startOfDay(leaseStartDate)
@@ -309,6 +312,62 @@ export async function checkInRoom({
     if (paymentTerms.length > 0) {
       await tx.paymentTerm.createMany({
         data: paymentTerms,
+      })
+    }
+
+    // The "入住收费" drawer represents a real collection, not merely a local
+    // confirmation. Settle the first term in the same transaction so a fully
+    // paid first period never returns from the cloud as receivable.
+    const firstTerm = await tx.paymentTerm.findFirst({
+      where: { roomId },
+      orderBy: { termNo: 'asc' },
+    })
+    const initialPaidDate = startOfDay(initialPaidAt || leaseStart)
+    const firstExpectedAmount = toDecimalNumber(firstTerm?.expectedAmount)
+    const initialRentPaidAmount = Math.min(
+      firstExpectedAmount,
+      Math.max(0, toDecimalNumber(initialRentAmount)),
+    )
+    if (firstTerm && initialRentPaidAmount > 0) {
+      const isFirstTermSettled = initialRentPaidAmount >= firstExpectedAmount
+      await tx.paymentTerm.update({
+        where: { id: firstTerm.id },
+        data: {
+          paidAmount: initialRentPaidAmount,
+          coveredAmount: initialRentPaidAmount,
+          status: isFirstTermSettled ? 'PAID' : 'UNPAID',
+          paidAt: initialPaidDate,
+        },
+      })
+      await tx.collection.create({
+        data: {
+          roomId,
+          billType: 'RENT',
+          title: `首期房租（第 ${firstTerm.termNo} 期）`,
+          amount: initialRentPaidAmount,
+          note: '办理入住首期收款',
+          coverageLabel: buildCoverageLabel([firstTerm.termNo]),
+          paidAt: initialPaidDate,
+          relatedTermId: firstTerm.id,
+        },
+      })
+    }
+
+    const depositCollectedAmount = Math.min(
+      Math.max(0, toDecimalNumber(depositAmount)),
+      Math.max(0, toDecimalNumber(initialDepositCollectionAmount)),
+    )
+    if (depositCollectedAmount > 0) {
+      await tx.collection.create({
+        data: {
+          roomId,
+          billType: 'CUSTOM',
+          title: '押金收取',
+          amount: depositCollectedAmount,
+          note: '办理入住押金收取',
+          coverageLabel: '押金',
+          paidAt: initialPaidDate,
+        },
       })
     }
 

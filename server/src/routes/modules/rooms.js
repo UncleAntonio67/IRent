@@ -37,6 +37,9 @@ const checkinSchema = z.object({
   lastWaterReading: nullableReading,
   lastElectricReading: nullableReading,
   lastGasReading: nullableReading,
+  initialRentAmount: nullableMoney.default(0),
+  initialDepositCollectionAmount: nullableMoney.default(0),
+  initialPaidAt: z.string().trim().min(1).optional(),
   attachmentIds: z.array(z.string().trim().min(1)).optional().default([]),
 })
 

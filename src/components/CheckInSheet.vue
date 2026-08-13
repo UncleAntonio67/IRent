@@ -577,6 +577,9 @@ async function confirmCheckIn() {
       lastWaterReading: waterBase === null ? null : waterBase,
       lastElectricReading: electricBase === null ? null : electricBase,
       lastGasReading: null,
+      initialRentAmount: collectionAmount,
+      initialDepositCollectionAmount: depositChargeConfirmed.value ? Number(depositChargeAmount.value || 0) : 0,
+      initialPaidAt: new Date().toISOString(),
       attachmentIds,
       },
     })
