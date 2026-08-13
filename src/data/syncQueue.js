@@ -16,9 +16,9 @@ import { notifySyncStatusChanged } from './syncStatus.js'
 const SYNC_QUEUE_STORAGE_KEY = 'cloud_sync_queue_v1'
 const SYNC_META_STORAGE_KEY = 'cloud_sync_meta_v1'
 const SYNC_MODE_STORAGE_KEY = 'cloud_sync_mode_v1'
-const MAX_RETRY_COUNT = 5
 const RETRY_DELAYS_MS = [5000, 15000, 30000, 60000, 180000]
 let processing = false
+let retryTimer = null
 
 function loadQueue() {
   try {
@@ -79,6 +79,25 @@ function buildTaskId() {
 
 function nextRetryDelay(attemptCount) {
   return RETRY_DELAYS_MS[Math.min(Math.max(attemptCount - 1, 0), RETRY_DELAYS_MS.length - 1)]
+}
+
+function clearScheduledRetry() {
+  if (!retryTimer) return
+  clearTimeout(retryTimer)
+  retryTimer = null
+}
+
+function scheduleNextRetry() {
+  clearScheduledRetry()
+  const currentTask = loadQueue()[0]
+  if (!currentTask) return
+  const nextRetryAt = Number(currentTask.nextRetryAt || 0)
+  if (!nextRetryAt) return
+  const delay = Math.max(1000, nextRetryAt - Date.now())
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    void processSyncQueue({ source: 'auto' })
+  }, delay)
 }
 
 function hasPendingSyncTasks() {
@@ -204,6 +223,7 @@ export function getPendingSyncTasks() {
 // A successful full-snapshot bootstrap already contains every local mutation.
 // Drop obsolete incremental tasks so they cannot replay against the new cloud source.
 export function clearPendingSyncTasks() {
+  clearScheduledRetry()
   saveQueue([])
   saveMeta({
     ...loadMeta(),
@@ -258,8 +278,11 @@ export function enqueueSyncTask({ type, propertyId, blockId, roomId, payload }) 
     ? [...existingQueue.filter((item) => item.type !== 'properties.treeSync'), task]
     : [...existingQueue, task]
   saveQueue(nextQueue)
+  clearScheduledRetry()
   if (getSyncMode() === 'realtime') {
-    setTimeout(() => { void processSyncQueue({ source: 'auto' }) }, 0)
+    // Submit immediately while connected. The persisted queue is the durable
+    // fallback for an offline device, temporary network failure, or app exit.
+    void processSyncQueue({ source: 'auto' })
   }
   return task
 }
@@ -271,16 +294,21 @@ export async function processSyncQueue(options = {}) {
   processing = true
   try {
     await withCloudBackupAccess(async () => {
-      let queue = loadQueue()
-      while (queue.length) {
+      while (true) {
+        // Reload for every item. A user can create a new local operation while
+        // the previous request is in flight; never overwrite that new item.
+        const queue = loadQueue()
         const [currentTask] = queue
         if (!currentTask) break
-        if (Number(currentTask.nextRetryAt || 0) > Date.now()) break
+        if (Number(currentTask.nextRetryAt || 0) > Date.now()) {
+          scheduleNextRetry()
+          break
+        }
         try {
           const detail = await executeTask(currentTask)
           applyTaskResult(currentTask, detail)
-          queue = queue.slice(1)
-          saveQueue(queue)
+          const remainingQueue = loadQueue().filter((item) => item.id !== currentTask.id)
+          saveQueue(remainingQueue)
           saveMeta({
             ...loadMeta(),
             lastSuccessAt: Date.now(),
@@ -288,34 +316,27 @@ export async function processSyncQueue(options = {}) {
           })
         } catch (error) {
           const attemptCount = Number(currentTask.attemptCount || 0) + 1
-          if (attemptCount >= MAX_RETRY_COUNT) {
-            queue = queue.slice(1)
-            saveQueue(queue)
-            saveMeta({
-              ...loadMeta(),
-              lastFailureAt: Date.now(),
-              lastError: String(error?.message || error?.code || 'SYNC_FAILED'),
-            })
-            continue
-          }
-          queue[0] = {
-            ...currentTask,
-            attemptCount,
-            lastError: String(error?.message || error?.code || 'SYNC_FAILED'),
-            nextRetryAt: Date.now() + nextRetryDelay(attemptCount),
-          }
-          saveQueue(queue)
+          const lastError = String(error?.message || error?.code || 'SYNC_FAILED')
+          const nextRetryAt = Date.now() + nextRetryDelay(attemptCount)
+          const nextQueue = loadQueue().map((item) => item.id === currentTask.id
+            ? { ...item, attemptCount, lastError, nextRetryAt }
+            : item)
+          saveQueue(nextQueue)
           saveMeta({
             ...loadMeta(),
             lastFailureAt: Date.now(),
-            lastError: String(error?.message || error?.code || 'SYNC_FAILED'),
+            lastError,
           })
+          // Retain failed operations indefinitely. Backoff is capped, but the
+          // durable queue keeps retrying after temporary network/server faults.
+          scheduleNextRetry()
           break
         }
       }
     })
   } finally {
     processing = false
+    scheduleNextRetry()
   }
 }
 
