@@ -1,10 +1,19 @@
 <script>
 import { initializePublicAccount } from './data/authStore.js'
+import { initializeSyncStatus } from './data/syncStatus.js'
+import { startSyncQueue } from './data/syncQueue.js'
 
 export default {
   onLaunch() {
     console.log('App Launch')
     initializePublicAccount()
+    initializeSyncStatus()
+    startSyncQueue()
+    try {
+      uni.onNetworkStatusChange((result) => {
+        if (result?.isConnected) startSyncQueue()
+      })
+    } catch {}
   },
   onShow() {
     console.log('App Show')

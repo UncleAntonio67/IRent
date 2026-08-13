@@ -148,11 +148,11 @@ export async function migrateLocalPropertiesSnapshot(tree = []) {
 }
 
 export async function submitPropertiesTreeSnapshot(tree = []) {
-  const result = await apiRequest('/properties/sync', {
+  await apiRequest('/properties/sync', {
     method: 'POST',
     data: { items: serializePropertyTreeForServer(tree) },
   })
-  const nextTree = mapServerPropertyTree(result.items || [])
-  savePropertyTreeCache(nextTree)
-  return nextTree
+  // Structure mutations must not replace the detailed local rooms with the
+  // summary response. Re-read the authoritative full snapshot instead.
+  return fetchFullPropertiesSnapshot()
 }

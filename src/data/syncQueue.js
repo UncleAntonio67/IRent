@@ -11,6 +11,7 @@ import {
 } from '../api/rooms.js'
 import { uploadAttachmentForRoom } from '../api/attachments.js'
 import { mergeCloudRoomDetail, setProperties } from './rentStore.js'
+import { notifySyncStatusChanged } from './syncStatus.js'
 
 const SYNC_QUEUE_STORAGE_KEY = 'cloud_sync_queue_v1'
 const SYNC_META_STORAGE_KEY = 'cloud_sync_meta_v1'
@@ -30,6 +31,7 @@ function loadQueue() {
 function saveQueue(nextQueue) {
   try {
     uni.setStorageSync(buildTenantStorageKey(SYNC_QUEUE_STORAGE_KEY), nextQueue || [])
+    notifySyncStatusChanged()
   } catch {
     // Ignore storage failures. Queue durability is best effort on device.
   }
@@ -46,6 +48,7 @@ function loadMeta() {
 function saveMeta(nextMeta) {
   try {
     uni.setStorageSync(buildTenantStorageKey(SYNC_META_STORAGE_KEY), nextMeta || {})
+    notifySyncStatusChanged()
   } catch {
     // Ignore storage failures. Sync metadata is best effort on device.
   }

@@ -240,28 +240,11 @@ async function syncRoomTree(tx, tenantId, propertyItems) {
           const room = await tx.room.upsert({
             where: { id: roomId },
             update: {
+              // A structure sync is intentionally not a room-business update.
+              // The client tree only contains display summaries and must never
+              // overwrite cloud rent, tenant, meter, bill or occupancy data.
               floorId: floor.id,
               roomNo,
-              status: normalizeRoomStatus(roomInput.status),
-              tenantName: toNullableString(roomInput.tenant),
-              phone: toNullableString(roomInput.phone),
-              idCardNo: toNullableString(roomInput.idCard),
-              rentAmount: toNullableNumber(roomInput.rent),
-              depositAmount: toNullableNumber(roomInput.deposit),
-              paymentCycleMonths: toNullableNumber(roomInput.paymentCycle),
-              leaseStartDate: roomInput.leaseStart ? new Date(roomInput.leaseStart) : null,
-              leaseEndDate: roomInput.leaseEnd ? new Date(roomInput.leaseEnd) : null,
-              waterPrice: toNullableNumber(roomInput.waterPrice),
-              electricPrice: toNullableNumber(roomInput.electricPrice),
-              gasPrice: toNullableNumber(roomInput.gasPrice),
-              heatingPrice: toNullableNumber(roomInput.heatingPrice),
-              waterChargeMode: toNullableString(roomInput.utilityChargeConfig?.water),
-              electricChargeMode: toNullableString(roomInput.utilityChargeConfig?.electric),
-              gasChargeMode: toNullableString(roomInput.utilityChargeConfig?.gas),
-              heatingChargeMode: toNullableString(roomInput.utilityChargeConfig?.heating),
-              lastWaterReading: toNullableNumber(roomInput.lastWater),
-              lastElectricReading: toNullableNumber(roomInput.lastElectric),
-              lastGasReading: toNullableNumber(roomInput.lastGas),
             },
             create: {
               id: roomId,

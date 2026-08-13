@@ -31,29 +31,7 @@
 
       <scroll-view scroll-y class="page-scroll" :scroll-with-animation="true">
         <view class="p-5 stack-3" style="padding-bottom: 176rpx;">
-          <view v-if="billsRefreshing" class="loading-pill loading-pill-blue">
-            <view class="loading-pill-dots">
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-            </view>
-            <text class="loading-pill-text">正在同步最新账务数据…</text>
-          </view>
-          <view v-if="syncSummary.count > 0" class="loading-pill loading-pill-slate">
-            <view class="loading-pill-dots">
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-            </view>
-            <text class="loading-pill-text">待同步 {{ syncSummary.count }} 条本地变更</text>
-          </view>
-          <view v-if="syncSummary.failedCount > 0 || syncSummary.lastError" class="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
-            <view class="text-2xs font-semibold text-amber-700">
-              {{ syncSummary.failedCount > 0 ? `同步暂未完成，正在重试 ${syncSummary.failedCount} 条` : '同步正在处理中' }}
-              <text v-if="syncPendingTypeText"> · {{ syncPendingTypeText }}</text>
-            </view>
-            <view class="text-3xs text-amber-600 mt-1">请保持网络连接，完成后会自动更新。</view>
-          </view>
+          <SyncNotice />
           <view class="p-3 rounded-2xl surface-card stack-2 bills-toolbar bills-toolbar-fixed">
             <view class="flex items-center justify-between gap-3">
             <view class="bills-section-title font-bold">查询条件</view>
@@ -225,6 +203,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
+import SyncNotice from '../../components/SyncNotice.vue'
 import BaseCenteredModal from '../../components/BaseCenteredModal.vue'
 import DateSelectionModal from '../../components/DateSelectionModal.vue'
 import { properties, setProperties } from '../../data/rentStore'

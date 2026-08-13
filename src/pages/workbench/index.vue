@@ -43,35 +43,13 @@
 
       <scroll-view scroll-y class="page-scroll workbench-content-scroll" :scroll-with-animation="true">
         <view class="p-5 stack-5" style="padding-bottom: 168rpx;">
-          <view v-if="workbenchRefreshing" class="loading-pill loading-pill-blue">
-            <view class="loading-pill-dots">
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-            </view>
-            <text class="loading-pill-text">正在同步最新房源数据…</text>
-          </view>
-          <view v-if="syncSummary.count > 0" class="loading-pill loading-pill-slate">
-            <view class="loading-pill-dots">
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-              <view class="loading-pill-dot"></view>
-            </view>
-            <text class="loading-pill-text">待同步 {{ syncSummary.count }} 条本地变更</text>
-          </view>
+          <SyncNotice />
           <view v-if="cloudBootstrapRequired" class="px-3 py-3 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-between gap-3">
             <view class="min-w-0">
               <view class="text-xs font-semibold text-blue-800">云端尚未初始化</view>
               <view class="text-3xs text-blue-600 mt-1">确认后将本机现有数据设为共享数据源。</view>
             </view>
             <button class="shrink-0 px-3 py-2 rounded-lg btn-blue text-2xs font-semibold" @click="initializeCloudFromLocal">初始化云端</button>
-          </view>
-          <view v-if="syncSummary.failedCount > 0 || syncSummary.lastError" class="px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
-            <view class="text-2xs font-semibold text-amber-700">
-              {{ syncSummary.failedCount > 0 ? `同步暂未完成，正在重试 ${syncSummary.failedCount} 条` : '同步正在处理中' }}
-              <text v-if="syncPendingTypeText"> · {{ syncPendingTypeText }}</text>
-            </view>
-            <view class="text-3xs text-amber-600 mt-1">请保持网络连接，完成后会自动更新。</view>
           </view>
           <view v-if="activeProperty" class="relative mt-2">
             <view v-if="!editMode" class="stack-4 animate-in fade-in duration-300">
@@ -279,6 +257,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
+import SyncNotice from '../../components/SyncNotice.vue'
 import { UI, getMiniStatusColor } from '../../ui/ui'
 import { getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'

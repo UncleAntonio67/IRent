@@ -59,14 +59,7 @@
             </view>
 
           <view v-else class="stack-2">
-            <view v-if="roomRefreshing" class="loading-pill loading-pill-blue">
-              <view class="loading-pill-dots">
-                <view class="loading-pill-dot"></view>
-                <view class="loading-pill-dot"></view>
-                <view class="loading-pill-dot"></view>
-              </view>
-              <text class="loading-pill-text">正在同步最新房间数据…</text>
-            </view>
+            <SyncNotice />
             <CollapsibleSectionCard
               title="房间概况"
               :expanded="roomOverviewExpanded"
@@ -293,6 +286,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import BaseCenteredModal from './BaseCenteredModal.vue'
+import SyncNotice from './SyncNotice.vue'
 import OccupancyTimeline from './OccupancyTimeline.vue'
 import CollapsibleSectionCard from './CollapsibleSectionCard.vue'
 import RoomRentSection from './RoomRentSection.vue'

@@ -400,7 +400,7 @@ import {
 import { cloneProperties, globalConfig, properties, saveGlobalConfig, setProperties } from '../../data/rentStore'
 import { buildBillEntriesSnapshot } from '../../data/billSnapshots.js'
 import { ATTACHMENT_FILE_LIMITS } from '../../domain/rent-models.js'
-import { getPendingSyncSummary, getSyncMode, processSyncQueue, setSyncMode } from '../../data/syncQueue.js'
+import { enqueueSyncTask, getPendingSyncSummary, getSyncMode, processSyncQueue, setSyncMode } from '../../data/syncQueue.js'
 import { UI } from '../../ui/ui'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { chooseImages, previewChosenImages } from '../../utils/media'
@@ -491,6 +491,8 @@ const allDocs = computed(() => {
             docs.push({
               id: `${room.id}_${occupancy?.id || 'current'}`,
               roomId: room.id,
+              propertyId: property.id,
+              blockId: block.id,
               occupancyId: occupancy?.id || '',
               isActiveOccupancy: occupancy?.status === 'active' || (!occupancy && room.status !== 'empty'),
               tenantName: occupancy?.tenant || room.tenantName || room.tenant || '',
@@ -838,6 +840,15 @@ async function handleDocumentAction(doc, type) {
       if (occupancy) occupancy.attachmentFiles = { ...targetRoom.attachmentFiles }
     }
     setProperties(nextProperties)
+    if (canUseCloudBackup()) {
+      prepared.forEach((file) => enqueueSyncTask({
+        type: 'attachment.upload',
+        propertyId: doc.propertyId,
+        blockId: doc.blockId,
+        roomId: doc.roomId,
+        payload: { type: fileKey, file },
+      }))
+    }
     uni.showToast({ title: '资料已补录', icon: 'success' })
   } catch (error) {
     if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
