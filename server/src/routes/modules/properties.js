@@ -213,7 +213,10 @@ async function syncRoomTree(tx, tenantId, propertyItems) {
       for (const [floorIndex, floorInput] of (blockInput.floors || []).entries()) {
         const floorId = String(floorInput?.id || `${block.id}_floor_${floorInput?.floor ?? floorIndex + 1}`)
         const floorNo = Number(floorInput?.floor || floorInput?.floorNo || 0)
-        if (!floorId || !Number.isInteger(floorNo) || floorNo <= 0) continue
+        // Floors can include ground/basement levels. The client represents B1
+        // as 0 (and lower basements as negative numbers), so rejecting values
+        // below 1 made those structure changes appear to save locally only.
+        if (!floorId || !Number.isInteger(floorNo)) continue
 
         const floor = await tx.floor.upsert({
           where: { id: floorId },
@@ -370,9 +373,16 @@ propertyRouter.post('/sync', async (req, res, next) => {
     const tenant = requireTenant(req.auth)
     const items = Array.isArray(req.body?.items) ? req.body.items : []
 
+    if (!items.length) {
+      const error = new Error('房屋结构不能为空')
+      error.statusCode = 400
+      error.code = 'EMPTY_PROPERTY_TREE'
+      throw error
+    }
+
     await prisma.$transaction(async (tx) => {
       await syncRoomTree(tx, tenant.id, items)
-    })
+    }, { timeout: 60000 })
 
     const properties = await prisma.property.findMany({
       where: { tenantId: tenant.id },
