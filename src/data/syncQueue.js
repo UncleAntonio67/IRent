@@ -300,7 +300,7 @@ export async function processSyncQueue(options = {}) {
         const queue = loadQueue()
         const [currentTask] = queue
         if (!currentTask) break
-        if (Number(currentTask.nextRetryAt || 0) > Date.now()) {
+        if (!options?.force && Number(currentTask.nextRetryAt || 0) > Date.now()) {
           scheduleNextRetry()
           break
         }
@@ -342,6 +342,9 @@ export async function processSyncQueue(options = {}) {
 
 export function startSyncQueue() {
   if (!hasPendingSyncTasks() || getSyncMode() === 'manual') return false
-  void processSyncQueue({ source: 'auto' })
+  // A fresh app launch or network restoration is a useful recovery point:
+  // retry a persisted operation immediately instead of making the user wait
+  // for an old backoff timer from a previous session.
+  void processSyncQueue({ source: 'auto', force: true })
   return true
 }
