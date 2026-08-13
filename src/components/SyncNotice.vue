@@ -65,16 +65,18 @@ const notice = computed(() => {
 </script>
 
 <style scoped>
-.sync-card { padding:24rpx; border-radius:24rpx; background:#fff; box-shadow:0 10rpx 28rpx rgba(15,23,42,.05); border:1rpx solid #eef2f7; }
+.sync-card { padding:24rpx; border-radius:24rpx; background:#fffbeb; box-shadow:none; border:1rpx solid #fef3c7; }
 .sync-card-header { display:flex; align-items:center; justify-content:space-between; gap:16rpx; }
 .sync-card-title-wrap { display:flex; align-items:center; min-width:0; gap:12rpx; }
 .sync-card-status-dot { width:14rpx; height:14rpx; border-radius:999rpx; flex-shrink:0; }
 .sync-card-status-dot-syncing { background:#2563eb; box-shadow:0 0 0 6rpx rgba(37,99,235,.10); }
 .sync-card-status-dot-retry { background:#f59e0b; box-shadow:0 0 0 6rpx rgba(245,158,11,.12); }
 .sync-card-status-dot-offline { background:#94a3b8; box-shadow:0 0 0 6rpx rgba(148,163,184,.12); }
-.sync-card-title { overflow:hidden; color:#334155; font-size:26rpx; font-weight:700; line-height:1.35; white-space:nowrap; text-overflow:ellipsis; }
-.sync-card-count { flex-shrink:0; color:#94a3b8; font-size:22rpx; font-weight:600; line-height:1.35; }
-.sync-card-detail { margin-top:12rpx; color:#94a3b8; font-size:22rpx; line-height:1.5; }
-.sync-card-retry .sync-card-title,.sync-card-retry .sync-card-count { color:#b45309; }
-.sync-card-offline .sync-card-title { color:#475569; }
+.sync-card-title { overflow:hidden; color:#b45309; font-size:26rpx; font-weight:700; line-height:1.35; white-space:nowrap; text-overflow:ellipsis; }
+.sync-card-count { flex-shrink:0; color:#c2410c; font-size:22rpx; font-weight:600; line-height:1.35; }
+.sync-card-detail { margin-top:12rpx; color:#b7791f; font-size:22rpx; line-height:1.5; }
+.sync-card-syncing { background:#fffbeb; border-color:#fef3c7; }
+.sync-card-retry { background:#fff8df; border-color:#fde68a; }
+.sync-card-offline { background:#fff8df; border-color:#fde68a; }
+.sync-card-offline .sync-card-title { color:#a16207; }
 </style>
