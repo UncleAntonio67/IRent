@@ -137,6 +137,29 @@ function serializeFullPropertyTreeForServer(tree = []) {
   }))
 }
 
+function restoreKnownFloorIds(tree = [], cloudTree = []) {
+  const cloudProperties = new Map((cloudTree || []).map((property) => [String(property.id), property]))
+  return (tree || []).map((property) => {
+    const cloudProperty = cloudProperties.get(String(property.id))
+    const cloudBlocks = new Map((cloudProperty?.blocks || []).map((block) => [String(block.id), block]))
+    return {
+      ...property,
+      blocks: (property.blocks || []).map((block) => {
+        const cloudBlock = cloudBlocks.get(String(block.id))
+        const cloudFloors = new Map((cloudBlock?.floors || []).map((floor) => [Number(floor.floor), floor]))
+        return {
+          ...block,
+          floors: (block.floors || []).map((floor) => {
+            if (floor.id) return floor
+            const cloudFloor = cloudFloors.get(Number(floor.floor))
+            return cloudFloor?.id ? { ...floor, id: cloudFloor.id } : floor
+          }),
+        }
+      }),
+    }
+  })
+}
+
 export async function migrateLocalPropertiesSnapshot(tree = []) {
   const result = await apiRequest('/properties/migrate-local', {
     method: 'POST',
@@ -148,9 +171,13 @@ export async function migrateLocalPropertiesSnapshot(tree = []) {
 }
 
 export async function submitPropertiesTreeSnapshot(tree = []) {
+  // Older clients stored floor entries without their cloud ids. Reconcile
+  // those entries before writing, otherwise an added floor makes the server
+  // attempt to create every existing floor again.
+  const cloudTree = await fetchFullPropertiesSnapshot()
   await apiRequest('/properties/sync', {
     method: 'POST',
-    data: { items: serializePropertyTreeForServer(tree) },
+    data: { items: serializePropertyTreeForServer(restoreKnownFloorIds(tree, cloudTree)) },
   })
   // Structure mutations must not replace the detailed local rooms with the
   // summary response. Re-read the authoritative full snapshot instead.

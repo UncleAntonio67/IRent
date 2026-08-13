@@ -199,6 +199,7 @@ export function createDefaultFloor(floor = 1) {
   const rawFloor = Number(floor)
   const floorNumber = Number.isFinite(rawFloor) ? Math.trunc(rawFloor) : 1
   return {
+    id: generateId('f'),
     floor: floorNumber,
     name: getFloorDisplayName(floorNumber),
     rooms: [createDefaultRoom(getDefaultRoomNo(floorNumber))],
@@ -307,9 +308,12 @@ export function normalizePropertyTree(tree = []) {
           const rawFloor = Number(floorItem.floor)
           const floor = Number.isFinite(rawFloor) ? Math.trunc(rawFloor) : 1
           return {
-           floor,
-           name: floorItem.name || getFloorDisplayName(floor),
-          rooms: (floorItem.rooms || []).map(normalizeRoom),
+            // The server identifies existing floors by this id during a
+            // structure sync. Dropping it creates a duplicate floor request.
+            id: floorItem.id || generateId('f'),
+            floor,
+            name: floorItem.name || getFloorDisplayName(floor),
+            rooms: (floorItem.rooms || []).map(normalizeRoom),
           }
         })
         .sort((a, b) => b.floor - a.floor),

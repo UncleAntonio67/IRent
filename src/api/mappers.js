@@ -78,7 +78,8 @@ export function mapServerPropertyTree(properties) {
       id: block.id,
       name: block.name || '未命名楼栋',
       floors: (block.floors || []).map((floor) => ({
-        floor: Number(floor.floorNo || floor.floor || 1) || 1,
+        id: floor.id || '',
+        floor: Number(floor.floorNo ?? floor.floor ?? 1),
         rooms: (floor.rooms || []).map(mapServerRoomSummary),
       })),
     })),
@@ -94,7 +95,7 @@ export function mapServerFullPropertySnapshot(properties) {
       name: block.name || '未命名楼栋',
       floors: (block.floors || []).map((floor) => ({
         id: floor.id,
-        floor: Number(floor.floorNo || floor.floor || 1) || 1,
+        floor: Number(floor.floorNo ?? floor.floor ?? 1),
         name: floor.name || '',
         rooms: (floor.rooms || []).map(mapServerRoomDetail),
       })),
