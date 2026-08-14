@@ -172,25 +172,28 @@ async function resolveQueueAttachmentIds(roomId, payload = {}) {
 
 async function executeTask(task) {
   const roomId = task.roomId
+  const payload = task.roomId
+    ? { ...(task.payload || {}), clientOperationId: task.payload?.clientOperationId || task.id }
+    : task.payload
   switch (task.type) {
     case 'properties.treeSync':
       return submitPropertiesTreeSnapshot(task.payload?.tree || [])
     case 'room.checkin':
-      return submitRoomCheckIn(roomId, task.payload)
+      return submitRoomCheckIn(roomId, payload)
     case 'room.rentCollection': {
-      const nextPayload = await resolveQueueAttachmentIds(roomId, task.payload)
+      const nextPayload = await resolveQueueAttachmentIds(roomId, payload)
       return submitRentCollection(roomId, nextPayload)
     }
     case 'room.utilityCollection': {
-      const nextPayload = await resolveQueueAttachmentIds(roomId, task.payload)
+      const nextPayload = await resolveQueueAttachmentIds(roomId, payload)
       return submitUtilityCollection(roomId, nextPayload)
     }
     case 'room.meterReading': {
-      const nextPayload = await resolveQueueAttachmentIds(roomId, task.payload)
+      const nextPayload = await resolveQueueAttachmentIds(roomId, payload)
       return submitMeterReading(roomId, nextPayload)
     }
     case 'room.checkout':
-      return submitRoomCheckout(roomId, task.payload)
+      return submitRoomCheckout(roomId, payload)
     case 'attachment.upload':
       return uploadAttachmentForRoom({
         roomId,

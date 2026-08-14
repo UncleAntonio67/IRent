@@ -328,6 +328,7 @@ model Attachment {
 
 model OperationLog {
   id               String    @id @default(cuid())
+  clientOperationId String?  @unique
   tenantId         String
   roomId           String?
   userId           String?

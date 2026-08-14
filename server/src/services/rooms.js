@@ -103,9 +103,10 @@ async function attachFilesToEntity(tx, { tenantId, attachmentIds, roomId, collec
   })
 }
 
-async function writeOperationLog(tx, { tenantId, roomId, userId, action, detail }) {
+async function writeOperationLog(tx, { tenantId, roomId, userId, action, detail, clientOperationId = '' }) {
   await tx.operationLog.create({
     data: {
+      ...(clientOperationId ? { clientOperationId } : {}),
       tenantId,
       roomId,
       userId,
@@ -113,6 +114,19 @@ async function writeOperationLog(tx, { tenantId, roomId, userId, action, detail 
       detail,
     },
   })
+}
+
+async function getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId }) {
+  if (!clientOperationId) return null
+  const existing = await tx.operationLog.findUnique({ where: { clientOperationId } })
+  if (!existing) return null
+  if (existing.tenantId !== tenantId || existing.roomId !== roomId) {
+    const error = new Error('Operation id conflicts with another request')
+    error.statusCode = 409
+    error.code = 'OPERATION_ID_CONFLICT'
+    throw error
+  }
+  return findScopedRoomOrThrow(tx, roomId, tenantId)
 }
 
 function computeMeterCost(currentReading, previousReading, unitPrice) {
@@ -244,6 +258,7 @@ export async function checkInRoom({
   initialRentAmount = 0,
   initialDepositCollectionAmount = 0,
   initialPaidAt,
+  clientOperationId = '',
   attachmentIds = [],
 }) {
   const leaseStart = startOfDay(leaseStartDate)
@@ -251,6 +266,8 @@ export async function checkInRoom({
 
   const room = await prisma.$transaction(async (tx) => {
     const currentRoom = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    const existingResult = await getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId })
+    if (existingResult) return existingResult
     if (currentRoom.status !== 'EMPTY') {
       const error = new Error('Only empty rooms can be checked in')
       error.statusCode = 409
@@ -382,6 +399,7 @@ export async function checkInRoom({
       roomId,
       userId,
       action: 'room.checkin',
+      clientOperationId,
       detail: `办理入住：${updatedRoom.roomNo} -> ${tenantName}`,
     })
 
@@ -400,12 +418,15 @@ export async function collectRent({
   note,
   attachmentIds = [],
   targetTermId = null,
+  clientOperationId = '',
 }) {
   const paidDate = startOfDay(paidAt)
   const paidAmount = toDecimalNumber(amount)
 
   const room = await prisma.$transaction(async (tx) => {
     const currentRoom = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    const existingResult = await getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId })
+    if (existingResult) return existingResult
     if (currentRoom.status === 'EMPTY') {
       const error = new Error('Empty room cannot collect rent')
       error.statusCode = 409
@@ -475,6 +496,7 @@ export async function collectRent({
       roomId,
       userId,
       action: 'room.collect_rent',
+      clientOperationId,
       detail: `房租收款：${currentRoom.roomNo} ￥${paidAmount}`,
     })
 
@@ -493,12 +515,15 @@ export async function collectUtility({
   paidAt,
   note,
   attachmentIds = [],
+  clientOperationId = '',
 }) {
   const paidDate = startOfDay(paidAt)
   const paidAmount = toDecimalNumber(amount)
 
   const room = await prisma.$transaction(async (tx) => {
     const currentRoom = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    const existingResult = await getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId })
+    if (existingResult) return existingResult
     if (currentRoom.status === 'EMPTY') {
       const error = new Error('Empty room cannot collect utility fees')
       error.statusCode = 409
@@ -561,6 +586,7 @@ export async function collectUtility({
       roomId,
       userId,
       action: 'room.collect_utility',
+      clientOperationId,
       detail: `附加收费：${currentRoom.roomNo} ${settledBills.map((bill) => bill.title).join('、')} ￥${paidAmount}`,
     })
 
@@ -579,11 +605,14 @@ export async function recordMeterReading({
   electricReading = null,
   gasReading = null,
   attachmentIds = [],
+  clientOperationId = '',
 }) {
   const recordDate = startOfDay(recordedAt)
 
   const room = await prisma.$transaction(async (tx) => {
     const currentRoom = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    const existingResult = await getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId })
+    if (existingResult) return existingResult
     if (currentRoom.status === 'EMPTY') {
       const error = new Error('Empty room cannot record meter readings')
       error.statusCode = 409
@@ -677,6 +706,7 @@ export async function recordMeterReading({
       roomId,
       userId,
       action: 'room.meter_reading',
+      clientOperationId,
       detail: `录入抄表：${currentRoom.roomNo}，${detailParts.join('，') || '无新增费用'}`,
     })
 
@@ -694,12 +724,15 @@ export async function checkoutRoom({
   refundAmount = 0,
   note = '',
   attachmentIds = [],
+  clientOperationId = '',
 }) {
   const endDate = startOfDay(checkoutDate)
   const refund = toDecimalNumber(refundAmount)
 
   const room = await prisma.$transaction(async (tx) => {
     const currentRoom = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    const existingResult = await getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId })
+    if (existingResult) return existingResult
     if (currentRoom.status === 'EMPTY') {
       const error = new Error('Room is already empty')
       error.statusCode = 409
@@ -760,6 +793,7 @@ export async function checkoutRoom({
       roomId,
       userId,
       action: 'room.checkout',
+      clientOperationId,
       detail: `办理退租：${currentRoom.roomNo}${refund > 0 ? `，退押金￥${refund}` : ''}${note ? `，${note}` : ''}`,
     })
 

@@ -16,6 +16,7 @@ const utilityBillTypeSchema = z.enum(['WATER', 'ELECTRIC', 'GAS', 'HEATING', 'CU
 
 const nullableMoney = z.number().finite().min(0).nullable().optional()
 const nullableReading = z.number().finite().min(0).nullable().optional()
+const clientOperationId = z.string().trim().min(8).max(120).optional()
 
 const checkinSchema = z.object({
   tenantName: z.string().trim().min(1).max(50),
@@ -40,6 +41,7 @@ const checkinSchema = z.object({
   initialRentAmount: nullableMoney.default(0),
   initialDepositCollectionAmount: nullableMoney.default(0),
   initialPaidAt: z.string().trim().min(1).optional(),
+  clientOperationId,
   attachmentIds: z.array(z.string().trim().min(1)).optional().default([]),
 })
 
@@ -49,6 +51,7 @@ const rentCollectionSchema = z.object({
   note: z.string().trim().max(200).optional().default(''),
   attachmentIds: z.array(z.string().trim().min(1)).optional().default([]),
   targetTermId: z.string().trim().min(1).optional().nullable(),
+  clientOperationId,
 })
 
 const utilityCollectionSchema = z.object({
@@ -56,6 +59,7 @@ const utilityCollectionSchema = z.object({
   amount: z.number().finite().positive(),
   paidAt: z.string().trim().min(1),
   note: z.string().trim().max(200).optional().default(''),
+  clientOperationId,
   attachmentIds: z.array(z.string().trim().min(1)).optional().default([]),
 })
 
@@ -64,6 +68,7 @@ const meterReadingSchema = z.object({
   waterReading: nullableReading,
   electricReading: nullableReading,
   gasReading: nullableReading,
+  clientOperationId,
   attachmentIds: z.array(z.string().trim().min(1)).optional().default([]),
 })
 
@@ -71,6 +76,7 @@ const checkoutSchema = z.object({
   checkoutDate: z.string().trim().min(1),
   refundAmount: z.number().finite().min(0).optional().default(0),
   note: z.string().trim().max(200).optional().default(''),
+  clientOperationId,
   attachmentIds: z.array(z.string().trim().min(1)).optional().default([]),
 })
 
