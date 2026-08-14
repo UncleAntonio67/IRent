@@ -30,6 +30,8 @@ services:
     volumes:
       # Keep identity documents, contracts, receipts and exports after image rebuilds.
       - ./uploads:/app/uploads
+      # Daily database and local-attachment snapshots for the 7-day recovery window.
+      - ./backups:/app/backups
 
 volumes:
   irent_postgres_data:

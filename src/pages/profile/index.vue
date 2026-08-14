@@ -240,6 +240,28 @@
             </view>
           </view>
 
+          <view v-else-if="subPage === 'dataRestore'" class="stack-3">
+            <view class="surface-card" :class="UI.card">
+              <view class="p-4 text-xs text-slate-500 leading-6">
+                每日自动保留一份云端完整快照，包含房源、入住、账务、证件、合同及服务器本地附件。仅保留最近 7 天；恢复会覆盖当前全部共享数据，并会先自动保存恢复前的状态。
+              </view>
+            </view>
+            <view class="surface-card" :class="UI.card">
+              <view class="p-3 flex items-center justify-between gap-3 border-b border-slate-100">
+                <view><view class="font-bold text-slate-800 text-sm">可恢复的数据备份</view><view class="text-3xs text-slate-400 mt-1">最近 7 天 · {{ cloudBackups.length }} 个快照</view></view>
+                <button class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold" @click="loadCloudBackups">刷新</button>
+              </view>
+              <view v-if="cloudBackupLoading" class="p-5 text-center text-sm text-slate-400">正在读取备份…</view>
+              <view v-else-if="cloudBackups.length" class="divide-y divide-slate-100">
+                <view v-for="backup in cloudBackups" :key="backup.id" class="p-3 flex items-center justify-between gap-3">
+                  <view class="min-w-0"><view class="font-bold text-slate-800 text-sm">{{ formatBackupTime(backup.createdAt) }}</view><view class="text-3xs text-slate-400 mt-1 truncate">房源 {{ backup.summary?.properties || 0 }} · 房间 {{ backup.summary?.rooms || 0 }} · 流水 {{ backup.summary?.collections || 0 }} · 附件 {{ backup.summary?.attachments || 0 }}</view></view>
+                  <button class="shrink-0 px-3 py-2 rounded-xl bg-amber-50 text-amber-700 text-xs font-semibold" :loading="restoringBackupId === backup.id" @click="confirmRestoreBackup(backup)">恢复</button>
+                </view>
+              </view>
+              <view v-else class="p-5 text-center text-sm text-slate-400">暂未生成备份，服务会自动创建每日快照。</view>
+            </view>
+          </view>
+
           <view v-else-if="subPage === 'exportReport'" class="stack-3">
             <view class="profile-export-toolbar">
               <view class="surface-card" :class="UI.card">
@@ -384,6 +406,8 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createCloudExportTask, fetchCloudExportTasks, getCachedCloudExportTasks } from '../../api/exports.js'
+import { fetchCloudBackups, restoreCloudBackup } from '../../api/backups.js'
+import { fetchFullPropertiesSnapshot } from '../../api/properties.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl, isCloudApiConfigured, withCloudBackupAccess } from '../../config/cloud'
 import {
   buildTenantStorageKey,
@@ -400,7 +424,7 @@ import {
 import { cloneProperties, globalConfig, properties, saveGlobalConfig, setProperties } from '../../data/rentStore'
 import { buildBillEntriesSnapshot } from '../../data/billSnapshots.js'
 import { ATTACHMENT_FILE_LIMITS } from '../../domain/rent-models.js'
-import { enqueueSyncTask, getPendingSyncSummary, getSyncMode, processSyncQueue, setSyncMode } from '../../data/syncQueue.js'
+import { clearPendingSyncTasks, enqueueSyncTask, getPendingSyncSummary, getSyncMode, processSyncQueue, setSyncMode } from '../../data/syncQueue.js'
 import { UI } from '../../ui/ui'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { chooseImages, previewChosenImages } from '../../utils/media'
@@ -418,6 +442,9 @@ const PAGE_SIZE = 20
 const selectedTenantId = ref('')
 const cloudExportTasks = ref([])
 const cloudExportLoading = ref(false)
+const cloudBackups = ref([])
+const cloudBackupLoading = ref(false)
+const restoringBackupId = ref('')
 const exportMode = ref('all')
 const selectedExportRoomId = ref('')
 const syncSummary = ref(getPendingSyncSummary())
@@ -455,6 +482,7 @@ const pageTitle = computed(() => ({
   allDocuments: '租客证件与合同归档',
   utilityTemplate: '默认水电单价模板',
   autoReminder: '到期提醒机制',
+  dataRestore: '数据恢复',
   exportReport: '数据报表导出',
 }[subPage.value] || '我的'))
 
@@ -462,12 +490,14 @@ const pageSubtitle = computed(() => ({
   allDocuments: '按姓名、房号、手机号搜索',
   utilityTemplate: '统一模板，房间可覆盖',
   autoReminder: '仅自我管理，不生成催缴文案',
+  dataRestore: '恢复最近 7 天内的完整数据快照',
   exportReport: '导出 Excel 存档',
 }[subPage.value] || '账号与基础设置'))
 
 const menuA = [
   { id: 'allDocuments', label: '租客证件与合同归档', desc: '查看身份证、合同与归档状态', icon: '档', bg: 'bg-blue-50', color: 'text-blue-600' },
   { id: 'utilityTemplate', label: '默认水电单价模板', desc: '统一配置默认水电价格', icon: '水', bg: 'bg-amber-50', color: 'text-amber-600', managerOnly: true },
+  { id: 'dataRestore', label: '数据恢复', desc: '恢复最近 7 天的云端完整备份', icon: '复', bg: 'bg-violet-50', color: 'text-violet-600', managerOnly: true },
 ]
 
 const menuB = [
@@ -738,13 +768,62 @@ function openSubPage(id) {
     uni.showToast({ title: '请先登录后再操作', icon: 'none' })
     return
   }
-  const managerOnlyPages = ['utilityTemplate', 'autoReminder', 'exportReport']
+  const managerOnlyPages = ['utilityTemplate', 'autoReminder', 'dataRestore', 'exportReport']
   if (managerOnlyPages.includes(id) && !canManageTenantData.value) {
     uni.showToast({ title: '当前角色无权进入该页面', icon: 'none' })
     return
   }
   subPage.value = id
   if (id === 'exportReport') void loadCloudExportTasks()
+  if (id === 'dataRestore') void loadCloudBackups()
+}
+
+function formatBackupTime(value) {
+  if (!value) return '未知时间'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')} ${`${date.getHours()}`.padStart(2, '0')}:${`${date.getMinutes()}`.padStart(2, '0')}`
+}
+
+async function loadCloudBackups() {
+  if (!isCloudConfigured.value) return
+  cloudBackupLoading.value = true
+  try {
+    cloudBackups.value = await withCloudBackupAccess(() => fetchCloudBackups())
+  } catch {
+    uni.showToast({ title: '读取备份失败，请稍后重试', icon: 'none' })
+  } finally {
+    cloudBackupLoading.value = false
+  }
+}
+
+async function confirmRestoreBackup(backup) {
+  if (restoringBackupId.value) return
+  const confirmed = await new Promise((resolve) => uni.showModal({
+    title: '确认恢复数据？',
+    content: `将恢复到 ${formatBackupTime(backup.createdAt)} 的状态，当前共享数据会被覆盖。恢复前会自动备份当前状态。`,
+    confirmText: '确认恢复',
+    confirmColor: '#d97706',
+    success: (result) => resolve(Boolean(result.confirm)),
+    fail: () => resolve(false),
+  }))
+  if (!confirmed) return
+  restoringBackupId.value = backup.id
+  uni.showLoading({ title: '正在恢复数据', mask: true })
+  try {
+    await withCloudBackupAccess(() => restoreCloudBackup(backup.id))
+    // A restored snapshot supersedes every offline mutation still waiting on this device.
+    clearPendingSyncTasks()
+    setProperties(await fetchFullPropertiesSnapshot())
+    refreshSyncSummary()
+    await loadCloudBackups()
+    uni.showToast({ title: '数据已恢复', icon: 'success' })
+  } catch {
+    uni.showToast({ title: '恢复失败，请稍后重试', icon: 'none' })
+  } finally {
+    restoringBackupId.value = ''
+    uni.hideLoading()
+  }
 }
 
 function saveConfig() {

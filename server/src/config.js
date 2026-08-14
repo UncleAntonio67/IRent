@@ -25,6 +25,11 @@ export const config = {
     directory: process.env.UPLOAD_DIR || '/app/uploads',
     publicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || '',
   },
+  backups: {
+    // Daily tenant snapshots are kept locally with the Docker deployment.
+    directory: process.env.BACKUP_DIR || '/app/backups',
+    retentionDays: Math.max(1, Number(process.env.BACKUP_RETENTION_DAYS || 7)),
+  },
   allowedOrigins: String(process.env.ALLOWED_ORIGINS || '*')
     .split(',')
     .map((item) => item.trim())

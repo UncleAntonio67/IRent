@@ -42,7 +42,7 @@
       </view>
 
       <scroll-view scroll-y class="page-scroll workbench-content-scroll" :scroll-with-animation="true" :refresher-enabled="true" refresher-default-style="black" :refresher-triggered="pullRefreshing" @refresherrefresh="handlePullRefresh">
-        <view class="p-4 stack-4" style="padding-bottom: 144rpx;">
+        <view class="px-4 pt-2 pb-4 stack-4" style="padding-bottom: 144rpx;">
           <SyncNotice />
           <view v-if="cloudBootstrapRequired" class="px-3 py-3 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-between gap-3">
             <view class="min-w-0">
@@ -51,7 +51,7 @@
             </view>
             <button class="shrink-0 px-3 py-2 rounded-lg btn-blue text-2xs font-semibold" @click="initializeCloudFromLocal">初始化云端</button>
           </view>
-          <view v-if="activeProperty" class="relative mt-2">
+          <view v-if="activeProperty" class="relative">
             <view v-if="!editMode" class="stack-4 animate-in fade-in duration-300">
               <view
                 v-for="block in activeProperty.blocks"

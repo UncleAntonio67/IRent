@@ -3,6 +3,7 @@ import express from 'express'
 import { mkdirSync } from 'node:fs'
 import { config } from './config.js'
 import { registerRoutes } from './routes/index.js'
+import { startBackupScheduler } from './services/backups.js'
 
 export function createApp() {
   const app = express()
@@ -37,6 +38,7 @@ export function createApp() {
   })
 
   registerRoutes(app)
+  startBackupScheduler()
 
   app.use((req, res) => {
     res.status(404).json({
