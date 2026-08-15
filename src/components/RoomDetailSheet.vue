@@ -572,7 +572,7 @@ const visibleMeterCardCount = computed(() => Number(showWaterMeterCard.value) + 
 const meterStripClass = computed(() => visibleMeterCardCount.value <= 1 ? 'utility-meter-strip-single' : 'utility-meter-strip-double')
 const cycleLabel = (cycle) => getPaymentCycleLabel(cycle)
 const fmtDate = (value) => formatShortDate(value)
-const utilityTypeLabel = (type) => type === 'water' ? '水费' : type === 'electric' ? '电费' : type === 'gas' ? '燃汽' : type === 'heating' ? '供暖' : type === 'custom' ? '其他' : '费用'
+const utilityTypeLabel = (type) => type === 'water' ? '水费' : type === 'electric' ? '电费' : type === 'gas' ? '燃气' : type === 'heating' ? '供暖' : type === 'custom' ? '其他' : '费用'
 const utilityTypeIcon = (type) => type === 'water' ? '水' : type === 'electric' ? '电' : type === 'gas' ? '气' : type === 'heating' ? '暖' : '费'
 const historyTypeLabel = (type) => ({ checkin: '入住', checkout: '退租', rent_collect: '租金收款', utility_collect: '费用收款', meter: '抄表', upload_room_photo: '房屋照片', upload_id: '身份证', upload_contract: '合同', writeoff: '账单核销', rent_writeoff: '账期核销' }[type] || type)
 const collectionScopeText = (item) => item.coverageLabel || item.title || utilityTypeLabel(item.kind)
