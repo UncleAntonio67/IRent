@@ -358,6 +358,7 @@ async function syncCloudProperties() {
       cloudBootstrapRequired.value = false
       setProperties(next)
       warmVisibleRoomCache()
+      void processSyncQueue({ source: 'auto', force: true })
     }
   } catch (error) {
     // A second device may race with the first one. Read the protected cloud
@@ -367,6 +368,7 @@ async function syncCloudProperties() {
       if (next.length) {
         markCloudSnapshotAsAuthoritative()
         setProperties(next)
+        void processSyncQueue({ source: 'auto', force: true })
       }
     }
   } finally {

@@ -284,6 +284,7 @@ async function syncCloudProperties() {
     if (Array.isArray(next)) {
       if (next.length) markCloudSnapshotAsAuthoritative()
       setProperties(next)
+      if (next.length) void processSyncQueue({ source: 'auto', force: true })
     }
   } catch {} finally {
     billsRefreshing.value = false

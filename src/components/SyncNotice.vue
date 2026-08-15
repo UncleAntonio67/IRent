@@ -18,7 +18,10 @@ import { useSyncStatus } from '../data/syncStatus.js'
 
 const { revision, isOffline } = useSyncStatus()
 const showPending = ref(false)
+const showSuccess = ref(false)
 let pendingTimer = null
+let successTimer = null
+let previousPendingCount = 0
 
 const summary = computed(() => {
   void revision.value
@@ -35,13 +38,20 @@ watch([summary, isOffline], ([nextSummary, offline]) => {
     return
   }
   if (!nextSummary.count) {
+    if (previousPendingCount > 0 && showPending.value && !offline && Number(nextSummary.lastSuccessAt || 0) > 0) {
+      showSuccess.value = true
+      if (successTimer) clearTimeout(successTimer)
+      successTimer = setTimeout(() => { showSuccess.value = false }, 3500)
+    }
     showPending.value = false
+    previousPendingCount = 0
     return
   }
+  previousPendingCount = nextSummary.count
   pendingTimer = setTimeout(() => { showPending.value = true }, 700)
 }, { immediate: true })
 
-onUnmounted(() => { if (pendingTimer) clearTimeout(pendingTimer) })
+onUnmounted(() => { if (pendingTimer) clearTimeout(pendingTimer); if (successTimer) clearTimeout(successTimer) })
 
 const notice = computed(() => {
   const nextSummary = summary.value
@@ -51,6 +61,14 @@ const notice = computed(() => {
       title: nextSummary.count ? '离线操作已暂存' : '当前处于离线状态',
       countText: nextSummary.count ? `${nextSummary.count} 条待同步` : '等待网络恢复',
       detail: nextSummary.count ? '恢复网络后将按操作顺序自动同步到云端。' : '联网后将自动刷新云端数据。',
+    }
+  }
+  if (showSuccess.value && !nextSummary.count) {
+    return {
+      kind: 'success',
+      title: '离线操作已同步',
+      countText: '云端已更新',
+      detail: '本机保存的操作已按顺序提交完成，可在其他设备查看。',
     }
   }
   if (!showPending.value || !nextSummary.count) return null
@@ -79,4 +97,8 @@ const notice = computed(() => {
 .sync-card-retry { background:#fff8df; border-color:#fde68a; }
 .sync-card-offline { background:#fff8df; border-color:#fde68a; }
 .sync-card-offline .sync-card-title { color:#a16207; }
+.sync-card-success { background:#ecfdf5; border-color:#bbf7d0; }
+.sync-card-status-dot-success { background:#10b981; box-shadow:0 0 0 6rpx rgba(16,185,129,.12); }
+.sync-card-success .sync-card-title { color:#047857; }
+.sync-card-success .sync-card-count,.sync-card-success .sync-card-detail { color:#059669; }
 </style>

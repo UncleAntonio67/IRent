@@ -17,6 +17,7 @@ const SYNC_QUEUE_STORAGE_KEY = 'cloud_sync_queue_v1'
 const SYNC_META_STORAGE_KEY = 'cloud_sync_meta_v1'
 const SYNC_MODE_STORAGE_KEY = 'cloud_sync_mode_v1'
 const CLOUD_SOURCE_READY_KEY = 'cloud_source_ready_v3'
+const QUEUE_SCHEMA_VERSION = 2
 const RETRY_DELAYS_MS = [5000, 15000, 30000, 60000, 180000]
 let processing = false
 let retryTimer = null
@@ -240,17 +241,21 @@ export function isCloudSourceReady() {
   try { return Boolean(uni.getStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY))) } catch { return false }
 }
 
-// The first confirmed cloud snapshot is authoritative. Any old device queue
-// is discarded once so it cannot replay stale mutations into shared data.
+// The first confirmed cloud snapshot is authoritative. Keep every business
+// operation (including an action saved while offline); only discard obsolete
+// full-tree overwrite tasks from old clients, which could erase newer cloud
+// data. This is deliberately non-destructive for fees, check-ins and files.
 export function markCloudSnapshotAsAuthoritative() {
   try {
     if (uni.getStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY))) return false
-    clearPendingSyncTasks()
+    const remaining = loadQueue().filter((task) => !(task.type === 'properties.treeSync' && Number(task.schemaVersion || 0) < QUEUE_SCHEMA_VERSION))
+    if (remaining.length !== loadQueue().length) saveQueue(remaining)
     uni.setStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY), true)
     return true
   } catch {
-    clearPendingSyncTasks()
-    return true
+    // Storage can fail in some dev runtimes. Never delete an offline business
+    // operation merely because the readiness flag could not be persisted.
+    return false
   }
 }
 
@@ -285,6 +290,7 @@ export function enqueueSyncTask({ type, propertyId, blockId, roomId, payload }) 
   if (requiresRoomId && !roomId) return null
   const task = {
     id: buildTaskId(),
+    schemaVersion: QUEUE_SCHEMA_VERSION,
     type,
     propertyId: String(propertyId || ''),
     blockId: String(blockId || ''),
