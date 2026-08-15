@@ -222,7 +222,7 @@ async function pruneTenantBackups(tenantId) {
   // A retention window alone does not protect a small server disk when a user
   // uploads many photos. Remove the oldest snapshots until the per-tenant cap
   // is met, but always keep the newest recovery point.
-  let remaining = (await listBackups(tenantId, { includeInternal: true }))
+  let remaining = (await listBackups(tenantId, { includeInternal: true, allVersions: true }))
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
   let totalBytes = await getUniqueDirectorySize(root)
   while (remaining.length > 1 && totalBytes > config.backups.maxBytes) {
@@ -260,7 +260,23 @@ export async function listBackups(tenantId, options = {}) {
   const sorted = backups.filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   // A restore creates an internal safety point before replacing data. Keep it
   // available on disk, but do not make it look like a new user-created backup.
-  return options.includeInternal ? sorted : sorted.filter((item) => item.reason !== 'pre_restore')
+  const visible = options.includeInternal ? sorted : sorted.filter((item) => item.reason !== 'pre_restore')
+  if (options.allVersions) return visible
+
+  // The recovery UI is date-oriented: one selectable version for each of the
+  // most recent retention days, not every manual/quiet-period checkpoint.
+  // If a user restored an older point from today, keep that exact current
+  // version visible instead of replacing it with a newer same-day checkpoint.
+  const currentId = String(options.currentBackupId || '')
+  const byDate = new Map()
+  for (const backup of visible) {
+    const dateKey = String(backup.date || chinaDate(new Date(backup.createdAt)))
+    const existing = byDate.get(dateKey)
+    if (!existing || backup.id === currentId) byDate.set(dateKey, backup)
+  }
+  return [...byDate.values()]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, config.backups.retentionDays)
 }
 
 export async function getCurrentBackupVersion(tenantId) {
@@ -271,7 +287,7 @@ export async function getCurrentBackupVersion(tenantId) {
   } catch {}
   // Existing installations may not yet have a pointer. Use the newest normal
   // snapshot once, so the UI remains correct before the next backup run.
-  const fallback = (await listBackups(tenantId))[0] || null
+  const fallback = (await listBackups(tenantId, { allVersions: true }))[0] || null
   if (fallback) await setCurrentBackupVersion(tenantId, fallback)
   return fallback
 }
@@ -326,7 +342,7 @@ export async function ensureDailyBackup(tenantId) {
 export async function ensureScheduledBackup(tenantId, reason) {
   return withTenantBackupLock(tenantId, async () => {
     const today = chinaDate()
-    const backups = await listBackups(tenantId, { includeInternal: true })
+    const backups = await listBackups(tenantId, { includeInternal: true, allVersions: true })
     if (backups.some((item) => item.date === today && item.reason === reason)) return null
     return createBackupNow({ tenantId, reason })
   })

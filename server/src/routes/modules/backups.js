@@ -10,7 +10,8 @@ backupRouter.get('/', async (req, res, next) => {
   try {
     requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
     const tenant = requireTenant(req.auth)
-    res.json({ ok: true, backups: await listBackups(tenant.id), currentBackup: await getCurrentBackupVersion(tenant.id) })
+    const currentBackup = await getCurrentBackupVersion(tenant.id)
+    res.json({ ok: true, backups: await listBackups(tenant.id, { currentBackupId: currentBackup?.id }), currentBackup })
   } catch (error) { next(error) }
 })
 
