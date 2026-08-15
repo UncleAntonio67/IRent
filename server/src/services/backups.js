@@ -10,6 +10,7 @@ const SCHEDULED_BACKUP_SLOTS = [
   { hour: 20, minute: 0, reason: 'scheduled_evening' },
 ]
 const ACTIVITY_BACKUP_DELAY_MS = 30 * 60 * 1000
+const CURRENT_VERSION_FILE = 'current-version.json'
 let schedulerStarted = false
 const tenantBackupLocks = new Map()
 const pendingActivityBackups = new Map()
@@ -27,6 +28,10 @@ function tenantBackupRoot(tenantId) {
 
 function tenantUploadRoot(tenantId) {
   return path.join(config.uploads.directory, safeSegment(tenantId))
+}
+
+function currentVersionPath(tenantId) {
+  return path.join(tenantBackupRoot(tenantId), CURRENT_VERSION_FILE)
 }
 
 function chinaDate(value = new Date()) {
@@ -227,6 +232,21 @@ async function pruneTenantBackups(tenantId) {
   }
 }
 
+async function readBackupManifest(tenantId, backupId) {
+  try {
+    const value = JSON.parse(await readFile(path.join(tenantBackupRoot(tenantId), safeSegment(backupId), 'manifest.json'), 'utf8'))
+    return { ...value, id: safeSegment(backupId) }
+  } catch { return null }
+}
+
+async function setCurrentBackupVersion(tenantId, backup) {
+  if (!backup?.id) return null
+  await mkdir(tenantBackupRoot(tenantId), { recursive: true })
+  const currentBackup = { ...backup, id: safeSegment(backup.id) }
+  await writeFile(currentVersionPath(tenantId), JSON.stringify({ backupId: currentBackup.id, selectedAt: new Date().toISOString() }), 'utf8')
+  return currentBackup
+}
+
 export async function listBackups(tenantId, options = {}) {
   const root = tenantBackupRoot(tenantId)
   if (!await exists(root)) return []
@@ -243,6 +263,19 @@ export async function listBackups(tenantId, options = {}) {
   return options.includeInternal ? sorted : sorted.filter((item) => item.reason !== 'pre_restore')
 }
 
+export async function getCurrentBackupVersion(tenantId) {
+  try {
+    const pointer = JSON.parse(await readFile(currentVersionPath(tenantId), 'utf8'))
+    const selected = await readBackupManifest(tenantId, pointer?.backupId)
+    if (selected && selected.reason !== 'pre_restore') return selected
+  } catch {}
+  // Existing installations may not yet have a pointer. Use the newest normal
+  // snapshot once, so the UI remains correct before the next backup run.
+  const fallback = (await listBackups(tenantId))[0] || null
+  if (fallback) await setCurrentBackupVersion(tenantId, fallback)
+  return fallback
+}
+
 export async function clearBackups(tenantId) {
   return withTenantBackupLock(tenantId, async () => {
     const root = tenantBackupRoot(tenantId)
@@ -250,6 +283,7 @@ export async function clearBackups(tenantId) {
     const entries = await readdir(root, { withFileTypes: true })
     const snapshots = entries.filter((entry) => entry.isDirectory())
     await Promise.all(snapshots.map((entry) => rm(path.join(root, entry.name), { recursive: true, force: true })))
+    await rm(currentVersionPath(tenantId), { force: true })
     return { deletedCount: snapshots.length }
   })
 }
@@ -277,6 +311,7 @@ async function createBackupNow({ tenantId, reason = 'daily' }) {
   }
   await writeFile(path.join(target, 'manifest.json'), JSON.stringify(manifest), 'utf8')
   await pruneTenantBackups(tenantId)
+  if (reason !== 'pre_restore') await setCurrentBackupVersion(tenantId, manifest)
   return manifest
 }
 
@@ -338,7 +373,9 @@ export async function restoreBackup({ tenantId, backupId }) {
     await rm(uploads, { recursive: true, force: true })
     const backedUpUploads = path.join(target, 'uploads')
     if (await exists(backedUpUploads)) await cp(backedUpUploads, uploads, { recursive: true })
-    return { restoredAt: new Date().toISOString(), summary: snapshotSummary(data) }
+    const currentBackup = await readBackupManifest(tenantId, id)
+    if (currentBackup) await setCurrentBackupVersion(tenantId, currentBackup)
+    return { restoredAt: new Date().toISOString(), summary: snapshotSummary(data), currentBackup }
   })
 }
 

@@ -1,7 +1,7 @@
 import express from 'express'
 import { requireAuth } from '../../middleware/auth.js'
 import { requireTenant, requireTenantRole } from '../../lib/tenant.js'
-import { clearBackups, createBackup, listBackups, restoreBackup } from '../../services/backups.js'
+import { clearBackups, createBackup, getCurrentBackupVersion, listBackups, restoreBackup } from '../../services/backups.js'
 
 export const backupRouter = express.Router()
 backupRouter.use(requireAuth)
@@ -10,7 +10,7 @@ backupRouter.get('/', async (req, res, next) => {
   try {
     requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
     const tenant = requireTenant(req.auth)
-    res.json({ ok: true, backups: await listBackups(tenant.id) })
+    res.json({ ok: true, backups: await listBackups(tenant.id), currentBackup: await getCurrentBackupVersion(tenant.id) })
   } catch (error) { next(error) }
 })
 
@@ -18,7 +18,8 @@ backupRouter.post('/', async (req, res, next) => {
   try {
     requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
     const tenant = requireTenant(req.auth)
-    res.json({ ok: true, backup: await createBackup({ tenantId: tenant.id, reason: 'manual' }) })
+    const backup = await createBackup({ tenantId: tenant.id, reason: 'manual' })
+    res.json({ ok: true, backup, currentBackup: backup })
   } catch (error) { next(error) }
 })
 

@@ -243,30 +243,21 @@
           <view v-else-if="subPage === 'dataRestore'" class="stack-3">
             <view class="surface-card" :class="UI.card">
               <view class="p-4 text-xs text-slate-500 leading-6">
-                每日中午 12:00、晚上 20:00 自动保留完整快照；每次业务操作结束 30 分钟后也会备份。快照包含房源、入住、账务、证件、合同及服务器本地附件，保留最近 7 天。
+                每日中午 12:00、晚上 20:00 自动保留完整快照；每次业务操作结束 30 分钟后也会备份。快照包含房源、入住、账务、证件、合同及服务器本地附件，保留最近 3 天。
               </view>
             </view>
             <view class="surface-card" :class="UI.card">
               <view class="p-3 flex items-center justify-between gap-3 border-b border-slate-100">
                 <view>
                   <view class="font-bold text-slate-800 text-sm">当前备份状态</view>
-                  <view v-if="latestCloudBackup" class="text-3xs text-emerald-600 mt-1">已备份 · {{ formatBackupTime(latestCloudBackup.createdAt) }}</view>
+                  <view v-if="currentCloudBackup" class="text-3xs text-emerald-600 mt-1">当前版本 · {{ formatBackupTime(currentCloudBackup.createdAt) }}</view>
                   <view v-else class="text-3xs text-amber-600 mt-1">未备份 · 请手动备份或等待自动备份</view>
                 </view>
                 <button class="px-3 py-2 rounded-xl btn-blue text-xs font-semibold" :loading="cloudBackupCreating" @click="createManualBackup">立即备份</button>
               </view>
-              <view class="px-3 py-2 border-b border-slate-100">
-                <view v-for="slot in scheduledBackupStatus" :key="slot.reason" class="py-1 flex items-center justify-between gap-3 text-3xs">
-                  <text class="text-slate-500">{{ slot.label }}</text>
-                  <text :class="slot.backup ? 'text-emerald-600' : 'text-amber-600'">{{ slot.backup ? `已备份 · ${formatBackupTime(slot.backup.createdAt)}` : '未备份' }}</text>
-                </view>
-              </view>
               <view class="p-3 flex items-center justify-between gap-3 border-b border-slate-100">
-                <view><view class="font-bold text-slate-800 text-sm">可恢复的数据备份</view><view class="text-3xs text-slate-400 mt-1">最近 7 天 · {{ cloudBackups.length }} 个快照</view></view>
-                <view class="flex items-center gap-2">
-                  <button v-if="cloudBackups.length" class="px-2 py-2 rounded-xl text-amber-700 text-xs font-semibold" :loading="cloudBackupClearing" @click="confirmClearBackups">清空</button>
-                  <button class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold" @click="loadCloudBackups">刷新</button>
-                </view>
+                <view><view class="font-bold text-slate-800 text-sm">可恢复的数据备份</view><view class="text-3xs text-slate-400 mt-1">最近 3 天 · {{ cloudBackups.length }} 个版本</view></view>
+                <button class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold" @click="loadCloudBackups">刷新</button>
               </view>
               <view v-if="cloudBackupLoading" class="p-5 text-center text-sm text-slate-400">正在读取备份…</view>
               <view v-else-if="cloudBackups.length" class="divide-y divide-slate-100">
@@ -423,7 +414,7 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createCloudExportTask, fetchCloudExportTasks, getCachedCloudExportTasks } from '../../api/exports.js'
-import { clearCloudBackups, createCloudBackup, fetchCloudBackups, getCachedCloudBackups, restoreCloudBackup } from '../../api/backups.js'
+import { createCloudBackup, fetchCloudBackupState, getCachedCloudBackupState, restoreCloudBackup } from '../../api/backups.js'
 import { fetchFullPropertiesSnapshot } from '../../api/properties.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl, isCloudApiConfigured, withCloudBackupAccess } from '../../config/cloud'
 import {
@@ -462,7 +453,6 @@ const cloudExportLoading = ref(false)
 const cloudBackups = ref([])
 const cloudBackupLoading = ref(false)
 const cloudBackupCreating = ref(false)
-const cloudBackupClearing = ref(false)
 const restoringBackupId = ref('')
 const exportMode = ref('all')
 const selectedExportRoomId = ref('')
@@ -476,17 +466,7 @@ const utilityForm = ref({
 
 const reminderForm = ref(loadReminderSettings())
 const isCloudConfigured = computed(() => isCloudApiConfigured())
-const latestCloudBackup = computed(() => cloudBackups.value[0] || null)
-const scheduledBackupStatus = computed(() => {
-  const today = formatBackupDate(new Date())
-  return [
-    { label: '今日 12:00 定时备份', reason: 'scheduled_noon' },
-    { label: '今日 20:00 定时备份', reason: 'scheduled_evening' },
-  ].map((slot) => ({
-    ...slot,
-    backup: cloudBackups.value.find((item) => item.reason === slot.reason && formatBackupDate(item.createdAt) === today) || null,
-  }))
-})
+const currentCloudBackup = ref(null)
 const profileName = computed(() => currentUser.value?.nickName || currentProfile.value?.nickName || '微信用户')
 const profileInitial = computed(() => currentUser.value ? '管' : '访')
 const tenantRoleLabel = computed(() => {
@@ -520,14 +500,14 @@ const pageSubtitle = computed(() => ({
   allDocuments: '按姓名、房号、手机号搜索',
   utilityTemplate: '统一模板，房间可覆盖',
   autoReminder: '仅自我管理，不生成催缴文案',
-  dataRestore: '恢复最近 7 天内的完整数据快照',
+  dataRestore: '恢复最近 3 天内的完整数据快照',
   exportReport: '导出 Excel 存档',
 }[subPage.value] || '账号与基础设置'))
 
 const menuA = [
   { id: 'allDocuments', label: '租客证件与合同归档', desc: '查看身份证、合同与归档状态', icon: '档', bg: 'bg-blue-50', color: 'text-blue-600' },
   { id: 'utilityTemplate', label: '默认水电单价模板', desc: '统一配置默认水电价格', icon: '水', bg: 'bg-amber-50', color: 'text-amber-600', managerOnly: true },
-  { id: 'dataRestore', label: '数据恢复', desc: '恢复最近 7 天的云端完整备份', icon: '复', bg: 'bg-violet-50', color: 'text-violet-600', managerOnly: true },
+  { id: 'dataRestore', label: '数据恢复', desc: '恢复最近 3 天的云端完整备份', icon: '复', bg: 'bg-violet-50', color: 'text-violet-600', managerOnly: true },
 ]
 
 const menuB = [
@@ -815,12 +795,6 @@ function formatBackupTime(value) {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')} ${`${date.getHours()}`.padStart(2, '0')}:${`${date.getMinutes()}`.padStart(2, '0')}`
 }
 
-function formatBackupDate(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`
-}
-
 function formatBackupReason(reason) {
   return {
     scheduled_noon: '定时备份（12:00）',
@@ -834,7 +808,9 @@ async function loadCloudBackups() {
   if (!isCloudConfigured.value) return
   cloudBackupLoading.value = true
   try {
-    cloudBackups.value = await withCloudBackupAccess(() => fetchCloudBackups())
+    const state = await withCloudBackupAccess(() => fetchCloudBackupState())
+    cloudBackups.value = state.items
+    currentCloudBackup.value = state.currentBackup
   } catch {
     uni.showToast({ title: '读取备份失败，请稍后重试', icon: 'none' })
   } finally {
@@ -855,29 +831,6 @@ async function createManualBackup() {
   } finally {
     cloudBackupCreating.value = false
     uni.hideLoading()
-  }
-}
-
-async function confirmClearBackups() {
-  if (cloudBackupClearing.value || cloudBackups.value.length === 0) return
-  const confirmed = await new Promise((resolve) => uni.showModal({
-    title: '清空历史备份',
-    content: '将永久删除当前全部备份快照，删除后不可恢复。',
-    confirmText: '确认清空',
-    confirmColor: '#d97706',
-    success: (result) => resolve(Boolean(result.confirm)),
-    fail: () => resolve(false),
-  }))
-  if (!confirmed) return
-  cloudBackupClearing.value = true
-  try {
-    await withCloudBackupAccess(() => clearCloudBackups())
-    cloudBackups.value = []
-    uni.showToast({ title: '历史备份已清空', icon: 'success' })
-  } catch {
-    uni.showToast({ title: '清空失败，请稍后重试', icon: 'none' })
-  } finally {
-    cloudBackupClearing.value = false
   }
 }
 
@@ -1138,14 +1091,20 @@ onLoad(() => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
   selectedTenantId.value = users.value[0]?.id || ''
   cloudExportTasks.value = getCachedCloudExportTasks()
-  cloudBackups.value = getCachedCloudBackups()
+  const cachedBackupState = getCachedCloudBackupState()
+  cloudBackups.value = cachedBackupState.items
+  currentCloudBackup.value = cachedBackupState.currentBackup
   refreshSyncSummary()
 })
 
 onShow(() => {
   refreshSyncSummary()
   cloudExportTasks.value = getCachedCloudExportTasks()
-  if (!cloudBackups.value.length) cloudBackups.value = getCachedCloudBackups()
+  if (!cloudBackups.value.length) {
+    const cachedBackupState = getCachedCloudBackupState()
+    cloudBackups.value = cachedBackupState.items
+    currentCloudBackup.value = cachedBackupState.currentBackup
+  }
 })
 </script>
 
