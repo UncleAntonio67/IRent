@@ -103,7 +103,25 @@ export async function confirmAttachmentUpload({
   roomId,
   collectionId,
   meterReadingId,
+  clientOperationId = '',
 }) {
+  if (clientOperationId) {
+    const existing = await prisma.attachment.findUnique({ where: { clientOperationId } })
+    if (existing?.tenantId === tenantId) {
+      return {
+        id: existing.id,
+        type: existing.type,
+        fileName: existing.fileName,
+        mimeType: existing.mimeType || null,
+        filePath: existing.filePath || null,
+        fileUrl: existing.fileUrl || null,
+        storageKey: existing.storageKey || null,
+        fileSize: existing.fileSize || 0,
+        clientOperationId: existing.clientOperationId || null,
+        uploadedAt: existing.uploadedAt.toISOString(),
+      }
+    }
+  }
   await Promise.all([
     assertRoomBelongsToTenant(roomId, tenantId),
     assertCollectionBelongsToTenant(collectionId, tenantId),
@@ -112,6 +130,7 @@ export async function confirmAttachmentUpload({
 
   const attachment = await prisma.attachment.create({
     data: {
+      ...(clientOperationId ? { clientOperationId } : {}),
       tenantId,
       roomId: roomId || null,
       collectionId: collectionId || null,
@@ -135,6 +154,7 @@ export async function confirmAttachmentUpload({
     fileUrl: attachment.fileUrl || null,
     storageKey: attachment.storageKey || null,
     fileSize: attachment.fileSize || 0,
+    clientOperationId: attachment.clientOperationId || null,
     uploadedAt: attachment.uploadedAt.toISOString(),
   }
 }

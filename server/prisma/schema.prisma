@@ -106,6 +106,7 @@ model Tenant {
   attachments     Attachment[]
   exportTasks     ExportTask[]
   operationLogs   OperationLog[]
+  roomArchives    RoomArchive[]
   activeUsers     User[]        @relation("ActiveTenant")
 }
 
@@ -199,6 +200,28 @@ model Room {
 
   @@index([floorId])
   @@unique([floorId, roomNo])
+}
+
+/// A room removed from the active property tree is retained as a complete,
+/// read-only snapshot for three months. The original Room can then be deleted
+/// without losing tenant documents or financial history to a reused room name.
+model RoomArchive {
+  id             String   @id @default(cuid())
+  tenantId       String
+  originalRoomId String
+  propertyName   String
+  blockName      String
+  floorNo        Int
+  roomNo         String
+  deletedAt      DateTime @default(now())
+  expiresAt      DateTime
+  snapshotJson   Json
+  createdAt      DateTime @default(now())
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, roomNo])
+  @@index([expiresAt])
 }
 
 model Occupancy {
@@ -302,6 +325,7 @@ model MeterReading {
 
 model Attachment {
   id               String         @id @default(cuid())
+  clientOperationId String?       @unique
   tenantId         String
   roomId           String?
   collectionId     String?

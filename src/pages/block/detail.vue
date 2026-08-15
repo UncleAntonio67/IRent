@@ -69,7 +69,16 @@
         </scroll-view>
       </view>
 
-      <scroll-view scroll-y class="page-scroll flex-1" :scroll-with-animation="true" enable-flex>
+      <scroll-view
+        scroll-y
+        class="page-scroll flex-1"
+        :scroll-with-animation="true"
+        :refresher-enabled="true"
+        refresher-default-style="black"
+        :refresher-triggered="pullRefreshing"
+        enable-flex
+        @refresherrefresh="handlePullRefresh"
+      >
         <view v-if="!block" class="p-5">
           <view class="p-5 rounded-2xl bg-white border border-slate-200-60 shadow-soft">
             <view class="text-sm text-slate-600 font-medium leading-relaxed">楼栋不存在或页面参数缺失。</view>
@@ -148,7 +157,8 @@ import { onLoad } from '@dcloudio/uni-app'
 import RoomDetailSheet from '../../components/RoomDetailSheet.vue'
 import CheckInSheet from '../../components/CheckInSheet.vue'
 import { findBlock, findProperty, setProperties } from '../../data/rentStore'
-import { getCachedPropertiesTree } from '../../api/properties'
+import { fetchFullPropertiesSnapshot, getCachedPropertiesTree } from '../../api/properties'
+import { hasPendingSyncTasks, processSyncQueue } from '../../data/syncQueue.js'
 import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateBack } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
@@ -160,6 +170,7 @@ const filterStatus = ref('all')
 const roomSheetOpen = ref(false)
 const checkInSheetOpen = ref(false)
 const selectedRoomId = ref('')
+const pullRefreshing = ref(false)
 
 const property = computed(() => (propertyId.value ? findProperty(propertyId.value) : null))
 const block = computed(() => (propertyId.value && blockId.value ? findBlock(propertyId.value, blockId.value) : null))
@@ -169,7 +180,7 @@ onLoad((query) => {
   propertyId.value = String(query?.propertyId || '')
   blockId.value = String(query?.blockId || '')
   const cachedTree = getCachedPropertiesTree()
-  if (Array.isArray(cachedTree) && cachedTree.length) {
+  if (!hasPendingSyncTasks() && Array.isArray(cachedTree) && cachedTree.length) {
     setProperties(cachedTree)
   }
   warmVisibleRoomCache()
@@ -177,6 +188,29 @@ onLoad((query) => {
 
 function warmVisibleRoomCache() {
   prefetchRoomDetails(visibleRoomIdsForPrefetch.value, 8)
+}
+
+async function handlePullRefresh() {
+  if (pullRefreshing.value) return
+  pullRefreshing.value = true
+  try {
+    if (hasPendingSyncTasks()) {
+      await processSyncQueue({ source: 'auto', force: true })
+      if (hasPendingSyncTasks()) {
+        uni.showToast({ title: '正在同步，请稍候', icon: 'none' })
+        return
+      }
+    }
+    const nextTree = await fetchFullPropertiesSnapshot()
+    if (hasPendingSyncTasks()) return
+    setProperties(nextTree)
+    warmVisibleRoomCache()
+    uni.showToast({ title: '已刷新最新数据', icon: 'none' })
+  } catch (error) {
+    uni.showToast({ title: '刷新失败，请检查网络', icon: 'none' })
+  } finally {
+    pullRefreshing.value = false
+  }
 }
 
 const stats = computed(() => {

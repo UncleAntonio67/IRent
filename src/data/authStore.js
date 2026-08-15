@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { fetchCurrentSession, loginWithWeChatCode, clearCloudSession, recordPublicAccountLogin } from '../api/auth'
+import { fetchCurrentSession, loginWithWeChatCode, clearCloudSession, recordPublicAccountLogin, recordWeChatAccountLogin } from '../api/auth'
 import { apiRequest } from '../api/client'
 import { hasCloudApiBaseUrl } from '../config/cloud'
 
@@ -46,14 +46,35 @@ function createPublicProfile() {
   }
 }
 
-// This is a shared internal mini-program. It always enters the common
-// workspace directly; guest and logout states are intentionally unavailable.
-export const users = ref([{ id: PUBLIC_ACCOUNT.id, nickName: PUBLIC_ACCOUNT.username, role: 'OWNER' }])
-export const activeUserId = ref(PUBLIC_ACCOUNT.id)
-export const currentProfile = ref(createPublicProfile())
+// Restore the last authorized session immediately so an app relaunch does not
+// briefly fall back to a guest storage namespace before silent WeChat login.
+// Builds released before the snapshot key existed only stored these three
+// individual records; keep supporting them so an offline launch never loses
+// the owner's permission while an action is waiting to be uploaded.
+function loadLocalSession() {
+  const snapshot = loadStoredValue(CLOUD_SESSION_SNAPSHOT_KEY, null)
+  const profile = snapshot?.profile || loadStoredValue(PROFILE_STORAGE_KEY, null)
+  const storedUsers = Array.isArray(snapshot?.users)
+    ? snapshot.users
+    : loadStoredValue(USERS_STORAGE_KEY, [])
+  const members = Array.isArray(storedUsers) ? storedUsers : []
+  if (profile && members.length === 0) {
+    members.push({ id: String(profile.id || PUBLIC_ACCOUNT.id), nickName: profile.nickName || PUBLIC_ACCOUNT.username, role: 'OWNER' })
+  }
+  return {
+    profile,
+    users: members,
+    activeUserId: String(snapshot?.activeUserId || loadStoredValue(ACTIVE_USER_STORAGE_KEY, '') || members[0]?.id || ''),
+  }
+}
+
+const initialSession = loadLocalSession()
+export const users = ref(Array.isArray(initialSession?.users) ? initialSession.users : [])
+export const activeUserId = ref(String(initialSession?.activeUserId || users.value[0]?.id || ''))
+export const currentProfile = ref(initialSession?.profile || null)
 export const currentUser = computed(() => currentProfile.value)
 export const currentTenant = computed(() => users.value.find((item) => item.id === activeUserId.value) || users.value[0] || null)
-export const isLoggedIn = computed(() => true)
+export const isLoggedIn = computed(() => Boolean(currentProfile.value))
 export const currentTenantRole = computed(() => String(currentTenant.value?.role || '').toUpperCase())
 export const canManageTenantData = computed(() => isLoggedIn.value && ['OWNER', 'MANAGER'].includes(currentTenantRole.value))
 
@@ -78,12 +99,22 @@ function persistCloudSessionSnapshot() {
   })
 }
 
+function clearLocalSession() {
+  currentProfile.value = null
+  users.value = []
+  activeUserId.value = ''
+  persistValue(PROFILE_STORAGE_KEY, null)
+  persistValue(USERS_STORAGE_KEY, null)
+  persistValue(ACTIVE_USER_STORAGE_KEY, null)
+  persistValue(CLOUD_SESSION_SNAPSHOT_KEY, null)
+}
+
 function restoreCloudSessionSnapshot() {
-  const snapshot = loadStoredValue(CLOUD_SESSION_SNAPSHOT_KEY, null)
-  if (!snapshot || typeof snapshot !== 'object') return false
+  const snapshot = loadLocalSession()
+  if (!snapshot.profile && snapshot.users.length === 0) return false
   currentProfile.value = snapshot.profile || null
-  users.value = Array.isArray(snapshot.users) ? snapshot.users : []
-  activeUserId.value = String(snapshot.activeUserId || users.value[0]?.id || '')
+  users.value = snapshot.users
+  activeUserId.value = snapshot.activeUserId
   persistProfile()
   persistUsers()
   persistActiveUser()
@@ -160,13 +191,42 @@ export function loginPublicAccount(credentials = {}) {
 }
 
 export async function initializePublicAccount() {
-  const user = loginPublicAccount()
+  if (!hasCloudApiBaseUrl()) return loginPublicAccount()
   try {
-    await recordPublicAccountLogin()
-  } catch {
-    // Local-only development remains usable when the server is unavailable.
+    const result = await recordWeChatAccountLogin()
+    applyCloudSession(result)
+    return currentProfile.value
+  } catch (wechatError) {
+    // Older local/dev deployments can still use the public fallback. A server
+    // running AUTH_MODE=wechat rejects this fallback, leaving no local access.
+    const errorCode = String(wechatError?.code || '')
+    // A transient offline/TLS failure must never clear the locally persisted
+    // shared session: its namespace owns the durable outbox of check-ins and
+    // attachments waiting for upload.
+    if (['REQUEST_FAILED', 'CLOUD_BACKOFF_ACTIVE'].includes(errorCode)) {
+      if (!restoreCloudSessionSnapshot()) loginPublicAccount()
+      return currentProfile.value
+    }
+    // Keep an existing shared session for every non-explicit login failure.
+    // The application has no logout flow, and clearing it on a server 5xx or
+    // temporary authentication outage would orphan the offline queue.
+    if (!['WECHAT_CONFIG_MISSING', 'WECHAT_LOGIN_CODE_UNAVAILABLE'].includes(errorCode)) {
+      if (!restoreCloudSessionSnapshot()) loginPublicAccount()
+      return currentProfile.value
+    }
+    try {
+      const result = await recordPublicAccountLogin()
+      applyCloudSession(result)
+      return currentProfile.value
+    } catch {
+      // An offline launch must remain operable: use the previous owner
+      // session when present, otherwise initialise the app's shared local
+      // administrator. The durable queue will migrate namespaces and upload
+      // the business operation after connectivity is restored.
+      if (!restoreCloudSessionSnapshot()) loginPublicAccount()
+      return currentProfile.value
+    }
   }
-  return user
 }
 
 export async function restoreCloudSession() {
@@ -178,8 +238,8 @@ export async function restoreCloudSession() {
     return true
   } catch {
     clearCloudSession()
-    loginPublicAccount()
-    return false
+    await initializePublicAccount()
+    return Boolean(currentProfile.value)
   }
 }
 

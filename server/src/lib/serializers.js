@@ -34,6 +34,7 @@ export function serializeAttachment(attachment) {
     fileUrl: attachment.fileUrl || null,
     storageKey: attachment.storageKey || null,
     fileSize: attachment.fileSize || 0,
+    clientOperationId: attachment.clientOperationId || null,
     uploadedAt: toIsoString(attachment.uploadedAt),
   }
 }
@@ -47,6 +48,8 @@ export function serializeCollection(collection) {
     note: collection.note || null,
     coverageLabel: collection.coverageLabel || null,
     paidAt: toIsoString(collection.paidAt),
+    createdAt: toIsoString(collection.createdAt),
+    updatedAt: toIsoString(collection.updatedAt),
     relatedBillId: collection.relatedBillId || null,
     relatedTermId: collection.relatedTermId || null,
     attachments: Array.isArray(collection.attachments)
@@ -64,6 +67,8 @@ export function serializeBill(bill) {
     status: bill.status,
     dueDate: toIsoString(bill.dueDate),
     paidAt: toIsoString(bill.paidAt),
+    createdAt: toIsoString(bill.createdAt),
+    updatedAt: toIsoString(bill.updatedAt),
     collections: Array.isArray(bill.collections) ? bill.collections.map(serializeCollection) : [],
   }
 }
@@ -80,6 +85,8 @@ export function serializePaymentTerm(term) {
     coveredAmount: toPlainNumber(term.coveredAmount),
     status: term.status,
     paidAt: toIsoString(term.paidAt),
+    createdAt: toIsoString(term.createdAt),
+    updatedAt: toIsoString(term.updatedAt),
     collections: Array.isArray(term.collections) ? term.collections.map(serializeCollection) : [],
   }
 }

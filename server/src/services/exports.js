@@ -107,6 +107,31 @@ function buildExportRows(rooms) {
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
 }
 
+function formatDeletedRoomLabel(roomNo, deletedAt) {
+  const date = new Date(deletedAt)
+  if (Number.isNaN(date.getTime())) return `${roomNo || ''}（已删除）`
+  return `${roomNo || ''}（${date.getMonth() + 1}月${date.getDate()}日删除）`
+}
+
+function buildArchivedExportRows(archives) {
+  return (archives || []).flatMap((archive) => {
+    const snapshot = archive.snapshotJson && typeof archive.snapshotJson === 'object' ? archive.snapshotJson : {}
+    const collections = Array.isArray(snapshot.collections) ? snapshot.collections : []
+    return collections.map((collection) => ({
+      date: collection.createdAt || collection.paidAt || '',
+      propertyName: archive.propertyName || '',
+      blockName: archive.blockName || '',
+      roomNo: formatDeletedRoomLabel(archive.roomNo, archive.deletedAt),
+      tenantName: snapshot.tenantName || '',
+      type: mapBillTypeLabel(collection.billType),
+      title: collection.title || '',
+      amount: Number(collection.amount || 0).toFixed(2),
+      receipt: Array.isArray(collection.attachments) && collection.attachments.length ? '有' : '无',
+      rawKind: String(collection.billType || '').toUpperCase(),
+    }))
+  })
+}
+
 function buildSummary(rows) {
   const rent = rows
     .filter((item) => item.rawKind === 'RENT')
@@ -135,7 +160,14 @@ export async function createExportTask({ tenantId, userId, scope, roomId = null 
 
   try {
     const rooms = await loadScopedRooms(scope, tenantId, roomId)
-    const rows = buildExportRows(rooms)
+    const archivedRooms = scope === 'room'
+      ? []
+      : await prisma.roomArchive.findMany({
+        where: { tenantId, expiresAt: { gt: new Date() } },
+        orderBy: [{ deletedAt: 'desc' }],
+      })
+    const rows = [...buildExportRows(rooms), ...buildArchivedExportRows(archivedRooms)]
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
     const summary = buildSummary(rows)
 
     const csvRows = [

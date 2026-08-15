@@ -22,8 +22,16 @@ function mapBillType(type) {
 
 function toDisplayDate(value) {
   if (!value) return ''
-  const iso = String(value)
-  return iso.includes('T') ? iso.replace('T', ' ').slice(0, 16) : iso
+  const raw = String(value)
+  if (!raw.includes('T')) return raw
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return raw.replace('T', ' ').slice(0, 16)
+  const pad = (number) => String(number).padStart(2, '0')
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`
+}
+
+function toDisplayOperationTime(operationTime, fallbackTime) {
+  return toDisplayDate(operationTime || fallbackTime)
 }
 
 export function mapServerAttachmentFile(file) {
@@ -38,6 +46,7 @@ export function mapServerAttachmentFile(file) {
     url: file.fileUrl || file.filePath || '',
     size: Number(file.fileSize || 0) || 0,
     mimeType: file.mimeType || '',
+    clientOperationId: file.clientOperationId || '',
   }
 }
 
@@ -117,7 +126,8 @@ export function mapServerRoomDetail(room) {
     expectedAmount: Number(term.expectedAmount || 0) || 0,
     paidAmount: Number(term.paidAmount || 0) || 0,
     coveredAmount: Number(term.coveredAmount || 0) || 0,
-    payDate: toDisplayDate(term.paidAt),
+    payDate: toDisplayOperationTime(term.updatedAt || term.paidAt, term.createdAt),
+    operationAt: term.updatedAt || term.paidAt || term.createdAt || '',
     receiptPic: (term.collections || []).some((item) => (item.attachments || []).length > 0),
     status: lower(term.status || 'unpaid'),
     receiptFile: null,
@@ -128,7 +138,10 @@ export function mapServerRoomDetail(room) {
     kind: mapBillType(item.billType),
     title: item.title || '',
     amount: Number(item.amount || 0) || 0,
-    paidAt: toDisplayDate(item.paidAt),
+    // createdAt is the actual collection operation time.  It also repairs
+    // legacy records whose paidAt had been truncated to 00:00 by the server.
+    paidAt: toDisplayOperationTime(item.createdAt || item.paidAt, item.updatedAt),
+    operationAt: item.createdAt || item.paidAt || item.updatedAt || '',
     receiptPic: (item.attachments || []).length > 0,
     termIds: item.relatedTermId ? [item.relatedTermId] : [],
     billId: item.relatedBillId || '',
@@ -144,7 +157,8 @@ export function mapServerRoomDetail(room) {
     amount: Number(bill.amount || 0) || 0,
     status: lower(bill.status || 'unpaid') === 'paid' ? 'paid' : 'unpaid',
     dueDate: bill.dueDate ? String(bill.dueDate).slice(0, 10) : '',
-    payDate: toDisplayDate(bill.paidAt),
+    payDate: toDisplayOperationTime(bill.updatedAt || bill.paidAt, bill.createdAt),
+    operationAt: bill.updatedAt || bill.paidAt || bill.createdAt || '',
     receiptPic: (bill.collections || []).some((item) => (item.attachments || []).length > 0),
   }))
 
@@ -191,6 +205,7 @@ export function mapServerRoomDetail(room) {
       .filter((item) => lower(item.type) === 'room_photo')
       .map((item) => ({
         id: item.id,
+        clientOperationId: item.clientOperationId || '',
         name: item.fileName || 'room_photo.jpg',
         uploadedAt: toDisplayDate(item.uploadedAt),
         source: 'cloud',

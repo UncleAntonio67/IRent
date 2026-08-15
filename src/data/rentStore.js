@@ -13,6 +13,9 @@ import { buildAttachmentFile } from '../domain/rent-room-service.js'
 import { refreshBillEntriesSnapshot } from './billSnapshots.js'
 
 const PROPERTIES_STORAGE_KEY = 'rent_demo_properties_v1'
+// Kept in step with the API cache. Several detail pages bootstrap from this
+// key, so it must never be allowed to overwrite a newer offline mutation.
+const PROPERTY_TREE_CACHE_KEY = 'property_tree_cache_v1'
 const GLOBAL_CONFIG_STORAGE_KEY = 'rent_global_config_v1'
 
 function findRoomById(tree, roomId) {
@@ -769,7 +772,16 @@ function loadStoredProperties() {
 
 function saveStoredProperties(next) {
   try {
-    uni.setStorageSync(buildTenantStorageKey(PROPERTIES_STORAGE_KEY), cloneDeep(next))
+    const snapshot = cloneDeep(next)
+    uni.setStorageSync(buildTenantStorageKey(PROPERTIES_STORAGE_KEY), snapshot)
+    // Detail, check-in and block pages use the property API cache during page
+    // creation. Mirror every local write here so an offline check-in cannot be
+    // replaced by an older cached tree when the next page opens.
+    uni.setStorageSync(buildTenantStorageKey(PROPERTY_TREE_CACHE_KEY), {
+      items: snapshot,
+      _syncedAt: Date.now(),
+      _localRevision: Date.now(),
+    })
   } catch {
     // Ignore storage failures in demo mode.
   }

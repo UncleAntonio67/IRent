@@ -2,6 +2,7 @@ import express from 'express'
 import { prisma } from '../../db.js'
 import { serializePropertyTree, serializeRoomDetail } from '../../lib/serializers.js'
 import { roomDetailInclude } from '../../services/rooms.js'
+import { purgeExpiredRoomArchives } from '../../services/archives.js'
 import { requireTenant, requireTenantRole } from '../../lib/tenant.js'
 import { requireAuth } from '../../middleware/auth.js'
 
@@ -79,6 +80,41 @@ async function readFullProperties(tenantId) {
         },
       },
     },
+  })
+}
+
+const ROOM_ARCHIVE_RETENTION_MONTHS = 3
+
+function addArchiveRetentionMonths(date) {
+  const result = new Date(date)
+  result.setMonth(result.getMonth() + ROOM_ARCHIVE_RETENTION_MONTHS)
+  return result
+}
+
+async function archiveRoomsMissingFromTree(tx, tenantId, keepRoomIds) {
+  const removedRooms = await tx.room.findMany({
+    where: {
+      floor: { block: { property: { tenantId } } },
+      ...(keepRoomIds.length ? { id: { notIn: keepRoomIds } } : {}),
+    },
+    include: roomDetailInclude,
+  })
+  if (!removedRooms.length) return
+
+  const deletedAt = new Date()
+  const expiresAt = addArchiveRetentionMonths(deletedAt)
+  await tx.roomArchive.createMany({
+    data: removedRooms.map((room) => ({
+      tenantId,
+      originalRoomId: room.id,
+      propertyName: room.floor?.block?.property?.name || '',
+      blockName: room.floor?.block?.name || '',
+      floorNo: Number(room.floor?.floorNo || 0),
+      roomNo: room.roomNo || '',
+      deletedAt,
+      expiresAt,
+      snapshotJson: serializeRoomDetail(room),
+    })),
   })
 }
 
@@ -169,11 +205,29 @@ async function migrateLocalSnapshot(tx, tenantId, userId, propertyItems) {
 }
 
 async function syncRoomTree(tx, tenantId, propertyItems) {
+  const keepRoomIds = []
+  for (const propertyInput of propertyItems) {
+    for (const blockInput of propertyInput?.blocks || []) {
+      for (const floorInput of blockInput?.floors || []) {
+        for (const roomInput of floorInput?.rooms || []) {
+          const roomId = String(roomInput?.id || '')
+          if (roomId) keepRoomIds.push(roomId)
+        }
+      }
+    }
+  }
+  await archiveRoomsMissingFromTree(tx, tenantId, [...new Set(keepRoomIds)])
   const keepPropertyIds = []
 
   for (const [propertyIndex, propertyInput] of propertyItems.entries()) {
     const propertyId = String(propertyInput?.id || '')
     const propertyName = String(propertyInput?.name || '').trim()
+    if (propertyName.includes('?') || propertyName.includes('\uFFFD')) {
+      const error = new Error('Invalid property name encoding')
+      error.statusCode = 400
+      error.code = 'INVALID_TEXT_ENCODING'
+      throw error
+    }
     if (!propertyId || !propertyName) continue
 
     const property = await tx.property.upsert({
@@ -191,6 +245,12 @@ async function syncRoomTree(tx, tenantId, propertyItems) {
     for (const [blockIndex, blockInput] of (propertyInput.blocks || []).entries()) {
       const blockId = String(blockInput?.id || '')
       const blockName = String(blockInput?.name || '').trim()
+      if (blockName.includes('?') || blockName.includes('\uFFFD')) {
+        const error = new Error('Invalid block name encoding')
+        error.statusCode = 400
+        error.code = 'INVALID_TEXT_ENCODING'
+        throw error
+      }
       if (!blockId || !blockName) continue
 
       const block = await tx.block.upsert({
@@ -350,6 +410,32 @@ propertyRouter.get('/full-snapshot', async (req, res, next) => {
   } catch (error) { next(error) }
 })
 
+propertyRouter.get('/archived-rooms', async (req, res, next) => {
+  try {
+    const tenant = requireTenant(req.auth)
+    await purgeExpiredRoomArchives(tenant.id)
+    const items = await prisma.roomArchive.findMany({
+      where: { tenantId: tenant.id, expiresAt: { gt: new Date() } },
+      orderBy: [{ deletedAt: 'desc' }],
+      take: 500,
+    })
+    res.json({
+      ok: true,
+      items: items.map((item) => ({
+        id: item.id,
+        originalRoomId: item.originalRoomId,
+        propertyName: item.propertyName,
+        blockName: item.blockName,
+        floorNo: item.floorNo,
+        roomNo: item.roomNo,
+        deletedAt: item.deletedAt,
+        expiresAt: item.expiresAt,
+        snapshot: item.snapshotJson,
+      })),
+    })
+  } catch (error) { next(error) }
+})
+
 propertyRouter.post('/migrate-local', async (req, res, next) => {
   try {
     requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
@@ -372,6 +458,8 @@ propertyRouter.post('/sync', async (req, res, next) => {
     requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
     const tenant = requireTenant(req.auth)
     const items = Array.isArray(req.body?.items) ? req.body.items : []
+
+    await purgeExpiredRoomArchives(tenant.id)
 
     if (!items.length) {
       const error = new Error('房屋结构不能为空')

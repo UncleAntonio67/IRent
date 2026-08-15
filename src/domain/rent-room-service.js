@@ -67,7 +67,7 @@ function cloneOperationSnapshot(room) {
   return snapshot
 }
 
-export function recordRoomOperation(room, { kind, label, now, before } = {}) {
+export function recordRoomOperation(room, { kind, label, now, before, ...metadata } = {}) {
   room.operationLog = Array.isArray(room.operationLog) ? room.operationLog : []
   room.operationLog.push({
     id: generateId('op'),
@@ -76,6 +76,7 @@ export function recordRoomOperation(room, { kind, label, now, before } = {}) {
     createdAt: now || '',
     status: 'active',
     before: before || cloneOperationSnapshot(room),
+    ...metadata,
   })
   room.operationLog = room.operationLog.slice(-12)
 }
@@ -197,7 +198,8 @@ export function computeCollectionSummary(room) {
     ))
     if (unpaidBill) legacySettledBillIds.add(unpaidBill.id)
   })
-  const unpaidUtilityBills = utilityBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID && !legacySettledBillIds.has(bill.id))
+  const effectiveUtilityBills = utilityBills.filter((bill) => !legacySettledBillIds.has(bill.id))
+  const unpaidUtilityBills = effectiveUtilityBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID)
   const unpaidCustomBills = customBills.filter((bill) => bill.status !== PAYMENT_STATUS.PAID)
 
   const rentCollectionSource = collections.some((item) => item.kind === BILL_TYPE.RENT)
@@ -205,13 +207,29 @@ export function computeCollectionSummary(room) {
     : buildLegacyRentCollections(paymentSchedule)
 
   const rentExpected = sum(paymentSchedule, (term) => Number(term.expectedAmount || 0))
-  const rentPaid = sum(rentCollectionSource, (item) => Number(item.amount || 0))
+  // The payment term is the source of truth for rent.  A collection record can
+  // contain a historical combined amount (for example, rent plus a utility
+  // charge recorded during an earlier check-in flow), which must never inflate
+  // the rent progress card.
+  const hasTermCoverage = paymentSchedule.some((term) => Number(term.coveredAmount || term.paidAmount || 0) > 0)
+  const rentPaidFromTerms = sum(paymentSchedule, (term) => {
+    const expected = Number(term.expectedAmount || 0)
+    const covered = Number(term.coveredAmount || term.paidAmount || 0)
+    return Math.min(Math.max(0, expected), Math.max(0, covered))
+  })
+  const rentPaid = hasTermCoverage
+    ? rentPaidFromTerms
+    : sum(rentCollectionSource, (item) => Number(item.amount || 0))
   const rentOutstandingAmount = Math.max(0, Math.round((rentExpected - rentPaid) * 100) / 100)
   const rentOutstandingCount = paymentSchedule.filter(
     (term) => Number(term.coveredAmount || term.paidAmount || 0) < Number(term.expectedAmount || 0)
   ).length
 
-  const utilityExpected = sum(utilityBills, (bill) => Number(bill.amount || 0))
+  // Utility billing is cumulative for the active tenancy. A meter reading
+  // creates a new receivable immediately; collection only changes its paid
+  // state. Therefore "应" is the accumulated charge and "收" is the amount
+  // already collected, while their difference is the amount still due.
+  const utilityExpected = sum(effectiveUtilityBills, (bill) => Number(bill.amount || 0))
   const utilityOutstandingAmount = sum(unpaidUtilityBills, (bill) => Number(bill.amount || 0))
   const utilityPaid = Math.max(0, Number((utilityExpected - utilityOutstandingAmount).toFixed(2)))
   const utilityOutstandingCount = unpaidUtilityBills.length
@@ -250,17 +268,20 @@ export function computeCollectionSummary(room) {
         .slice()
         .sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || ''))),
       byType: UTILITY_BILL_TYPES.map((type) => {
-        const expected = sum(utilityBills.filter((bill) => bill.type === type), (bill) => Number(bill.amount || 0))
+        const typeBills = effectiveUtilityBills.filter((bill) => bill.type === type)
         const unpaid = sum(
           unpaidUtilityBills.filter((bill) => bill.type === type),
           (bill) => Number(bill.amount || 0)
         )
+        const expected = sum(typeBills, (bill) => Number(bill.amount || 0))
         const paid = Math.max(0, Number((expected - unpaid).toFixed(2)))
+        const hasSettledBill = typeBills.some((bill) => bill.status === PAYMENT_STATUS.PAID)
         return {
           type,
           expected,
           paid,
           outstanding: unpaid,
+          hasSettledBill,
         }
       }),
     },
@@ -341,7 +362,11 @@ export function buildAttachmentFile(type, { tenant = '租客', roomNo = '房间'
 
 export function buildRoomPhotoFile(room, { now, remark = '', file = null } = {}) {
   return {
-    id: generateId('photo'),
+    // Preserve the confirmed Attachment ID. A generated local photo ID made
+    // later deletes call the API with `photo_*` instead of the server record,
+    // so the cloud image survived and reappeared after refresh.
+    id: file?.id || generateId('photo'),
+    clientOperationId: file?.clientOperationId || '',
     name: file?.name || `${room?.roomNo || 'room'}_photo_${Date.now()}.jpg`,
     uploadedAt: now,
     source: file?.source || 'local',

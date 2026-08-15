@@ -57,6 +57,14 @@ export async function fetchFullPropertiesSnapshot() {
   return nextTree
 }
 
+// Deleted rooms are deliberately kept outside the active property tree so
+// they cannot be selected for new operations. Their read-only snapshots are
+// used by the tenant-document archive and cloud CSV export.
+export async function fetchArchivedRooms() {
+  const result = await apiRequest('/properties/archived-rooms')
+  return Array.isArray(result.items) ? result.items : []
+}
+
 function mapRoomStatusToServer(status) {
   if (status === 'rented') return 'RENTED'
   if (status === 'due_soon') return 'DUE_SOON'

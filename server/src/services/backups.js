@@ -2,6 +2,7 @@ import path from 'node:path'
 import { cp, link, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { config } from '../config.js'
 import { prisma } from '../db.js'
+import { purgeExpiredRoomArchives, purgeOrphanedLocalUploads } from './archives.js'
 
 const SNAPSHOT_VERSION = 1
 const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000
@@ -173,7 +174,7 @@ async function getUniqueDirectorySize(root) {
 
 async function readTenantSnapshot(tenantId) {
   const roomScope = { floor: { block: { property: { tenantId } } } }
-  const [properties, blocks, floors, rooms, occupancies, paymentTerms, bills, meterReadings, collections, attachments, operationLogs, exportTasks] = await Promise.all([
+  const [properties, blocks, floors, rooms, occupancies, paymentTerms, bills, meterReadings, collections, attachments, operationLogs, exportTasks, roomArchives] = await Promise.all([
     prisma.property.findMany({ where: { tenantId } }),
     prisma.block.findMany({ where: { property: { tenantId } } }),
     prisma.floor.findMany({ where: { block: { property: { tenantId } } } }),
@@ -186,8 +187,9 @@ async function readTenantSnapshot(tenantId) {
     prisma.attachment.findMany({ where: { tenantId } }),
     prisma.operationLog.findMany({ where: { tenantId } }),
     prisma.exportTask.findMany({ where: { tenantId } }),
+    prisma.roomArchive.findMany({ where: { tenantId } }),
   ])
-  return { version: SNAPSHOT_VERSION, properties, blocks, floors, rooms, occupancies, paymentTerms, bills, meterReadings, collections, attachments, operationLogs, exportTasks }
+  return { version: SNAPSHOT_VERSION, properties, blocks, floors, rooms, occupancies, paymentTerms, bills, meterReadings, collections, attachments, operationLogs, exportTasks, roomArchives }
 }
 
 function snapshotSummary(data) {
@@ -196,6 +198,7 @@ function snapshotSummary(data) {
     rooms: data.rooms.length,
     collections: data.collections.length,
     attachments: data.attachments.length,
+    roomArchives: (data.roomArchives || []).length,
   }
 }
 
@@ -224,9 +227,19 @@ async function pruneTenantBackups(tenantId) {
   // is met, but always keep the newest recovery point.
   let remaining = (await listBackups(tenantId, { includeInternal: true, allVersions: true }))
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+  let protectedCurrentId = ''
+  try {
+    const pointer = JSON.parse(await readFile(currentVersionPath(tenantId), 'utf8'))
+    protectedCurrentId = String(pointer?.backupId || '')
+  } catch {}
   let totalBytes = await getUniqueDirectorySize(root)
   while (remaining.length > 1 && totalBytes > config.backups.maxBytes) {
-    const oldest = remaining.shift()
+    // A user may have deliberately restored an older date. Keep that selected
+    // version recoverable even when size pruning is necessary; all other old
+    // snapshots remain eligible first.
+    const candidateIndex = remaining.findIndex((item) => item.id !== protectedCurrentId)
+    if (candidateIndex < 0) break
+    const [oldest] = remaining.splice(candidateIndex, 1)
     await rm(path.join(root, oldest.id), { recursive: true, force: true })
     totalBytes = await getUniqueDirectorySize(root)
   }
@@ -354,6 +367,7 @@ async function restoreSnapshotData(tenantId, data) {
     await tx.exportTask.deleteMany({ where: { tenantId } })
     await tx.operationLog.deleteMany({ where: { tenantId } })
     await tx.attachment.deleteMany({ where: { tenantId } })
+    await tx.roomArchive.deleteMany({ where: { tenantId } })
     await tx.property.deleteMany({ where: { tenantId } })
     if (data.properties?.length) await tx.property.createMany({ data: data.properties })
     if (data.blocks?.length) await tx.block.createMany({ data: data.blocks })
@@ -367,6 +381,7 @@ async function restoreSnapshotData(tenantId, data) {
     if (data.attachments?.length) await tx.attachment.createMany({ data: data.attachments })
     if (data.operationLogs?.length) await tx.operationLog.createMany({ data: data.operationLogs })
     if (data.exportTasks?.length) await tx.exportTask.createMany({ data: data.exportTasks })
+    if (data.roomArchives?.length) await tx.roomArchive.createMany({ data: data.roomArchives })
   }, { timeout: 30000 })
 }
 
@@ -403,7 +418,11 @@ export function startBackupScheduler() {
     // Process tenants one by one in the off-peak window instead of creating
     // concurrent database and filesystem load during normal use.
     for (const { id } of tenants) {
-      try { await ensureScheduledBackup(id, reason) } catch (error) { console.error('[backup] scheduled snapshot failed', id, error.message) }
+      try {
+        await purgeExpiredRoomArchives(id)
+        await purgeOrphanedLocalUploads(id)
+        await ensureScheduledBackup(id, reason)
+      } catch (error) { console.error('[backup] scheduled maintenance failed', id, error.message) }
     }
   }
   const scheduleNextRun = () => {

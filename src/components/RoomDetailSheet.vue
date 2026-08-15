@@ -120,9 +120,11 @@
                 <view class="room-attachment-actions">
                   <view class="room-attachment-action-group">
                     <button v-if="idCardFiles.length || canManageTenantData" class="detail-side-button tap-scale" :class="idCardFiles.length ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('idCard')"><view class="detail-side-button-text" :class="idCardFiles.length ? 'text-emerald-800' : 'text-slate-700'">{{ idCardFiles.length ? '身份证已上传' : '上传身份证' }}</view></button>
+                    <button v-if="idCardFiles.length && canManageTenantData" class="room-attachment-delete" @click.stop="confirmRemoveAttachment('idCard', idCardFiles[idCardFiles.length - 1])">×</button>
                   </view>
                   <view class="room-attachment-action-group">
                     <button v-if="contractFiles.length || canManageTenantData" class="detail-side-button tap-scale" :class="contractFiles.length ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="handleAttachment('contract')"><view class="detail-side-button-text" :class="contractFiles.length ? 'text-emerald-800' : 'text-slate-700'">{{ contractFiles.length ? '合同已上传' : '上传合同' }}</view></button>
+                    <button v-if="contractFiles.length && canManageTenantData" class="room-attachment-delete" @click.stop="confirmRemoveAttachment('contract', contractFiles[contractFiles.length - 1])">×</button>
                   </view>
                 </view>
             </CollapsibleSectionCard>
@@ -136,9 +138,9 @@
             <RoomRentSection
               :visible="detailSectionsReady && room.status !== 'empty'"
               :expanded="rentExpanded"
-              :progress-pct="overallProgressPct"
-              :paid="overallPaid"
-              :expected="overallExpected"
+              :progress-pct="rentProgressPct"
+              :paid="rentPaid"
+              :expected="rentExpected"
               :terms="rentTermRows"
               @toggle="rentExpanded = !rentExpanded"
               @collect="openRentCollectById"
@@ -300,10 +302,10 @@ import { safeNavigateTo } from '../utils/navigation'
 import { getDrawerHeaderTopPadding } from '../utils/layout'
 import { cloneProperties, findBlock, findProperty, findRoomWithFloor, mergeCloudRoomDetail, setProperties } from '../data/rentStore'
 import { canManageTenantData } from '../data/authStore'
-import { fetchRoomDetail, getCachedRoomDetail, submitMeterReading, submitRentCollection, submitRoomCheckout, submitUtilityCollection } from '../api/rooms'
-import { deleteAttachmentForRoom } from '../api/attachments.js'
+import { fetchRoomDetail, getCachedRoomDetail, submitLatestCollectionUndo, submitLatestRoomOperationUndo, submitMeterReading, submitRentCollection, submitRoomCheckout, submitUtilityCollection } from '../api/rooms'
+import { deleteRoomAttachmentFromCloud, deleteRoomPhotoFromCloud, uploadAttachmentForRoom } from '../api/attachments.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl } from '../config/cloud'
-import { enqueueSyncTask } from '../data/syncQueue.js'
+import { createClientOperationId, discardPendingAttachmentUpload, enqueueSyncTask, hasPendingSyncForRoom } from '../data/syncQueue.js'
 import { ATTACHMENT_FILE_LIMITS, formatShortDate, getPaymentCycleLabel, ROOM_PHOTO_LIMIT } from '../domain/rent-models'
 import { computeCollectionSummary, computeMeterCharge, createRoomTreeMutator, createUtilitiesBillFromMeter, getCollectedDepositAmount, getLatestUndoableRoomOperation, getRoomAttachmentFiles, markPaymentTermPaid, recordDirectUtilityCollection, recordRentCollection, recordRoomOperation, undoLatestRoomOperation, uploadRoomAttachment, uploadRoomPhoto, checkoutRoomWithSettlement } from '../domain/rent-room-service'
 import { chooseImages, chooseSingleImage, previewChosenImage, previewChosenImages, resolveOfflineImageSrc } from '../utils/media'
@@ -405,6 +407,12 @@ async function syncCloudRoomDetail() {
     roomRefreshing.value = false
     return
   }
+  // Do not replace a locally edited room with the last cloud copy before its
+  // queued check-in, collection or checkout has reached the server.
+  if (hasPendingSyncForRoom(roomId.value)) {
+    roomRefreshing.value = false
+    return
+  }
   roomRefreshing.value = true
   try {
     const detail = await fetchRoomDetail(roomId.value)
@@ -423,16 +431,22 @@ function applyCloudRoomDetail(detail) {
 }
 
 async function runRoomMutation({ cloudAction, localAction, queueTask, successTitle, cloudErrorTitle = '云端提交失败', afterSuccess }) {
-  if (hasCloudApiBaseUrl() && roomId.value && !localAction) {
+  // When a network API is available, business mutations are cloud-first.
+  // The durable local queue is only the offline/failure fallback; otherwise
+  // every normal online operation would unnecessarily appear as "pending".
+  const clientOperationId = queueTask
+    ? (queueTask.payload?.clientOperationId || createClientOperationId(queueTask.type))
+    : ''
+  if (hasCloudApiBaseUrl() && roomId.value) {
     try {
-      const detail = await cloudAction()
+      const detail = await cloudAction(clientOperationId)
       applyCloudRoomDetail(detail)
       if (typeof afterSuccess === 'function') afterSuccess(detail)
       if (successTitle) uni.showToast({ title: successTitle, icon: 'success' })
       return true
-    } catch (error) {
-      uni.showToast({ title: error?.message || cloudErrorTitle, icon: 'none' })
-      return false
+    } catch {
+      // Fall through to a local, durable fallback below. This keeps an
+      // offline action safe without making the online path queue by default.
     }
   }
 
@@ -443,14 +457,12 @@ async function runRoomMutation({ cloudAction, localAction, queueTask, successTit
   if (canUseCloudBackup() && roomId.value && queueTask) {
     enqueueSyncTask({
       ...queueTask,
+      payload: { ...(queueTask.payload || {}), clientOperationId },
       propertyId: propertyId.value,
       blockId: blockId.value,
       roomId: roomId.value,
     })
-    roomRefreshing.value = true
-    setTimeout(() => {
-      roomRefreshing.value = false
-    }, 600)
+    uni.showToast({ title: '网络暂不可用，已保存并将自动上传', icon: 'none' })
   }
   return true
 }
@@ -495,7 +507,14 @@ const rentProgressPct = computed(() => collectionSummary.value.rent.progressPct)
 const overallExpected = computed(() => collectionSummary.value.overall.expected)
 const overallPaid = computed(() => collectionSummary.value.overall.paid)
 const overallProgressPct = computed(() => collectionSummary.value.overall.progressPct)
-const allCollectionRows = computed(() => [...collectionSummary.value.rent.recentCollections, ...collectionSummary.value.utilities.recentCollections, ...collectionSummary.value.custom.recentCollections].sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || ''))).slice(0, 8))
+function collectionOperationTimestamp(item) {
+  const value = String(item?.operationAt || item?.paidAt || '').replace(' ', 'T')
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+const allCollectionRows = computed(() => [...collectionSummary.value.rent.recentCollections, ...collectionSummary.value.utilities.recentCollections, ...collectionSummary.value.custom.recentCollections]
+  .sort((a, b) => collectionOperationTimestamp(b) - collectionOperationTimestamp(a) || String(b.id || '').localeCompare(String(a.id || '')))
+  .slice(0, 8))
 const meterCalc = computed(() => computeMeterCharge(room.value, meterForm.value))
 const selectedRentTerm = computed(() => rentTerms.value.find((term) => term.id === selectedRentTermId.value) || null)
 const checkoutRentOutstanding = computed(() => Number(collectionSummary.value.rent.outstandingAmount || 0))
@@ -556,11 +575,12 @@ const utilityDisplayRows = computed(() => utilityTableRows.value.map((item) => (
   ...item,
   label: utilityTypeLabel(item.type),
   included: utilityChargeConfig.value[item.type] === 'included',
+  settled: Number(item.outstanding || 0) <= 0 && Boolean(item.hasSettledBill),
   statusLampClass: utilityStatusLampClass(item),
 })))
 const collectionDisplayRows = computed(() => allCollectionRows.value.map((item) => ({
   ...item,
-  dateText: fmtDate(item.paidAt),
+  dateText: fmtDate(item.operationAt || item.paidAt),
   scopeText: collectionScopeText(item),
   noteText: item.note || defaultCollectionNote(item),
 })))
@@ -630,10 +650,40 @@ function confirmUndoLatest() {
     title: '撤销最近操作',
     content: `将恢复到“${operation.label}”前的状态，已产生的数据会一并恢复。`,
     confirmText: '确认撤销',
-    success: ({ confirm }) => {
+    success: async ({ confirm }) => {
       if (!confirm) return
+      const fallbackBillType = operation.kind === 'rent_collection'
+        ? 'RENT'
+        : (operation.label || '').includes('电') ? 'ELECTRIC' : (operation.label || '').includes('燃气') ? 'GAS' : (operation.label || '').includes('供暖') ? 'HEATING' : 'WATER'
+      const billType = operation.billType || fallbackBillType
+      const isCollectionUndo = ['rent_collection', 'utility_collection'].includes(operation.kind)
+      const clientOperationId = createClientOperationId(isCollectionUndo ? 'room.undoCollection' : 'room.undoOperation')
+      if (hasCloudApiBaseUrl() && roomId.value) {
+        try {
+          const detail = isCollectionUndo
+            ? await submitLatestCollectionUndo(roomId.value, { billType, clientOperationId })
+            : await submitLatestRoomOperationUndo(roomId.value, { kind: operation.kind, before: operation.before || {}, clientOperationId })
+          applyCloudRoomDetail(detail)
+          uni.showToast({ title: '已撤销最近操作', icon: 'success' })
+          return
+        } catch {
+          // The local fallback below preserves the exact same operation key.
+        }
+      }
       const changed = updateRoomDraft((draftRoom) => undoLatestRoomOperation(draftRoom, { now: nowString() }))
-      if (changed) uni.showToast({ title: '已撤销最近操作', icon: 'success' })
+      if (!changed) return
+      if (canUseCloudBackup()) {
+        enqueueSyncTask({
+          type: isCollectionUndo ? 'room.undoCollection' : 'room.undoOperation',
+          propertyId: propertyId.value,
+          blockId: blockId.value,
+          roomId: roomId.value,
+          payload: isCollectionUndo
+            ? { billType, clientOperationId }
+            : { kind: operation.kind, before: operation.before || {}, clientOperationId },
+        })
+      }
+      uni.showToast({ title: '已撤销最近操作', icon: 'success' })
     },
   })
 }
@@ -644,12 +694,23 @@ async function uploadAttachment(type) {
   if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权上传附件', icon: 'none' })
   try {
     const chosen = await chooseSingleImage({ fallbackPrefix: type })
+    const prepared = { ...chosen, uploadedAt: nowString() }
+    let fileForRoom = prepared
+    let queuedForUpload = false
+    if (hasCloudApiBaseUrl() && roomId.value) {
+      try {
+        const confirmed = await uploadAttachmentForRoom({ roomId: roomId.value, type, file: prepared })
+        fileForRoom = { ...prepared, ...confirmed, source: 'cloud' }
+      } catch {
+        queuedForUpload = true
+      }
+    }
     let uploadedFile = null
     const changed = updateRoomDraft((draftRoom) => {
-      uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: { ...chosen, uploadedAt: nowString() } })
+      uploadedFile = uploadRoomAttachment(draftRoom, type, { now: nowString(), file: fileForRoom })
     })
     if (!changed || !uploadedFile) return
-    if (canUseCloudBackup() && roomId.value) {
+    if (queuedForUpload && canUseCloudBackup() && roomId.value) {
       enqueueSyncTask({
         type: 'attachment.upload',
         propertyId: propertyId.value,
@@ -658,7 +719,7 @@ async function uploadAttachment(type) {
         payload: { type, file: uploadedFile },
       })
     }
-    uni.showToast({ title: '资料已上传', icon: 'success' })
+    uni.showToast({ title: queuedForUpload ? '网络暂不可用，资料将自动上传' : '资料已上传', icon: queuedForUpload ? 'none' : 'success' })
   } catch (error) {
     if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
   }
@@ -672,12 +733,44 @@ function confirmRemoveRoomPhoto(photo) {
     confirmColor: '#dc2626',
     success: async ({ confirm }) => {
       if (!confirm) return
+      let queuedForDeletion = false
       try {
-        if (canUseCloudBackup() && roomId.value && !String(photo.id).startsWith('photo_')) await deleteAttachmentForRoom(photo.id)
+        // Delete by attachment ID whenever a cloud session exists.  The UI
+        // source can still be "local" after a reconnect although the upload
+        // has already been confirmed by the server.
+        if (photo.id && roomId.value && hasCloudApiBaseUrl()) {
+          try {
+            await deleteRoomPhotoFromCloud(roomId.value, photo)
+          } catch (error) {
+            // A legacy local thumbnail can have an obsolete generated ID.
+            // If its cloud counterpart cannot be identified unambiguously,
+            // refresh from the authoritative detail instead of pretending
+            // the deletion succeeded locally.
+            if (error?.code === 'ATTACHMENT_ID_OUTDATED' || error?.code === 'ATTACHMENT_DELETE_NOT_CONFIRMED') {
+              applyCloudRoomDetail(error.roomDetail)
+              uni.showToast({ title: '图片状态已刷新，请确认后重试', icon: 'none' })
+              return
+            }
+            enqueueSyncTask({
+              type: 'attachment.delete',
+              propertyId: propertyId.value,
+              blockId: blockId.value,
+              roomId: roomId.value,
+              payload: { attachmentId: photo.id, photo },
+            })
+            queuedForDeletion = true
+          }
+        }
         const changed = updateRoomDraft((draftRoom) => {
           draftRoom.roomPhotos = (draftRoom.roomPhotos || []).filter((item) => item.id !== photo.id)
+          discardPendingAttachmentUpload(roomId.value, photo)
         }, { kind: 'delete_room_photo', label: '删除房屋图片', now: nowString() })
-        if (changed) uni.showToast({ title: '图片已删除', icon: 'success' })
+        if (changed) {
+          uni.showToast({
+            title: queuedForDeletion ? '网络暂不可用，删除将自动同步' : '图片已删除',
+            icon: queuedForDeletion ? 'none' : 'success',
+          })
+        }
       } catch (error) {
         uni.showToast({ title: '删除图片失败，请稍后重试', icon: 'none' })
       }
@@ -692,32 +785,35 @@ async function handleRoomPhotoUpload() {
     const chosen = await chooseImages({ fallbackPrefix: `${room.value?.roomNo || 'room'}_photo`, count: remaining })
     if (chosen.length === 0) return
     const preparedPhotos = chosen.map((file) => ({ ...file, uploadedAt: nowString() }))
-    if (canUseCloudBackup() && roomId.value) {
-      let uploadedPhotos = []
-      const changed = updateRoomDraft((draftRoom) => {
-        uploadedPhotos = preparedPhotos
-          .map((file) => uploadRoomPhoto(draftRoom, { now: nowString(), file }))
-          .filter(Boolean)
-      })
-      if (!changed || uploadedPhotos.length === 0) return
-      uploadedPhotos.forEach((file) => enqueueSyncTask({
-        type: 'attachment.upload',
-        propertyId: propertyId.value,
-        blockId: blockId.value,
-        roomId: roomId.value,
-        payload: { type: 'roomPhoto', file },
-      }))
-      uni.showToast({ title: `已上传 ${uploadedPhotos.length} 张照片`, icon: 'success' })
-      return
+    const filesForRoom = []
+    const offlineFiles = []
+    for (const file of preparedPhotos) {
+      if (hasCloudApiBaseUrl() && roomId.value) {
+        try {
+          const confirmed = await uploadAttachmentForRoom({ roomId: roomId.value, type: 'roomPhoto', file })
+          filesForRoom.push({ ...file, ...confirmed, source: 'cloud' })
+          continue
+        } catch {
+          offlineFiles.push(file)
+        }
+      }
+      filesForRoom.push(file)
     }
     let uploadedPhotos = []
     const changed = updateRoomDraft((draftRoom) => {
-      uploadedPhotos = preparedPhotos
+      uploadedPhotos = filesForRoom
         .map((file) => uploadRoomPhoto(draftRoom, { now: nowString(), file }))
         .filter(Boolean)
     })
     if (!changed || uploadedPhotos.length === 0) return
-    uni.showToast({ title: `已上传 ${uploadedPhotos.length} 张照片`, icon: 'success' })
+    offlineFiles.forEach((file) => enqueueSyncTask({
+      type: 'attachment.upload',
+      propertyId: propertyId.value,
+      blockId: blockId.value,
+      roomId: roomId.value,
+      payload: { type: 'roomPhoto', file },
+    }))
+    uni.showToast({ title: offlineFiles.length ? '网络暂不可用，照片将自动上传' : `已上传 ${uploadedPhotos.length} 张照片`, icon: offlineFiles.length ? 'none' : 'success' })
   } catch (error) {
     if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
   }
@@ -728,6 +824,50 @@ async function handleAttachment(type) {
   const files = getRoomAttachmentFiles(room.value, type)
   if (files.length > 0) return openAttachmentPreview(type, files)
   return uploadAttachment(type)
+}
+function confirmRemoveAttachment(type, file) {
+  if (!file?.id || !canManageTenantData.value) return
+  const label = type === 'idCard' ? '身份证' : '合同'
+  uni.showModal({
+    title: `删除${label}`,
+    content: `确定删除该${label}图片吗？`,
+    confirmColor: '#dc2626',
+    success: async ({ confirm }) => {
+      if (!confirm) return
+      let queuedForDeletion = false
+      try {
+        if (hasCloudApiBaseUrl() && roomId.value) {
+          try {
+            await deleteRoomAttachmentFromCloud(roomId.value, type, file)
+          } catch (error) {
+            if (error?.code === 'ATTACHMENT_ID_OUTDATED' || error?.code === 'ATTACHMENT_DELETE_NOT_CONFIRMED') {
+              applyCloudRoomDetail(error.roomDetail)
+              uni.showToast({ title: '附件状态已刷新，请确认后重试', icon: 'none' })
+              return
+            }
+            enqueueSyncTask({
+              type: 'attachment.delete',
+              propertyId: propertyId.value,
+              blockId: blockId.value,
+              roomId: roomId.value,
+              payload: { attachmentType: type, attachmentId: file.id, file },
+            })
+            queuedForDeletion = true
+          }
+        }
+        const changed = updateRoomDraft((draftRoom) => {
+          const next = getRoomAttachmentFiles(draftRoom, type).filter((item) => item.id !== file.id)
+          draftRoom.attachmentFiles = { ...(draftRoom.attachmentFiles || {}), [type]: next }
+          if (type === 'idCard') draftRoom.hasIdCardPic = next.length > 0
+          if (type === 'contract') draftRoom.hasContractPic = next.length > 0
+          discardPendingAttachmentUpload(roomId.value, file)
+        }, { kind: 'delete_attachment', label: `删除${label}`, now: nowString() })
+        if (changed) uni.showToast({ title: queuedForDeletion ? '删除已保存，联网后自动同步' : '附件已删除', icon: queuedForDeletion ? 'none' : 'success' })
+      } catch {
+        uni.showToast({ title: '删除附件失败，请稍后重试', icon: 'none' })
+      }
+    },
+  })
 }
 function copyPhone(phone) { uni.setClipboardData({ data: String(phone || ''), showToast: false, success: () => uni.showToast({ title: '手机号已复制', icon: 'none' }) }) }
 function openRentCollect(term) { if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权收费', icon: 'none' }); selectedRentTermId.value = term?.id || ''; rentQuickForm.value = { amount: term ? String(termRemaining(term) || '') : '', note: '' }; receiptFile.value = null; rentCollectOpen.value = true }
@@ -744,12 +884,13 @@ async function submitRentQuickCollection() {
   const note = String(rentQuickForm.value.note || '').trim()
   if (!amount) return uni.showToast({ title: '请输入有效金额', icon: 'none' })
   const succeeded = await runRoomMutation({
-    cloudAction: () => submitRentCollection(roomId.value, {
+    cloudAction: (clientOperationId) => submitRentCollection(roomId.value, {
       amount,
       paidAt: nowString(),
       note,
       targetTermId: selectedRentTermId.value || null,
       attachmentIds: receiptFile.value?.id ? [receiptFile.value.id] : [],
+      clientOperationId,
     }),
     queueTask: {
       type: 'room.rentCollection',
@@ -764,7 +905,7 @@ async function submitRentQuickCollection() {
     },
     localAction: () => updateRoomDraft((draftRoom) => (selectedRentTermId.value
       ? markPaymentTermPaid(draftRoom, selectedRentTermId.value, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })
-      : recordRentCollection(draftRoom, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })), { kind: 'rent_collection', label: '租金收款', now: nowString() }),
+      : recordRentCollection(draftRoom, { amount, note, now: nowString(), receiptPicked: Boolean(receiptFile.value), receiptFile: receiptFile.value })), { kind: 'rent_collection', label: '租金收款', billType: 'RENT', now: nowString() }),
     successTitle: '收款成功',
     cloudErrorTitle: '云端收款失败',
     afterSuccess: () => {
@@ -783,12 +924,13 @@ async function submitUtilityQuickCollection() {
   if (!amount) return uni.showToast({ title: '请输入有效金额', icon: 'none' })
   const typeMap = { water: 'WATER', electric: 'ELECTRIC', gas: 'GAS', heating: 'HEATING', custom: 'CUSTOM' }
   const succeeded = await runRoomMutation({
-    cloudAction: () => submitUtilityCollection(roomId.value, {
+    cloudAction: (clientOperationId) => submitUtilityCollection(roomId.value, {
       billType: typeMap[type] || 'CUSTOM',
       amount,
       paidAt: nowString(),
       note,
       attachmentIds: receiptFile.value?.id ? [receiptFile.value.id] : [],
+      clientOperationId,
     }),
     queueTask: {
       type: 'room.utilityCollection',
@@ -809,7 +951,7 @@ async function submitUtilityQuickCollection() {
       now: nowString(),
       receiptPicked: Boolean(receiptFile.value),
       receiptFile: receiptFile.value,
-    }), { kind: 'utility_collection', label: `${utilityTypeLabel(type)}收费`, now: nowString() }),
+    }), { kind: 'utility_collection', label: `${utilityTypeLabel(type)}收费`, billType: typeMap[type] || 'CUSTOM', now: nowString() }),
     successTitle: '收费成功',
     cloudErrorTitle: '云端收费失败',
     afterSuccess: () => {
@@ -836,12 +978,13 @@ async function confirmMeter() {
     .map((type) => meterPhotoFiles.value[type]?.id || '')
     .filter(Boolean)
   const succeeded = await runRoomMutation({
-    cloudAction: () => submitMeterReading(roomId.value, {
+    cloudAction: (clientOperationId) => submitMeterReading(roomId.value, {
       recordedAt: nowString(),
       waterReading: meterCalc.value.waterNow,
       electricReading: meterCalc.value.electricNow,
       gasReading: null,
       attachmentIds,
+      clientOperationId,
     }),
     queueTask: {
       type: 'room.meterReading',
@@ -878,11 +1021,12 @@ async function confirmCheckout() {
   if (checkoutDepositCollected.value > 0 && (!Number.isFinite(refund) || refund < 0 || refund > checkoutDepositCollected.value)) return uni.showToast({ title: '退押金额应在已收押金范围内', icon: 'none' })
   if (!Number.isFinite(water) || !Number.isFinite(electric) || !Number.isFinite(gas)) return uni.showToast({ title: '请完整填写退租结算', icon: 'none' })
   const succeeded = await runRoomMutation({
-    cloudAction: () => submitRoomCheckout(roomId.value, {
+    cloudAction: (clientOperationId) => submitRoomCheckout(roomId.value, {
       checkoutDate: nowString(),
       refundAmount: refund,
       note: '',
       attachmentIds: [],
+      clientOperationId,
     }),
     queueTask: {
       type: 'room.checkout',
@@ -903,22 +1047,45 @@ async function confirmCheckout() {
   })
   if (!succeeded) return
 }
+function occupancyDateWithin(value, occupancy) {
+  const date = String(value || '').slice(0, 10)
+  if (!date) return false
+  const start = String(occupancy?.startDate || '').slice(0, 10)
+  const end = String(occupancy?.endDate || '').slice(0, 10)
+  return (!start || date >= start) && (!end || date <= end)
+}
+
+function occupancyPaymentSchedule(occupancy) {
+  const archived = occupancy?.archive?.paymentSchedule
+  if (Array.isArray(archived) && archived.length) return archived
+  const source = room.value?.paymentSchedule || []
+  if (occupancy?.status === 'active') return source
+  return source.filter((term) => occupancyDateWithin(term.startDate || term.dueDate, occupancy))
+}
+
+function occupancyBills(occupancy) {
+  const archived = occupancy?.archive?.bills
+  if (Array.isArray(archived) && archived.length) return archived
+  const source = room.value?.bills || []
+  if (occupancy?.status === 'active') return source
+  return source.filter((bill) => occupancyDateWithin(bill.operationAt || bill.payDate || bill.dueDate, occupancy))
+}
+
 function occupancyRentTotal(occupancy) {
   if (!occupancy) return 0
-  const paymentSchedule = occupancy.archive?.paymentSchedule || []
+  const paymentSchedule = occupancyPaymentSchedule(occupancy)
   if (paymentSchedule.length > 0) {
     return paymentSchedule.reduce((sum, item) => sum + Number(item.expectedAmount || 0), 0)
   }
-  if (occupancy.status === 'active') {
-    return (room.value?.paymentSchedule || []).reduce((sum, item) => sum + Number(item.expectedAmount || 0), 0)
-  }
   return Number(occupancy.rent || 0)
 }
+
 function occupancyExtraCollectionTotal(occupancy) {
   if (!occupancy) return 0
-  const collections = occupancy.archive?.collections || (occupancy.status === 'active' ? room.value?.collections || [] : [])
-  return collections
-    .filter((item) => item.kind !== 'rent')
+  // Use charge bills as the source of truth, excluding deposit collections and
+  // preventing a settled bill and its collection from being counted twice.
+  return occupancyBills(occupancy)
+    .filter((item) => ['water', 'electric', 'gas', 'heating', 'custom'].includes(item.type || item.kind))
     .reduce((sum, item) => sum + Number(item.amount || 0), 0)
 }
 </script>
@@ -947,8 +1114,9 @@ function occupancyExtraCollectionTotal(occupancy) {
 .room-attachment-actions { display: flex; align-items: center; gap: 10rpx; flex-shrink: 0; }
 .room-photo-item { position: relative; width: 88rpx; height: 88rpx; }
 .room-photo-delete { position: absolute; z-index: 2; top: -8rpx; right: -8rpx; width: 30rpx; height: 30rpx; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.94); color: #64748b; font-size: 24rpx; line-height: 24rpx; font-weight: 700; box-shadow: 0 3rpx 8rpx rgba(15,23,42,.16); }
-.room-attachment-action-group { min-width: 0; }
+.room-attachment-action-group { min-width: 0; position: relative; }
 .room-attachment-action-group .detail-side-button { min-width: 128rpx; padding: 16rpx 14rpx; border-radius: 14rpx; border-width: 1rpx; text-align: center; }
+.room-attachment-action-group .room-attachment-delete { position:absolute; z-index:2; top:-10rpx; right:-8rpx; width:30rpx; height:30rpx; min-width:30rpx; padding:0; border:0; border-radius:50%; background:#64748b; color:#fff; font-size:26rpx; line-height:28rpx; }
 .detail-side-button-text { font-size: 24rpx; line-height: 1.15; font-weight: 600; }
 .status-lamp { width:18rpx; height:18rpx; border-radius:9999rpx; border:2rpx solid rgba(255,255,255,.95); box-shadow:0 0 0 2rpx rgba(148,163,184,.12); }
 .status-lamp-emerald { background:#10b981; box-shadow:0 0 0 2rpx rgba(16,185,129,.16),0 0 10rpx rgba(16,185,129,.35); }

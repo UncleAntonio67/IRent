@@ -31,6 +31,7 @@ const confirmSchema = z.object({
   roomId: z.string().trim().min(1).optional(),
   collectionId: z.string().trim().min(1).optional(),
   meterReadingId: z.string().trim().min(1).optional(),
+  clientOperationId: z.string().trim().min(8).max(120).optional(),
 })
 
 const localUploadSchema = presignSchema.extend({

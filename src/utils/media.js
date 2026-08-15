@@ -64,6 +64,28 @@ function lightlyCompressImage(file) {
   })
 }
 
+// `chooseImage` returns a temporary path on mobile. That path can disappear
+// after navigating away or after WeChat reclaims its cache, which used to make
+// an offline check-in lose the selected photo before the queue could upload
+// it. Persist the compressed copy first; browsers/devtools simply fall back to
+// the original path when saveFile is unavailable.
+function persistChosenImage(file) {
+  const sourcePath = resolveLocalPath(file)
+  if (!sourcePath || typeof uni.saveFile !== 'function') return Promise.resolve(file)
+  return new Promise((resolve) => {
+    uni.saveFile({
+      tempFilePath: sourcePath,
+      success(result) {
+        const savedPath = String(result?.savedFilePath || sourcePath)
+        resolve({ ...file, tempFilePath: savedPath, filePath: savedPath, path: savedPath })
+      },
+      fail() {
+        resolve(file)
+      },
+    })
+  })
+}
+
 export function normalizeChosenImage(file, options = {}, index = 0) {
   const path = resolveTempPath(file)
   const fallbackPrefix = options.fallbackPrefix || 'image'
@@ -94,7 +116,8 @@ export function chooseImages(options = {}) {
           ? res.tempFiles
           : (res.tempFilePaths || []).map((tempFilePath) => ({ tempFilePath }))
         const compressedFiles = await Promise.all(rawFiles.map((file) => lightlyCompressImage(file)))
-        resolve(compressedFiles.map((file, index) => normalizeChosenImage(file, options, index)).filter((file) => file.filePath))
+        const persistedFiles = await Promise.all(compressedFiles.map((file) => persistChosenImage(file)))
+        resolve(persistedFiles.map((file, index) => normalizeChosenImage(file, options, index)).filter((file) => file.filePath))
       },
       fail(err) {
         reject(err)

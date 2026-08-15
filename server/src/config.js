@@ -12,6 +12,10 @@ export const config = {
   devAuthBypass: String(process.env.DEV_AUTH_BYPASS || '').toLowerCase() === 'true',
   wechatAppId: process.env.WECHAT_APPID || '',
   wechatAppSecret: process.env.WECHAT_APPSECRET || '',
+  authMode: String(process.env.AUTH_MODE || 'public').trim().toLowerCase(),
+  wechatAllowedOpenIds: String(process.env.WECHAT_ALLOWED_OPENIDS || '').split(',').map((item) => item.trim()).filter(Boolean),
+  wechatOwnerOpenIds: String(process.env.WECHAT_OWNER_OPENIDS || '').split(',').map((item) => item.trim()).filter(Boolean),
+  sharedTenantId: String(process.env.SHARED_TENANT_ID || '').trim(),
   r2: {
     accountId: process.env.R2_ACCOUNT_ID || '',
     accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
@@ -24,6 +28,9 @@ export const config = {
     // R2 credentials to opt into object storage instead.
     directory: process.env.UPLOAD_DIR || '/app/uploads',
     publicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || '',
+    // A binary upload that never reaches /attachments/confirm has no database
+    // record. Keep it briefly for a retried request, then reclaim it.
+    orphanRetentionHours: Math.max(1, Number(process.env.UPLOAD_ORPHAN_RETENTION_HOURS || 24)),
   },
   backups: {
     // Daily tenant snapshots are kept locally with the Docker deployment.

@@ -39,6 +39,7 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
               amount,
               dueDate: '',
               payDate: collection.paidAt || '',
+              operationAt: collection.operationAt || collection.paidAt || '',
               receiptPic: Boolean(collection.receiptPic),
               receiptFile: collection.receiptFile || null,
             })
@@ -60,6 +61,7 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
               amount: expectedAmount,
               dueDate: term.dueDate || '',
               payDate: term.payDate || '',
+              operationAt: term.operationAt || term.payDate || '',
               receiptPic: Boolean(term.receiptPic),
               receiptFile: term.receiptFile || null,
             })
@@ -79,6 +81,7 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
               amount: normalizeMoney(bill.amount || 0),
               dueDate: bill.dueDate || '',
               payDate: bill.payDate || '',
+              operationAt: bill.operationAt || bill.payDate || '',
               receiptPic: Boolean(bill.receiptPic),
               receiptFile: bill.receiptFile || null,
             })
@@ -110,6 +113,7 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
                 amount,
                 dueDate: '',
                 payDate: collection.paidAt || occupancy.endDate || '',
+                operationAt: collection.operationAt || collection.paidAt || occupancy.endDate || '',
                 receiptPic: Boolean(collection.receiptPic),
                 receiptFile: collection.receiptFile || null,
               })
@@ -131,6 +135,7 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
                 amount: expectedAmount,
                 dueDate: term.dueDate || '',
                 payDate: term.payDate || occupancy.endDate || '',
+                operationAt: term.operationAt || term.payDate || occupancy.endDate || '',
                 receiptPic: Boolean(term.receiptPic),
                 receiptFile: term.receiptFile || null,
               })
@@ -151,6 +156,7 @@ export function buildBillEntriesSnapshot(propertyTree = []) {
                 amount,
                 dueDate: bill.dueDate || '',
                 payDate: bill.payDate || occupancy.endDate || '',
+                operationAt: bill.operationAt || bill.payDate || occupancy.endDate || '',
                 receiptPic: Boolean(bill.receiptPic),
                 receiptFile: bill.receiptFile || null,
               })

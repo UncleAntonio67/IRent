@@ -33,7 +33,7 @@
             <view class="min-w-0 flex-1">
               <view class="text-lg font-black truncate">{{ profileName }}</view>
               <view class="flex gap-1_5 mt-1_5 flex-wrap">
-                <view class="profile-hero-chip">{{ currentUser ? '公共账户已登录' : '未登录' }}</view>
+                <view class="profile-hero-chip">{{ currentUser ? '微信已授权' : '未登录' }}</view>
                 <view class="profile-hero-chip">{{ tenantRoleLabel }}</view>
                 <view class="profile-hero-chip">公共账户</view>
               </view>
@@ -68,9 +68,9 @@
               <view class="p-3 stack-3">
                 <view class="flex items-center justify-between gap-3">
                   <view class="min-w-0">
-                    <view class="font-bold text-slate-800 text-sm">{{ currentUser ? '当前账户：admin' : '公共账户登录' }}</view>
+                    <view class="font-bold text-slate-800 text-sm">{{ currentUser ? `当前账户：${currentUser.nickName || '微信用户'}` : '微信登录' }}</view>
                     <view class="text-3xs text-slate-400 mt-1">
-                      {{ currentUser ? '当前为唯一公共管理账户。' : '点击登录即可进入公共管理账户。' }}
+                      {{ currentUser ? '已通过微信白名单授权，可访问共享管理数据。' : '仅白名单微信账号可以登录并访问数据。' }}
                     </view>
                   </view>
                   <button
@@ -297,10 +297,11 @@
                 </view>
 
                 <view v-if="exportMode === 'room'">
-                  <view class="text-xs font-semibold text-slate-500 mb-2">选择房间</view>
+                  <view class="text-xs font-semibold text-slate-500 mb-2">输入房间号查询（含已删除房间）</view>
+                  <input v-model="exportRoomKeyword" class="setting-input mb-2 text-sm text-slate-700" placeholder="例如：501" />
                   <picker
                     mode="selector"
-                    :range="exportRoomOptions"
+                    :range="filteredExportRoomOptions"
                     range-key="label"
                     :value="selectedExportRoomIndex"
                     @change="handleRoomPickerChange"
@@ -333,7 +334,7 @@
               </view>
             </view>
             <view class="surface-card" :class="UI.card">
-              <view class="px-3 py-2 bg-slate-50 text-3xs font-semibold text-slate-500">导出流水（{{ exportTransactions.length }} 条）</view>
+              <view class="px-3 py-2 bg-slate-50 text-3xs font-semibold text-slate-500">历史流水（{{ exportTransactions.length }} 条）</view>
               <view class="export-table-head"><text>房间</text><text>项目</text><text>时间</text><text>金额</text></view>
               <view v-if="pagedExportTransactions.length" class="divide-y divide-slate-100">
                 <view v-for="item in pagedExportTransactions" :key="item.id" class="export-table-row">
@@ -395,7 +396,7 @@
         <button class="page-footer-primary" @click="saveReminder">保存提醒设置</button>
       </view>
       <view v-else-if="subPage === 'exportReport' && canManageTenantData" class="page-footer">
-        <button class="page-footer-primary" @click="exportReportFile">导出为 CSV</button>
+        <button class="page-footer-primary" @click="exportReportFile">导出当前查询 CSV</button>
       </view>
 
       <view v-if="!isLoggedIn" class="absolute inset-0 z-50 bg-slate-50 flex items-center justify-center px-8">
@@ -415,7 +416,8 @@ import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createCloudExportTask, fetchCloudExportTasks, getCachedCloudExportTasks } from '../../api/exports.js'
 import { createCloudBackup, fetchCloudBackupState, getCachedCloudBackupState, restoreCloudBackup } from '../../api/backups.js'
-import { fetchFullPropertiesSnapshot } from '../../api/properties.js'
+import { fetchArchivedRooms, fetchFullPropertiesSnapshot } from '../../api/properties.js'
+import { uploadAttachmentForRoom } from '../../api/attachments.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl, isCloudApiConfigured, withCloudBackupAccess } from '../../config/cloud'
 import {
   buildTenantStorageKey,
@@ -424,7 +426,7 @@ import {
   currentTenantRole,
   currentUser,
   isLoggedIn,
-  loginPublicAccount,
+  initializePublicAccount,
   logoutTenant,
   switchTenant,
   users,
@@ -444,6 +446,7 @@ const headerTopPadding = ref(44)
 const subPage = ref('')
 const docKeyword = ref('')
 const docPage = ref(1)
+const archivedRooms = ref([])
 const exportPage = ref(1)
 const exportFilePath = ref('')
 const PAGE_SIZE = 20
@@ -456,6 +459,7 @@ const cloudBackupCreating = ref(false)
 const restoringBackupId = ref('')
 const exportMode = ref('all')
 const selectedExportRoomId = ref('')
+const exportRoomKeyword = ref('')
 const syncSummary = ref(getPendingSyncSummary())
 const syncMode = ref(getSyncMode())
 
@@ -492,8 +496,8 @@ const pageTitle = computed(() => ({
   allDocuments: '租客证件与合同归档',
   utilityTemplate: '默认水电单价模板',
   autoReminder: '到期提醒机制',
-  dataRestore: '数据恢复',
-  exportReport: '数据报表导出',
+  dataRestore: '数据备份恢复',
+  exportReport: '历史数据查看',
 }[subPage.value] || '我的'))
 
 const pageSubtitle = computed(() => ({
@@ -501,18 +505,18 @@ const pageSubtitle = computed(() => ({
   utilityTemplate: '统一模板，房间可覆盖',
   autoReminder: '仅自我管理，不生成催缴文案',
   dataRestore: '恢复最近 3 天内的完整数据快照',
-  exportReport: '导出 Excel 存档',
+  exportReport: '查看房间流水与已删除房间归档',
 }[subPage.value] || '账号与基础设置'))
 
 const menuA = [
   { id: 'allDocuments', label: '租客证件与合同归档', desc: '查看身份证、合同与归档状态', icon: '档', bg: 'bg-blue-50', color: 'text-blue-600' },
   { id: 'utilityTemplate', label: '默认水电单价模板', desc: '统一配置默认水电价格', icon: '水', bg: 'bg-amber-50', color: 'text-amber-600', managerOnly: true },
-  { id: 'dataRestore', label: '数据恢复', desc: '恢复最近 3 天的云端完整备份', icon: '复', bg: 'bg-violet-50', color: 'text-violet-600', managerOnly: true },
+  { id: 'dataRestore', label: '数据备份恢复', desc: '恢复最近 3 天的云端完整备份', icon: '复', bg: 'bg-violet-50', color: 'text-violet-600', managerOnly: true },
 ]
 
 const menuB = [
   { id: 'autoReminder', label: '到期提醒机制', desc: '仅做自我提醒，不外发催缴', icon: '提', bg: 'bg-orange-50', color: 'text-orange-600', managerOnly: true },
-  { id: 'exportReport', label: '数据报表导出', desc: '导出房间流水与汇总', icon: '表', bg: 'bg-emerald-50', color: 'text-emerald-600', managerOnly: true },
+  { id: 'exportReport', label: '历史数据查看', desc: '查看房间流水与删除房间归档', icon: '表', bg: 'bg-emerald-50', color: 'text-emerald-600', managerOnly: true },
 ]
 
 const visibleMenuA = computed(() => menuA.filter((item) => !item.managerOnly || canManageTenantData.value))
@@ -558,6 +562,53 @@ const allDocs = computed(() => {
       }
     }
   }
+  for (const archive of archivedRooms.value) {
+    const snapshot = archive?.snapshot && typeof archive.snapshot === 'object' ? archive.snapshot : {}
+    const deletedAt = new Date(archive?.deletedAt || '')
+    const deletedLabel = Number.isNaN(deletedAt.getTime())
+      ? '已删除'
+      : `${deletedAt.getMonth() + 1}月${deletedAt.getDate()}日删除`
+    const archivedFiles = (type) => (snapshot.attachments || [])
+      .filter((file) => String(file?.type || '').toUpperCase() === type)
+      .map((file) => ({
+        id: file.id || '',
+        name: file.fileName || '附件',
+        uploadedAt: file.uploadedAt || '',
+        source: 'cloud',
+        filePath: file.fileUrl || file.filePath || '',
+        url: file.fileUrl || file.filePath || '',
+        mimeType: file.mimeType || '',
+      }))
+    const attachmentFiles = {
+      idCard: archivedFiles('ID_CARD'),
+      contract: archivedFiles('CONTRACT'),
+    }
+    const addArchivedDocument = (occupancy, files) => {
+      const tenantName = occupancy?.tenant || occupancy?.tenantName || snapshot.tenantName || ''
+      if (!tenantName) return
+      docs.push({
+        id: `archive_${archive.id}_${occupancy?.id || 'current'}`,
+        roomId: '',
+        propertyId: '',
+        blockId: '',
+        occupancyId: '',
+        archived: true,
+        tenantName,
+        phone: occupancy?.phone || snapshot.phone || '',
+        roomLabel: `${archive.propertyName || ''} · ${archive.blockName || ''} · ${archive.roomNo || ''}（${deletedLabel}）`,
+        roomShortLabel: `${archive.blockName || ''} · ${archive.roomNo || ''}（${deletedLabel}）`,
+        statusText: `已删除归档 · ${deletedLabel}`,
+        identityFiles: Array.isArray(files?.idCard) ? files.idCard : (files?.idCard ? [files.idCard] : []),
+        contractFiles: Array.isArray(files?.contract) ? files.contract : (files?.contract ? [files.contract] : []),
+      })
+    }
+    const occupancies = (snapshot.occupancies || []).filter((item) => String(item?.kind || '').toLowerCase() === 'lease')
+    if (occupancies.length) {
+      occupancies.forEach((occupancy) => addArchivedDocument(occupancy, occupancy.archive?.attachmentFiles || attachmentFiles))
+    } else {
+      addArchivedDocument(null, attachmentFiles)
+    }
+  }
   return docs
 })
 
@@ -570,6 +621,29 @@ const docTotalPages = computed(() => Math.max(1, Math.ceil(filteredDocs.value.le
 const pagedDocs = computed(() => filteredDocs.value.slice((docPage.value - 1) * PAGE_SIZE, docPage.value * PAGE_SIZE))
 watch(filteredDocs, () => { docPage.value = 1 })
 
+
+function deletedRoomLabel(archive) {
+  const date = new Date(archive?.deletedAt || '')
+  const suffix = Number.isNaN(date.getTime()) ? '已删除' : `${date.getMonth() + 1}月${date.getDate()}日删除`
+  return `${archive?.roomNo || ''}（${suffix}）`
+}
+
+const archivedExportTransactions = computed(() => archivedRooms.value.flatMap((archive) => {
+  const snapshot = archive?.snapshot && typeof archive.snapshot === 'object' ? archive.snapshot : {}
+  return (Array.isArray(snapshot.collections) ? snapshot.collections : []).map((item, index) => ({
+    id: `archive_${archive.id}_${item.id || index}`,
+    roomId: `archive:${archive.id}`,
+    propertyName: archive.propertyName || '',
+    blockName: archive.blockName || '',
+    roomNo: deletedRoomLabel(archive),
+    tenant: snapshot.tenantName || '',
+    title: item.title || '历史收费',
+    kind: String(item.billType || item.kind || '').toLowerCase() === 'rent' ? 'rent' : 'utility',
+    amount: Number(item.amount || 0) || 0,
+    payDate: item.createdAt || item.paidAt || archive.deletedAt || '',
+    archived: true,
+  }))
+}))
 
 const exportTransactions = computed(() => {
   const targetRoomId = exportMode.value === 'room' ? selectedExportRoomId.value : ''
@@ -587,7 +661,7 @@ const exportTransactions = computed(() => {
       }
     }
   }
-  return buildBillEntriesSnapshot(properties.value).entries
+  return [...buildBillEntriesSnapshot(properties.value).entries, ...archivedExportTransactions.value]
     .filter((item) => !targetRoomId || item.roomId === targetRoomId)
     .map((item) => ({ ...item, ...(roomLocations.get(item.roomId) || {}), payDate: item.payDate || '' }))
     .sort((a, b) => String(b.payDate || '').localeCompare(String(a.payDate || '')))
@@ -604,11 +678,20 @@ const exportRoomOptions = computed(() => {
       }
     }
   }
+  archivedRooms.value.forEach((archive) => {
+    list.push({ id: `archive:${archive.id}`, label: `${archive.propertyName || ''} / ${archive.blockName || ''} / ${deletedRoomLabel(archive)}`, archived: true })
+  })
   return list
 })
 
+const filteredExportRoomOptions = computed(() => {
+  const keyword = String(exportRoomKeyword.value || '').trim()
+  if (!keyword) return exportRoomOptions.value
+  return exportRoomOptions.value.filter((item) => String(item.label || '').includes(keyword))
+})
+
 const selectedExportRoomIndex = computed(() => {
-  const index = exportRoomOptions.value.findIndex((item) => item.id === selectedExportRoomId.value)
+  const index = filteredExportRoomOptions.value.findIndex((item) => item.id === selectedExportRoomId.value)
   return index < 0 ? 0 : index
 })
 const selectedExportRoomLabel = computed(() => exportRoomOptions.value.find((item) => item.id === selectedExportRoomId.value)?.label || '请选择房间')
@@ -693,6 +776,7 @@ function syncTaskTypeLabel(type) {
     case 'room.meterReading': return '抄表'
     case 'room.checkout': return '退租'
     case 'attachment.upload': return '附件'
+    case 'attachment.delete': return '删除图片'
     default: return '同步'
   }
 }
@@ -784,8 +868,18 @@ function openSubPage(id) {
     return
   }
   subPage.value = id
-  if (id === 'exportReport') void loadCloudExportTasks()
+  if (id === 'allDocuments') void loadArchivedRoomDocuments()
+  if (id === 'exportReport') { void loadCloudExportTasks(); void loadArchivedRoomDocuments() }
   if (id === 'dataRestore') void loadCloudBackups()
+}
+
+async function loadArchivedRoomDocuments() {
+  if (!isCloudConfigured.value) return
+  try {
+    archivedRooms.value = await withCloudBackupAccess(() => fetchArchivedRooms())
+  } catch {
+    // Active documents remain usable if the archive request is temporarily unavailable.
+  }
 }
 
 function formatBackupTime(value) {
@@ -889,7 +983,8 @@ function saveReminder() {
 
 async function loginTenant() {
   try {
-    loginPublicAccount()
+    const profile = await initializePublicAccount()
+    if (!profile) throw new Error('LOGIN_DENIED')
     selectedTenantId.value = users.value[0]?.id || ''
     uni.showToast({ title: '登录成功', icon: 'success' })
     refreshSyncSummary()
@@ -917,6 +1012,10 @@ async function handleDocumentAction(doc, type) {
     if (!previewChosenImages(documentFiles)) uni.showToast({ title: '当前文件暂不支持预览', icon: 'none' })
     return
   }
+  if (doc.archived) {
+    uni.showToast({ title: '已删除房间的归档仅支持查看，不能补录', icon: 'none' })
+    return
+  }
   if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权补录资料', icon: 'none' })
   try {
     const fileKey = type === 'idCard' ? 'idCard' : 'contract'
@@ -941,23 +1040,37 @@ async function handleDocumentAction(doc, type) {
       id: picked.id || `${fileKey}_${Date.now()}_${index}`,
       uploadedAt: picked.uploadedAt || new Date().toISOString().slice(0, 16).replace('T', ' '),
     }))
+    const filesForRoom = []
+    const offlineFiles = []
+    for (const file of prepared) {
+      if (hasCloudApiBaseUrl() && doc.roomId) {
+        try {
+          const confirmed = await uploadAttachmentForRoom({ roomId: doc.roomId, type: fileKey, file })
+          filesForRoom.push({ ...file, ...confirmed, source: 'cloud' })
+          continue
+        } catch {
+          offlineFiles.push(file)
+        }
+      }
+      filesForRoom.push(file)
+    }
     const occupancy = (targetRoom.occupancies || []).find((item) => item.id === doc.occupancyId)
     if (occupancy && occupancy.status !== 'active') {
       occupancy.archive = occupancy.archive || {}
       occupancy.archive.attachmentFiles = occupancy.archive.attachmentFiles || { idCard: [], contract: [] }
       const files = occupancy.archive.attachmentFiles[fileKey]
-      occupancy.archive.attachmentFiles[fileKey] = (Array.isArray(files) ? files : (files ? [files] : [])).concat(prepared).slice(0, fileLimit)
+      occupancy.archive.attachmentFiles[fileKey] = (Array.isArray(files) ? files : (files ? [files] : [])).concat(filesForRoom).slice(0, fileLimit)
     } else {
       targetRoom.attachmentFiles = targetRoom.attachmentFiles || { idCard: [], contract: [] }
       const files = targetRoom.attachmentFiles[fileKey]
-      targetRoom.attachmentFiles[fileKey] = (Array.isArray(files) ? files : (files ? [files] : [])).concat(prepared).slice(0, fileLimit)
+      targetRoom.attachmentFiles[fileKey] = (Array.isArray(files) ? files : (files ? [files] : [])).concat(filesForRoom).slice(0, fileLimit)
       if (fileKey === 'idCard') targetRoom.hasIdCardPic = true
       else targetRoom.hasContract = true
       if (occupancy) occupancy.attachmentFiles = { ...targetRoom.attachmentFiles }
     }
     setProperties(nextProperties)
-    if (canUseCloudBackup()) {
-      prepared.forEach((file) => enqueueSyncTask({
+    if (offlineFiles.length && canUseCloudBackup()) {
+      offlineFiles.forEach((file) => enqueueSyncTask({
         type: 'attachment.upload',
         propertyId: doc.propertyId,
         blockId: doc.blockId,
@@ -965,7 +1078,7 @@ async function handleDocumentAction(doc, type) {
         payload: { type: fileKey, file },
       }))
     }
-    uni.showToast({ title: '资料已补录', icon: 'success' })
+    uni.showToast({ title: offlineFiles.length ? '网络暂不可用，资料将自动上传' : '资料已补录', icon: offlineFiles.length ? 'none' : 'success' })
   } catch (error) {
     if (!String(error?.errMsg || '').includes('cancel')) uni.showToast({ title: '选择图片失败', icon: 'none' })
   }
@@ -982,7 +1095,7 @@ function logout() {
 
 function handleRoomPickerChange(event) {
   const index = Number(event?.detail?.value || 0)
-  selectedExportRoomId.value = exportRoomOptions.value[index]?.id || ''
+  selectedExportRoomId.value = filteredExportRoomOptions.value[index]?.id || ''
 }
 
 function buildCsvContent(rows) {
@@ -1020,7 +1133,7 @@ async function exportReportFile() {
     uni.showToast({ title: '暂无可导出流水', icon: 'none' })
     return
   }
-  if (isCloudConfigured.value) {
+  if (isCloudConfigured.value && !String(selectedExportRoomId.value || '').startsWith('archive:')) {
     try {
       const task = await withCloudBackupAccess(() => createCloudExportTask({ scope: exportMode.value, roomId: exportMode.value === 'room' ? selectedExportRoomId.value : '' }))
       await loadCloudExportTasks()

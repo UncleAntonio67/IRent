@@ -29,6 +29,10 @@ function hasR2Config() {
   return Boolean(config.r2.accountId && config.r2.accessKeyId && config.r2.secretAccessKey && config.r2.bucket)
 }
 
+export function usesR2Storage() {
+  return hasR2Config()
+}
+
 function localPublicBaseUrl() {
   const configured = String(config.uploads.publicBaseUrl || '').replace(/\/$/, '')
   if (configured) return configured

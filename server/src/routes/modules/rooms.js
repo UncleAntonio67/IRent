@@ -9,6 +9,8 @@ import {
   collectUtility,
   getRoomDetail,
   recordMeterReading,
+  undoLatestCollection,
+  undoRoomOperation,
 } from '../../services/rooms.js'
 
 const chargeModeSchema = z.enum(['included', 'separate'])
@@ -78,6 +80,17 @@ const checkoutSchema = z.object({
   note: z.string().trim().max(200).optional().default(''),
   clientOperationId,
   attachmentIds: z.array(z.string().trim().min(1)).optional().default([]),
+})
+
+const undoCollectionSchema = z.object({
+  billType: z.enum(['RENT', 'WATER', 'ELECTRIC', 'GAS', 'HEATING', 'CUSTOM', 'DEPOSIT']),
+  clientOperationId,
+})
+
+const undoOperationSchema = z.object({
+  kind: z.enum(['meter_entry', 'checkin', 'checkout']),
+  before: z.any().optional().default({}),
+  clientOperationId,
 })
 
 export const roomRouter = express.Router()
@@ -212,6 +225,48 @@ roomRouter.post('/:roomId/utility-collections', async (req, res, next) => {
       ok: true,
       room,
     })
+  } catch (error) {
+    next(error)
+  }
+})
+
+roomRouter.post('/:roomId/undo-latest-collection', async (req, res, next) => {
+  const parsed = undoCollectionSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ ok: false, code: 'INVALID_PAYLOAD', message: 'Invalid undo payload', issues: parsed.error.flatten() })
+    return
+  }
+  try {
+    requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
+    const tenant = requireTenant(req.auth)
+    const room = await undoLatestCollection({
+      tenantId: tenant.id,
+      userId: req.auth.user.id,
+      roomId: req.params.roomId,
+      ...parsed.data,
+    })
+    res.json({ ok: true, room })
+  } catch (error) {
+    next(error)
+  }
+})
+
+roomRouter.post('/:roomId/undo-latest-operation', async (req, res, next) => {
+  const parsed = undoOperationSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ ok: false, code: 'INVALID_PAYLOAD', message: 'Invalid undo payload', issues: parsed.error.flatten() })
+    return
+  }
+  try {
+    requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
+    const tenant = requireTenant(req.auth)
+    const room = await undoRoomOperation({
+      tenantId: tenant.id,
+      userId: req.auth.user.id,
+      roomId: req.params.roomId,
+      ...parsed.data,
+    })
+    res.json({ ok: true, room })
   } catch (error) {
     next(error)
   }

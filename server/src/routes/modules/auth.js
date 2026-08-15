@@ -9,6 +9,7 @@ const loginSchema = z.object({
   code: z.string().trim().min(1).optional(),
   nickName: z.string().trim().min(1).optional(),
   avatarUrl: z.string().trim().url().optional(),
+  deviceInfo: z.string().max(2000).optional(),
 })
 
 authRouter.post('/wechat/login', async (req, res, next) => {
@@ -22,6 +23,8 @@ authRouter.post('/wechat/login', async (req, res, next) => {
     const result = await loginWithWeChat({
       ...parsed.data,
       code: parsed.data.code || 'dev:local-user',
+      ipAddress: String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || req.socket?.remoteAddress || null,
+      userAgent: String(req.get('user-agent') || '').slice(0, 1000),
     })
     res.json({
       ok: true,

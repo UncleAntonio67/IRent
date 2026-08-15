@@ -16,6 +16,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import RoomDetailSheet from '../../components/RoomDetailSheet.vue'
 import { setProperties } from '../../data/rentStore'
 import { getCachedPropertiesTree } from '../../api/properties'
+import { hasPendingSyncTasks } from '../../data/syncQueue.js'
 import { safeNavigateBack } from '../../utils/navigation'
 
 const propertyId = ref('')
@@ -27,7 +28,7 @@ onLoad((query) => {
   blockId.value = String(query?.blockId || '')
   roomId.value = String(query?.roomId || '')
   const cachedTree = getCachedPropertiesTree()
-  if (Array.isArray(cachedTree) && cachedTree.length) {
+  if (!hasPendingSyncTasks() && Array.isArray(cachedTree) && cachedTree.length) {
     setProperties(cachedTree)
   }
 })

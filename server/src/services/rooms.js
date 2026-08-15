@@ -23,6 +23,28 @@ function startOfDay(dateLike) {
   return date
 }
 
+// Lease dates and due dates are date-only values, but a collection is an
+// operation and must retain its actual minute.  Mini-program clients send
+// local date-time text without an offset, so interpret that form as China
+// Standard Time rather than the server's UTC clock.
+function operationDate(dateLike) {
+  const raw = String(dateLike || '').trim()
+  const localMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/)
+  if (localMatch) {
+    const [, year, month, day, hour, minute, second = '0'] = localMatch
+    return new Date(Date.UTC(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour) - 8,
+      Number(minute),
+      Number(second),
+    ))
+  }
+  const parsed = raw ? new Date(raw) : new Date()
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed
+}
+
 function addMonths(dateLike, months) {
   const date = startOfDay(dateLike)
   const next = new Date(date)
@@ -232,6 +254,60 @@ export async function getRoomDetail(roomId, tenantId) {
   return serializeRoomDetail(room)
 }
 
+function buildCompletedOccupancyArchive(room) {
+  const snapshot = serializeRoomDetail(room)
+  const attachments = Array.isArray(snapshot.attachments) ? snapshot.attachments : []
+  const filesByType = (type) => attachments.filter((item) => String(item.type || '').toUpperCase() === type)
+  return {
+    paymentSchedule: snapshot.paymentTerms || [],
+    bills: snapshot.bills || [],
+    collections: snapshot.collections || [],
+    meterReadings: snapshot.meterReadings || [],
+    attachmentFiles: {
+      idCard: filesByType('ID_CARD'),
+      contract: filesByType('CONTRACT'),
+    },
+    archivedAt: new Date().toISOString(),
+  }
+}
+
+async function clearActiveRoomBusinessData(tx, roomId) {
+  // Completed tenancy data stays in Occupancy.archiveJson. Detach tenant and
+  // billing files before deleting their related rows so a subsequent tenant
+  // cannot inherit another tenant's documents, bills, collections, or meter
+  // records. ROOM_PHOTO is deliberately excluded: it describes the physical
+  // room and must survive both checkout and the next check-in. It is only
+  // archived/removed when the room itself is deleted.
+  await tx.attachment.updateMany({
+    where: { roomId, type: { not: 'ROOM_PHOTO' } },
+    data: { roomId: null, collectionId: null, meterReadingId: null },
+  })
+  await tx.collection.deleteMany({ where: { roomId } })
+  await tx.bill.deleteMany({ where: { roomId } })
+  await tx.paymentTerm.deleteMany({ where: { roomId } })
+  await tx.meterReading.deleteMany({ where: { roomId } })
+}
+
+async function archiveLegacyEmptyRoomData(tx, currentRoom) {
+  const hasCompletedOccupancy = (currentRoom.occupancies || []).some((item) => item.status === 'COMPLETED')
+  const hasStaleBusinessData = [
+    currentRoom.paymentTerms?.length,
+    currentRoom.bills?.length,
+    currentRoom.collections?.length,
+    currentRoom.meterReadings?.length,
+  ].some(Boolean) || hasCompletedOccupancy
+  if (!hasStaleBusinessData) return
+
+  const completedOccupancy = (currentRoom.occupancies || []).find((item) => item.status === 'COMPLETED')
+  if (completedOccupancy && !completedOccupancy.archiveJson) {
+    await tx.occupancy.update({
+      where: { id: completedOccupancy.id },
+      data: { archiveJson: buildCompletedOccupancyArchive(currentRoom) },
+    })
+  }
+  await clearActiveRoomBusinessData(tx, currentRoom.id)
+}
+
 export async function checkInRoom({
   tenantId,
   userId,
@@ -275,6 +351,10 @@ export async function checkInRoom({
       throw error
     }
 
+    // Older checkouts left the prior tenant's rows on an empty room. Archive
+    // and clear them before creating the new tenant's term #1.
+    await archiveLegacyEmptyRoomData(tx, currentRoom)
+
     const updatedRoom = await tx.room.update({
       where: { id: roomId },
       data: {
@@ -287,10 +367,12 @@ export async function checkInRoom({
         paymentCycleMonths: toInt(paymentCycleMonths),
         leaseStartDate: leaseStart,
         leaseEndDate: leaseEnd,
-        waterPrice: toNullableDecimal(waterPrice),
-        electricPrice: toNullableDecimal(electricPrice),
-        gasPrice: toNullableDecimal(gasPrice),
-        heatingPrice: toNullableDecimal(heatingPrice),
+        // Older clients sent null prices during check-in. Keep a usable room
+        // rate so a subsequent meter reading can never silently create ￥0.
+        waterPrice: toNullableDecimal(waterPrice) ?? currentRoom.waterPrice ?? 5.5,
+        electricPrice: toNullableDecimal(electricPrice) ?? currentRoom.electricPrice ?? 1.2,
+        gasPrice: toNullableDecimal(gasPrice) ?? currentRoom.gasPrice ?? 3.8,
+        heatingPrice: toNullableDecimal(heatingPrice) ?? currentRoom.heatingPrice ?? 0,
         waterChargeMode,
         electricChargeMode,
         gasChargeMode,
@@ -339,11 +421,15 @@ export async function checkInRoom({
       where: { roomId },
       orderBy: { termNo: 'asc' },
     })
-    const initialPaidDate = startOfDay(initialPaidAt || leaseStart)
+    const initialPaidDate = operationDate(initialPaidAt)
     const firstExpectedAmount = toDecimalNumber(firstTerm?.expectedAmount)
+    // A final check-in confirmation represents completed first-period rent.
+    // The optional charge drawer may override the amount, but an omitted
+    // amount from an older client must not leave the new tenant unpaid.
+    const requestedInitialRent = Math.max(0, toDecimalNumber(initialRentAmount))
     const initialRentPaidAmount = Math.min(
       firstExpectedAmount,
-      Math.max(0, toDecimalNumber(initialRentAmount)),
+      requestedInitialRent > 0 ? requestedInitialRent : firstExpectedAmount,
     )
     if (firstTerm && initialRentPaidAmount > 0) {
       const isFirstTermSettled = initialRentPaidAmount >= firstExpectedAmount
@@ -370,9 +456,11 @@ export async function checkInRoom({
       })
     }
 
+    const expectedDepositAmount = Math.max(0, toDecimalNumber(depositAmount))
+    const requestedInitialDeposit = Math.max(0, toDecimalNumber(initialDepositCollectionAmount))
     const depositCollectedAmount = Math.min(
-      Math.max(0, toDecimalNumber(depositAmount)),
-      Math.max(0, toDecimalNumber(initialDepositCollectionAmount)),
+      expectedDepositAmount,
+      requestedInitialDeposit > 0 ? requestedInitialDeposit : expectedDepositAmount,
     )
     if (depositCollectedAmount > 0) {
       await tx.collection.create({
@@ -420,7 +508,7 @@ export async function collectRent({
   targetTermId = null,
   clientOperationId = '',
 }) {
-  const paidDate = startOfDay(paidAt)
+  const paidDate = operationDate(paidAt)
   const paidAmount = toDecimalNumber(amount)
 
   const room = await prisma.$transaction(async (tx) => {
@@ -517,7 +605,7 @@ export async function collectUtility({
   attachmentIds = [],
   clientOperationId = '',
 }) {
-  const paidDate = startOfDay(paidAt)
+  const paidDate = operationDate(paidAt)
   const paidAmount = toDecimalNumber(amount)
 
   const room = await prisma.$transaction(async (tx) => {
@@ -596,6 +684,152 @@ export async function collectUtility({
   return serializeRoomDetail(room)
 }
 
+export async function undoLatestCollection({
+  tenantId,
+  userId,
+  roomId,
+  billType,
+  clientOperationId = '',
+}) {
+  const room = await prisma.$transaction(async (tx) => {
+    const currentRoom = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    const existingResult = await getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId })
+    if (existingResult) return existingResult
+
+    const collection = await tx.collection.findFirst({
+      where: { roomId, billType },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      include: { bill: true },
+    })
+    if (!collection) {
+      const error = new Error('Collection not found or already undone')
+      error.statusCode = 404
+      error.code = 'COLLECTION_NOT_FOUND'
+      throw error
+    }
+
+    // Direct utility collection creates its bill and collection together, so
+    // both are removed. A bill produced by a prior meter reading is instead
+    // restored to unpaid, keeping the meter receivable but removing its ledger
+    // collection.
+    if (collection.relatedBillId && collection.bill) {
+      const billCreatedAt = collection.bill.createdAt?.getTime?.() || 0
+      const collectionCreatedAt = collection.createdAt?.getTime?.() || 0
+      const createdTogether = billCreatedAt && collectionCreatedAt && Math.abs(collectionCreatedAt - billCreatedAt) < 5000
+      if (createdTogether) {
+        await tx.bill.delete({ where: { id: collection.relatedBillId } })
+      } else {
+        await tx.bill.update({ where: { id: collection.relatedBillId }, data: { status: 'UNPAID', paidAt: null } })
+      }
+    }
+    await tx.attachment.deleteMany({ where: { collectionId: collection.id } })
+    await tx.collection.delete({ where: { id: collection.id } })
+
+    await writeOperationLog(tx, {
+      tenantId,
+      roomId,
+      userId,
+      action: 'room.undo_collection',
+      clientOperationId,
+      detail: `Undo collection ${currentRoom.roomNo} ${billType} ${collection.amount}`,
+    })
+    return findScopedRoomOrThrow(tx, roomId, tenantId)
+  })
+  return serializeRoomDetail(room)
+}
+
+function roomRestoreData(before = {}) {
+  const status = String(before.status || '').toUpperCase()
+  return {
+    status: status === 'RENTED' || status === 'OVERDUE' || status === 'DUE_SOON' ? status : 'EMPTY',
+    tenantName: before.tenant || null,
+    phone: before.phone || null,
+    idCardNo: before.idCard || null,
+    rentAmount: toNullableDecimal(before.rent),
+    depositAmount: toNullableDecimal(before.deposit),
+    paymentCycleMonths: before.paymentCycle ? toInt(before.paymentCycle) : null,
+    leaseStartDate: before.leaseStart ? startOfDay(before.leaseStart) : null,
+    leaseEndDate: before.leaseEnd ? startOfDay(before.leaseEnd) : null,
+    lastWaterReading: toNullableDecimal(before.lastWater),
+    lastElectricReading: toNullableDecimal(before.lastElectric),
+    lastGasReading: toNullableDecimal(before.lastGas),
+  }
+}
+
+export async function undoRoomOperation({
+  tenantId,
+  userId,
+  roomId,
+  kind,
+  before = {},
+  clientOperationId = '',
+}) {
+  const room = await prisma.$transaction(async (tx) => {
+    const currentRoom = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    const existingResult = await getIdempotentRoomResult(tx, { tenantId, roomId, clientOperationId })
+    if (existingResult) return existingResult
+
+    if (kind === 'meter_entry') {
+      const reading = await tx.meterReading.findFirst({ where: { roomId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] })
+      if (!reading) throw Object.assign(new Error('Meter reading not found or already undone'), { statusCode: 404, code: 'METER_READING_NOT_FOUND' })
+      // The latest local operation is being undone, therefore later unpaid
+      // meter bills belong to this reading and can be safely removed.
+      await tx.bill.deleteMany({ where: { roomId, status: 'UNPAID', createdAt: { gte: reading.createdAt } } })
+      await tx.attachment.deleteMany({ where: { meterReadingId: reading.id } })
+      await tx.meterReading.delete({ where: { id: reading.id } })
+      await tx.room.update({ where: { id: roomId }, data: roomRestoreData(before) })
+    } else if (kind === 'checkin') {
+      const occupancy = await tx.occupancy.findFirst({ where: { roomId, status: 'ACTIVE' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] })
+      if (!occupancy) throw Object.assign(new Error('Active check-in not found or already undone'), { statusCode: 404, code: 'CHECKIN_NOT_FOUND' })
+      const since = occupancy.createdAt
+      const recentCollections = await tx.collection.findMany({ where: { roomId, createdAt: { gte: since } }, select: { id: true } })
+      if (recentCollections.length) await tx.attachment.deleteMany({ where: { collectionId: { in: recentCollections.map((item) => item.id) } } })
+      await tx.collection.deleteMany({ where: { roomId, createdAt: { gte: since } } })
+      await tx.paymentTerm.deleteMany({ where: { roomId, createdAt: { gte: since } } })
+      await tx.bill.deleteMany({ where: { roomId, createdAt: { gte: since } } })
+      await tx.meterReading.deleteMany({ where: { roomId, createdAt: { gte: since } } })
+      await tx.occupancy.delete({ where: { id: occupancy.id } })
+      await tx.room.update({ where: { id: roomId }, data: roomRestoreData(before) })
+    } else if (kind === 'checkout') {
+      const occupancy = await tx.occupancy.findFirst({ where: { roomId, status: 'COMPLETED' }, orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }] })
+      if (!occupancy) throw Object.assign(new Error('Completed tenancy not found or already undone'), { statusCode: 404, code: 'CHECKOUT_NOT_FOUND' })
+      const refund = await tx.collection.findFirst({ where: { roomId, billType: 'DEPOSIT', amount: { lt: 0 } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] })
+      if (refund) {
+        await tx.attachment.deleteMany({ where: { collectionId: refund.id } })
+        await tx.collection.delete({ where: { id: refund.id } })
+      }
+      await tx.occupancy.update({ where: { id: occupancy.id }, data: { status: 'ACTIVE', endDate: null } })
+      await tx.room.update({
+        where: { id: roomId },
+        data: {
+          status: 'RENTED',
+          tenantName: occupancy.tenantName,
+          phone: occupancy.phone,
+          idCardNo: occupancy.idCardNo,
+          rentAmount: occupancy.rentAmount,
+          depositAmount: occupancy.depositAmount,
+          paymentCycleMonths: occupancy.paymentCycleMonths,
+          leaseStartDate: occupancy.startDate,
+          leaseEndDate: before.leaseEnd ? startOfDay(before.leaseEnd) : null,
+        },
+      })
+    } else {
+      throw Object.assign(new Error('Unsupported undo operation'), { statusCode: 422, code: 'UNDO_NOT_SUPPORTED' })
+    }
+
+    await writeOperationLog(tx, {
+      tenantId,
+      roomId,
+      userId,
+      action: `room.undo_${kind}`,
+      clientOperationId,
+      detail: `Undo ${kind} for ${currentRoom.roomNo}`,
+    })
+    return findScopedRoomOrThrow(tx, roomId, tenantId)
+  })
+  return serializeRoomDetail(room)
+}
+
 export async function recordMeterReading({
   tenantId,
   userId,
@@ -620,13 +854,15 @@ export async function recordMeterReading({
       throw error
     }
 
-    const waterCost = computeMeterCost(waterReading, currentRoom.lastWaterReading, currentRoom.waterPrice)
+    // Rooms checked in by an older client may still have a null unit price.
+    // Fall back here as well so their very next meter reading produces a bill.
+    const waterCost = computeMeterCost(waterReading, currentRoom.lastWaterReading, currentRoom.waterPrice ?? 5.5)
     const electricCost = computeMeterCost(
       electricReading,
       currentRoom.lastElectricReading,
-      currentRoom.electricPrice
+      currentRoom.electricPrice ?? 1.2
     )
-    const gasCost = computeMeterCost(gasReading, currentRoom.lastGasReading, currentRoom.gasPrice)
+    const gasCost = computeMeterCost(gasReading, currentRoom.lastGasReading, currentRoom.gasPrice ?? 3.8)
 
     const totalAmount = [waterCost, electricCost, gasCost]
       .filter(Boolean)
@@ -727,6 +963,7 @@ export async function checkoutRoom({
   clientOperationId = '',
 }) {
   const endDate = startOfDay(checkoutDate)
+  const checkoutOperationDate = new Date()
   const refund = toDecimalNumber(refundAmount)
 
   const room = await prisma.$transaction(async (tx) => {
@@ -761,7 +998,7 @@ export async function checkoutRoom({
           amount: -refund,
           note: note || '退租押金退款',
           coverageLabel: null,
-          paidAt: endDate,
+          paidAt: checkoutOperationDate,
         },
       })
 
@@ -772,6 +1009,17 @@ export async function checkoutRoom({
         collectionId: collection.id,
       })
     }
+
+    // Keep the completed lease as a self-contained snapshot, then remove its
+    // active business rows. This makes every future check-in start clean.
+    const roomForArchive = await findScopedRoomOrThrow(tx, roomId, tenantId)
+    if (activeOccupancy) {
+      await tx.occupancy.update({
+        where: { id: activeOccupancy.id },
+        data: { archiveJson: buildCompletedOccupancyArchive(roomForArchive) },
+      })
+    }
+    await clearActiveRoomBusinessData(tx, roomId)
 
     await tx.room.update({
       where: { id: roomId },

@@ -1,8 +1,11 @@
 import { getCloudApiBaseUrl, isCloudBackupAccessEnabled } from '../config/cloud'
 
 const TOKEN_STORAGE_KEY = 'irent_cloud_token_v1'
-const DEFAULT_REQUEST_TIMEOUT = 30000
-const CLOUD_BACKOFF_MS = 2 * 60 * 1000
+// Fail fast on a broken mobile connection and let the durable FIFO queue retry
+// shortly afterwards. This is much more responsive than waiting two minutes
+// after a single transient TLS/network failure.
+const DEFAULT_REQUEST_TIMEOUT = 8000
+const CLOUD_BACKOFF_MS = 4000
 let autoAuthInFlight = null
 let cloudBackoffUntil = 0
 
@@ -78,10 +81,43 @@ function getDeviceInfo() {
   }
 }
 
+async function getWeChatLoginCode() {
+  try {
+    const result = await uni.login({ provider: 'weixin' })
+    const [, payload] = Array.isArray(result) ? result : [null, result]
+    const code = String(payload?.code || '')
+    if (code) return code
+  } catch {}
+  const error = new Error('WECHAT_LOGIN_CODE_UNAVAILABLE')
+  error.code = 'WECHAT_LOGIN_CODE_UNAVAILABLE'
+  throw error
+}
+
+export async function recordWeChatAccountLogin() {
+  const baseUrl = getCloudApiBaseUrl()
+  if (!baseUrl || !isCloudBackupAccessEnabled()) return false
+  const response = await requestRaw(`${baseUrl}/api/auth/wechat/login`, {
+    method: 'POST',
+    data: { code: await getWeChatLoginCode(), deviceInfo: getDeviceInfo() },
+    header: { 'Content-Type': 'application/json' },
+    timeout: DEFAULT_REQUEST_TIMEOUT,
+    retries: 2,
+  })
+  const statusCode = Number(response?.statusCode || 0)
+  const data = response?.data || {}
+  if (statusCode >= 200 && statusCode < 300 && data?.ok !== false && data?.token) {
+    setAccessToken(data.token)
+    return data
+  }
+  const error = new Error(data?.message || 'WECHAT_LOGIN_FAILED')
+  error.code = data?.code || 'WECHAT_LOGIN_FAILED'
+  error.statusCode = statusCode
+  throw error
+}
+
 export async function recordPublicAccountLogin() {
   const baseUrl = getCloudApiBaseUrl()
   if (!baseUrl || !isCloudBackupAccessEnabled()) return false
-
   const response = await requestRaw(`${baseUrl}/api/auth/public/login`, {
     method: 'POST',
     data: { deviceInfo: getDeviceInfo() },
@@ -93,9 +129,12 @@ export async function recordPublicAccountLogin() {
   const data = response?.data || {}
   if (statusCode >= 200 && statusCode < 300 && data?.ok !== false && data?.token) {
     setAccessToken(data.token)
-    return true
+    return data
   }
-  return false
+  const error = new Error(data?.message || 'PUBLIC_LOGIN_FAILED')
+  error.code = data?.code || 'PUBLIC_LOGIN_FAILED'
+  error.statusCode = statusCode
+  throw error
 }
 
 async function ensureDevCloudSession() {
@@ -105,7 +144,14 @@ async function ensureDevCloudSession() {
   if (!baseUrl) return false
 
   autoAuthInFlight = (async () => {
-    return recordPublicAccountLogin()
+    try {
+      return Boolean(await recordWeChatAccountLogin())
+    } catch (error) {
+      // Legacy/dev deployments without WeChat credentials keep their existing
+      // public-account behavior. A whitelist rejection never falls back.
+      if (!['WECHAT_CONFIG_MISSING', 'WECHAT_LOGIN_CODE_UNAVAILABLE'].includes(String(error?.code || ''))) throw error
+      return Boolean(await recordPublicAccountLogin())
+    }
   })()
 
   try {

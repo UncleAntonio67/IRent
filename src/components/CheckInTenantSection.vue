@@ -27,11 +27,13 @@
         <button class="detail-side-button tap-scale" :class="idCardCount ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="idCardCount ? emit('preview-id-card') : emit('pick-id-card')">
           <view class="detail-side-button-text" :class="idCardCount ? 'text-emerald-800' : 'text-slate-700'">{{ idCardCount ? '身份证已上传' : '上传身份证' }}</view>
         </button>
+        <button v-if="canManage && idCardCount" class="tenant-attachment-delete" @click.stop="emit('remove-id-card', idCardCount - 1)">×</button>
       </view>
       <view class="tenant-attachment-group">
         <button class="detail-side-button tap-scale" :class="contractCount ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'" @click="contractCount ? emit('preview-contract') : emit('pick-contract')">
           <view class="detail-side-button-text" :class="contractCount ? 'text-emerald-800' : 'text-slate-700'">{{ contractCount ? '合同已上传' : '上传合同' }}</view>
         </button>
+        <button v-if="canManage && contractCount" class="tenant-attachment-delete" @click.stop="emit('remove-contract', contractCount - 1)">×</button>
       </view>
     </view>
   </CollapsibleSectionCard>
@@ -52,7 +54,7 @@ const props = defineProps({
 
 const idCardCount = computed(() => props.idCards.length)
 const contractCount = computed(() => props.contracts.length)
-const emit = defineEmits(['toggle', 'update:tenant', 'update:phone', 'pick-id-card', 'pick-contract', 'preview-id-card', 'preview-contract'])
+const emit = defineEmits(['toggle', 'update:tenant', 'update:phone', 'pick-id-card', 'pick-contract', 'preview-id-card', 'preview-contract', 'remove-id-card', 'remove-contract'])
 </script>
 
 <style>
@@ -91,10 +93,26 @@ const emit = defineEmits(['toggle', 'update:tenant', 'update:phone', 'pick-id-ca
 
 .tenant-attachment-row { display: flex; gap: 10rpx; flex-shrink: 0; }
 
-.tenant-attachment-group { min-width: 0; }
+.tenant-attachment-group { min-width: 0; position: relative; }
 
 .tenant-attachment-group .detail-side-button {
   min-width: 128rpx;
+}
+
+.tenant-attachment-delete {
+  position: absolute;
+  z-index: 2;
+  top: -10rpx;
+  right: -8rpx;
+  width: 30rpx;
+  height: 30rpx;
+  min-width: 30rpx;
+  padding: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: #64748b;
+  font-size: 26rpx;
+  line-height: 28rpx;
 }
 
 </style>

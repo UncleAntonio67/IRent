@@ -6,17 +6,20 @@ import { startSyncQueue } from './data/syncQueue.js'
 export default {
   onLaunch() {
     console.log('App Launch')
-    initializePublicAccount()
+    void initializePublicAccount().finally(() => startSyncQueue())
     initializeSyncStatus()
     startSyncQueue()
     try {
       uni.onNetworkStatusChange((result) => {
-        if (result?.isConnected) startSyncQueue()
+        if (result?.isConnected) void initializePublicAccount().finally(() => startSyncQueue())
       })
     } catch {}
   },
   onShow() {
     console.log('App Show')
+    // Timers can be suspended while the mini-program is in the background.
+    // Resume the durable FIFO queue immediately when the user returns online.
+    void initializePublicAccount().finally(() => startSyncQueue())
   },
   onHide() {
     console.log('App Hide')

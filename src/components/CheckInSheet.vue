@@ -40,7 +40,7 @@
               <view class="text-sm text-slate-500 font-medium mt-1 leading-relaxed">当前为空置房，确认后会生成首期账期并写入历史。</view>
               <view class="mt-3 flex items-center gap-2 overflow-hidden">
                 <button class="w-11 h-11 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 tap-scale shrink-0 flex flex-col items-center justify-center" @click="handleRoomPhotoUpload"><text class="text-sm font-semibold leading-none">+</text><text class="text-2xs font-medium mt-0_5">上传</text></button>
-                <scroll-view scroll-x class="flex-1 min-w-0 whitespace-nowrap overflow-hidden"><view class="inline-flex gap-2"><button v-for="(photo, index) in roomPhotos.slice(0, 9)" :key="photo.id" class="w-11 h-11 rounded-xl bg-slate-100 overflow-hidden shrink-0 tap-scale" @click="previewFiles(roomPhotos, index)"><image v-if="resolveOfflineImageSrc(photo)" :src="resolveOfflineImageSrc(photo)" mode="aspectFill" class="w-full h-full" /><view v-else class="w-full h-full flex items-center justify-center text-2xs text-slate-400 font-medium">图片</view></button><view v-if="roomPhotos.length===0" class="w-11 h-11 px-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 inline-flex items-center justify-center text-2xs text-slate-400 font-bold shrink-0">暂无</view></view></scroll-view>
+                <scroll-view scroll-x class="flex-1 min-w-0 whitespace-nowrap overflow-hidden"><view class="inline-flex gap-2"><view v-for="(photo, index) in roomPhotos.slice(0, 9)" :key="photo.id" class="checkin-room-photo-item shrink-0"><button class="w-11 h-11 rounded-xl bg-slate-100 overflow-hidden tap-scale" @click="previewFiles(roomPhotos, index)"><image v-if="resolveOfflineImageSrc(photo)" :src="resolveOfflineImageSrc(photo)" mode="aspectFill" class="w-full h-full" /><view v-else class="w-full h-full flex items-center justify-center text-2xs text-slate-400 font-medium">图片</view></button><button v-if="canManageTenantData" class="checkin-room-photo-delete" @click.stop="removeRoomPhoto(photo)">×</button></view><view v-if="roomPhotos.length===0" class="w-11 h-11 px-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 inline-flex items-center justify-center text-2xs text-slate-400 font-bold shrink-0">暂无</view></view></scroll-view>
               </view>
             </CollapsibleSectionCard>
 
@@ -58,6 +58,8 @@
               @pick-contract="pickAttachment('contract')"
               @preview-id-card="previewFiles(attachments.idCard)"
               @preview-contract="previewFiles(attachments.contract)"
+              @remove-id-card="removeCheckInAttachment('idCard', $event)"
+              @remove-contract="removeCheckInAttachment('contract', $event)"
             />
 
             <CollapsibleSectionCard title="租金与租期" :expanded="leaseExpanded" title-class="text-sm text-slate-700 font-bold" @toggle="leaseExpanded=!leaseExpanded">
@@ -123,7 +125,9 @@ import { getDrawerHeaderTopPadding } from '../utils/layout'
 import { checkInRoom, createRoomTreeMutator, recordRoomOperation, uploadRoomPhoto } from '../domain/rent-room-service'
 import { ATTACHMENT_FILE_LIMITS, ROOM_PHOTO_LIMIT } from '../domain/rent-models.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl } from '../config/cloud'
-import { enqueueSyncTask } from '../data/syncQueue.js'
+import { createClientOperationId, discardPendingAttachmentUpload, enqueueSyncTask } from '../data/syncQueue.js'
+import { deleteRoomAttachmentFromCloud, deleteRoomPhotoFromCloud, uploadAttachmentForRoom } from '../api/attachments.js'
+import { submitRoomCheckIn } from '../api/rooms.js'
 import { PAYMENT_STATUS } from '../domain/rent-models.js'
 import { chooseImages, chooseSingleImage, previewChosenImages, resolveOfflineImageSrc } from '../utils/media'
 import { isValidMainlandPhone, normalizeDateInput, parseNonNegativeNumber, parsePositiveAmount, parsePositiveInteger } from '../utils/validation'
@@ -285,20 +289,30 @@ function previewFiles(files, currentIndex = 0) {
 
 async function uploadRoomScopedFile(type, rawFile, { successTitle = '已上传图片', preview = false } = {}) {
   const prepared = buildChosenFile(type, rawFile)
-  if (canUseCloudBackup() && type !== 'receipt') {
-    enqueueSyncTask({
-      type: 'attachment.upload',
-      propertyId: props.propertyId,
-      blockId: props.blockId,
-      roomId: props.roomId,
-      payload: {
-        type,
-        file: prepared,
-      },
-    })
-    if (successTitle) uni.showToast({ title: '已加入同步队列', icon: 'success' })
-    if (preview) previewFiles([prepared])
-    return prepared
+  if (hasCloudApiBaseUrl() && props.roomId && type !== 'receipt') {
+    try {
+      // Connected check-in uploads are cloud-first.  Returning the confirmed
+      // server attachment ID lets the following check-in bind the files in
+      // the same transaction, so the other device can read them immediately.
+      const confirmed = await uploadAttachmentForRoom({ roomId: props.roomId, type, file: prepared })
+      const cloudFile = { ...prepared, ...confirmed, source: 'cloud' }
+      if (successTitle) uni.showToast({ title: successTitle, icon: 'success' })
+      if (preview) previewFiles([cloudFile])
+      return cloudFile
+    } catch {
+      // The durable outbox is only the fallback when the direct cloud upload
+      // cannot be confirmed.
+      enqueueSyncTask({
+        type: 'attachment.upload',
+        propertyId: props.propertyId,
+        blockId: props.blockId,
+        roomId: props.roomId,
+        payload: { type, file: prepared },
+      })
+      if (successTitle) uni.showToast({ title: '网络暂不可用，图片将自动上传', icon: 'none' })
+      if (preview) previewFiles([prepared])
+      return prepared
+    }
   }
   if (successTitle) uni.showToast({ title: type === 'receipt' ? '已保存本地凭证' : successTitle, icon: 'success' })
   if (preview) previewFiles([prepared])
@@ -321,6 +335,40 @@ async function pickAttachment(type) {
   }
 }
 
+async function removeCheckInAttachment(type, index) {
+  if (!canManageTenantData.value) return
+  const files = attachments.value[type] || []
+  const file = files[index] || files[files.length - 1]
+  if (!file) return
+  let queuedForDeletion = false
+  try {
+    if (hasCloudApiBaseUrl() && props.roomId && file.id) {
+      try {
+        await deleteRoomAttachmentFromCloud(props.roomId, type, file)
+      } catch (error) {
+        if (error?.code === 'ATTACHMENT_ID_OUTDATED' || error?.code === 'ATTACHMENT_DELETE_NOT_CONFIRMED') {
+          mergeCloudRoomDetail(props.propertyId, props.blockId, props.roomId, error.roomDetail)
+          uni.showToast({ title: '附件状态已刷新，请确认后重试', icon: 'none' })
+          return
+        }
+        enqueueSyncTask({
+          type: 'attachment.delete',
+          propertyId: props.propertyId,
+          blockId: props.blockId,
+          roomId: props.roomId,
+          payload: { attachmentType: type, attachmentId: file.id, file },
+        })
+        queuedForDeletion = true
+      }
+    }
+    discardPendingAttachmentUpload(props.roomId, file)
+    attachments.value[type] = files.filter((item) => item !== file && item.id !== file.id)
+    uni.showToast({ title: queuedForDeletion ? '删除已保存，联网后自动同步' : '附件已删除', icon: queuedForDeletion ? 'none' : 'success' })
+  } catch {
+    uni.showToast({ title: '删除附件失败，请稍后重试', icon: 'none' })
+  }
+}
+
 async function handleRoomPhotoUpload() {
   if (roomPhotos.value.length >= ROOM_PHOTO_LIMIT) return uni.showToast({ title: '房屋照片最多上传 9 张', icon: 'none' })
   if (!canManageTenantData.value) return uni.showToast({ title: '当前角色无权选择凭证', icon: 'none' })
@@ -329,29 +377,29 @@ async function handleRoomPhotoUpload() {
     const chosen = await chooseImages({ fallbackPrefix: `${room.value?.roomNo || 'room'}_photo`, count: remaining })
     if (chosen.length === 0) return
     const preparedPhotos = chosen.map((file) => buildChosenFile('room_photo', file))
-    if (canUseCloudBackup()) {
-      const nextProperties = cloneProperties()
-      const hit = createRoomTreeMutator(nextProperties, props.propertyId, props.blockId, props.roomId)
-      if (!hit) return
-      const uploaded = preparedPhotos
-        .map((file) => uploadRoomPhoto(hit.room, { now: nowString(), file }))
-        .filter(Boolean)
-      if (uploaded.length === 0) return
-      setProperties(nextProperties)
-      uploaded.forEach((file) => enqueueSyncTask({
-        type: 'attachment.upload',
-        propertyId: props.propertyId,
-        blockId: props.blockId,
-        roomId: props.roomId,
-        payload: { type: 'roomPhoto', file },
-      }))
-      uni.showToast({ title: `已上传 ${uploaded.length} 张照片`, icon: 'success' })
-      return
+    const confirmedPhotos = []
+    for (const file of preparedPhotos) {
+      if (hasCloudApiBaseUrl() && props.roomId) {
+        try {
+          const confirmed = await uploadAttachmentForRoom({ roomId: props.roomId, type: 'roomPhoto', file })
+          confirmedPhotos.push({ ...file, ...confirmed, source: 'cloud' })
+          continue
+        } catch {
+          enqueueSyncTask({
+            type: 'attachment.upload',
+            propertyId: props.propertyId,
+            blockId: props.blockId,
+            roomId: props.roomId,
+            payload: { type: 'roomPhoto', file },
+          })
+        }
+      }
+      confirmedPhotos.push(file)
     }
     const nextProperties = cloneProperties()
     const hit = createRoomTreeMutator(nextProperties, props.propertyId, props.blockId, props.roomId)
     if (!hit) return
-    const uploaded = preparedPhotos
+    const uploaded = confirmedPhotos
       .map((file) => uploadRoomPhoto(hit.room, { now: nowString(), file }))
       .filter(Boolean)
     if (uploaded.length === 0) return
@@ -362,15 +410,81 @@ async function handleRoomPhotoUpload() {
   }
 }
 
+async function removeRoomPhoto(photo) {
+  if (!photo?.id) return
+  const nextProperties = cloneProperties()
+  const hit = createRoomTreeMutator(nextProperties, props.propertyId, props.blockId, props.roomId)
+  if (!hit) return
+  let queuedForDeletion = false
+  // A confirmed server attachment can be rendered as a local item on an
+  // older page instance. Delete by ID whenever we are connected instead of
+  // relying on the presentation-only `source` flag.
+  if (photo.id && hasCloudApiBaseUrl()) {
+    try {
+      // When connected, delete the server record first.  A local-only delete
+      // must never make a successful cloud request look like an offline edit.
+      await deleteRoomPhotoFromCloud(props.roomId, photo)
+    } catch (error) {
+      // Never hide a photo locally when a stale legacy ID cannot be matched
+      // to exactly one cloud attachment. Refresh to the canonical state and
+      // ask the user to retry instead.
+      if (error?.code === 'ATTACHMENT_ID_OUTDATED' || error?.code === 'ATTACHMENT_DELETE_NOT_CONFIRMED') {
+        mergeCloudRoomDetail(props.propertyId, props.blockId, props.roomId, error.roomDetail)
+        uni.showToast({ title: '图片状态已刷新，请确认后重试', icon: 'none' })
+        return
+      }
+      // The local state still reflects the user's intent.  Keep a durable
+      // delete task only when the cloud request actually failed.
+      enqueueSyncTask({
+        type: 'attachment.delete',
+        propertyId: props.propertyId,
+        blockId: props.blockId,
+        roomId: props.roomId,
+        payload: { attachmentId: photo.id, photo },
+      })
+      queuedForDeletion = true
+    }
+  }
+  hit.room.roomPhotos = (hit.room.roomPhotos || []).filter((item) => item.id !== photo.id)
+  // The file may still be waiting in the durable offline queue. Removing the
+  // task together with the thumbnail prevents it from resurfacing after sync.
+  discardPendingAttachmentUpload(props.roomId, photo)
+  setProperties(nextProperties)
+  uni.showToast({
+    title: queuedForDeletion ? '网络暂不可用，删除将自动同步' : '图片已删除',
+    icon: queuedForDeletion ? 'none' : 'success',
+  })
+}
+
+function occupancyCollections(occupancy) {
+  const archived = Array.isArray(occupancy?.archive?.collections) ? occupancy.archive.collections : []
+  if (archived.length) return archived
+  // The active tenant has not been archived yet; its own current collections
+  // are the authoritative source. Completed tenants never read later tenants'
+  // room-level collections.
+  return occupancy?.status === 'active' ? (room.value?.collections || []) : []
+}
+
+function occupancyCollectionType(item) {
+  return String(item?.kind || item?.billType || item?.type || '').trim().toLowerCase()
+}
+
+function isDepositCollection(item) {
+  const title = String(item?.title || '')
+  const coverage = String(item?.coverageLabel || '')
+  return title.includes('押金') || coverage.includes('押金')
+}
+
 function occupancyRentTotal(occupancy) {
-  if (!occupancy) return 0
-  const schedule = occupancy.archive?.paymentSchedule || []
-  return schedule.length > 0 ? schedule.reduce((sum, item) => sum + Number(item.expectedAmount || 0), 0) : Number(occupancy.rent || 0)
+  return occupancyCollections(occupancy)
+    .filter((item) => occupancyCollectionType(item) === 'rent')
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0)
 }
 
 function occupancyExtraCollectionTotal(occupancy) {
-  if (!occupancy) return 0
-  return (occupancy.archive?.collections || []).filter((item) => item.kind !== 'rent').reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  return occupancyCollections(occupancy)
+    .filter((item) => occupancyCollectionType(item) !== 'rent' && !isDepositCollection(item))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0)
 }
 
 async function pickCheckInReceipt() {
@@ -456,6 +570,13 @@ function applyLocalCheckIn({
   delete before.operationLog
 
   const paymentSchedule = generatePaymentSchedule({ startDate: leaseStart, endDate: leaseEnd, cycleMonths: paymentCycle, rentPerCycle: rent })
+  // Direct confirmation means the agreed first rent and deposit have already
+  // been received.  The two charge drawers only allow the operator to adjust
+  // their amount or attach a receipt before the final check-in submission.
+  const initialRentAmount = Number(collectionAmount || defaultCheckInCharge.value || 0)
+  const initialDepositAmount = depositChargeConfirmed.value
+    ? Number(depositChargeAmount.value || 0)
+    : Number(defaultDepositCharge.value || 0)
   checkInRoom(
     hit.room,
     {
@@ -480,12 +601,12 @@ function applyLocalCheckIn({
       now,
       paymentSchedule,
       attachments: { idCard: attachments.value.idCard, contract: attachments.value.contract },
-      initialCollectionAmount: collectionAmount || 0,
+      initialCollectionAmount: initialRentAmount,
       initialReceiptPicked: checkInReceiptPicked.value,
       initialReceiptFile: checkInReceiptFile.value,
-      initialDepositAmount: depositChargeConfirmed.value ? Number(depositChargeAmount.value || 0) : 0,
-      initialDepositReceiptPicked: depositChargeConfirmed.value && depositReceiptPicked.value,
-      initialDepositReceiptFile: depositChargeConfirmed.value ? depositReceiptFile.value : null,
+      initialDepositAmount,
+      initialDepositReceiptPicked: depositReceiptPicked.value,
+      initialDepositReceiptFile: depositReceiptFile.value,
     }
   )
   hit.room.hasIdCardPic = attachments.value.idCard.length > 0
@@ -504,7 +625,7 @@ function applyLocalCheckIn({
     firstTerm.status = PAYMENT_STATUS.UNPAID
     hit.room.collections = (hit.room.collections || []).filter((item) => !(item.kind === 'rent' && Array.isArray(item.termIds) && item.termIds.includes(firstTerm.id)))
   }
-  recordRoomOperation(hit.room, { kind: 'checkin', label: '办理入住', now, before })
+  recordRoomOperation(hit.room, { kind: 'checkin', label: '办理入住', before, now })
   setProperties(nextProperties)
   return true
 }
@@ -530,6 +651,58 @@ async function confirmCheckIn() {
   form.value.leaseStart = leaseStart
   if (!leaseMonths) return uni.showToast({ title: '请填写租期月数', icon: 'none' })
 
+  const attachmentIds = [...new Set([
+      ...roomPhotos.value.map((file) => file?.id),
+      ...attachments.value.idCard.map((file) => file?.id),
+      ...attachments.value.contract.map((file) => file?.id),
+      checkInReceiptFile.value?.id,
+      depositReceiptFile.value?.id,
+  ].filter(Boolean))]
+  const clientOperationId = createClientOperationId('room.checkin')
+  const cloudPayload = {
+      tenantName: tenant,
+      phone,
+      idCardNo: '',
+      rentAmount: rent,
+      depositAmount: deposit,
+      paymentCycleMonths: paymentCycle,
+      leaseStartDate: form.value.leaseStart,
+      leaseMonths,
+      // Pass the room's configured unit prices to the cloud. Sending null
+      // made the server calculate every metered charge at a zero unit price.
+      waterPrice: Number(room.value?.waterPrice || 5.5),
+      electricPrice: Number(room.value?.electricPrice || 1.2),
+      gasPrice: Number(room.value?.gasPrice || 3.8),
+      heatingPrice: Number(room.value?.heatingPrice || 0),
+      waterChargeMode: form.value.waterChargeMode === 'included' ? 'included' : 'separate',
+      electricChargeMode: form.value.electricChargeMode === 'included' ? 'included' : 'separate',
+      gasChargeMode: form.value.gasChargeMode === 'included' ? 'included' : 'separate',
+      heatingChargeMode: form.value.heatingChargeMode === 'included' ? 'included' : 'separate',
+      lastWaterReading: waterBase === null ? null : waterBase,
+      lastElectricReading: electricBase === null ? null : electricBase,
+      lastGasReading: null,
+      initialRentAmount: collectionAmount,
+      initialDepositCollectionAmount: depositChargeConfirmed.value
+        ? Number(depositChargeAmount.value || 0)
+        : Number(defaultDepositCharge.value || 0),
+    initialPaidAt: new Date().toISOString(),
+    attachmentIds,
+    clientOperationId,
+  }
+
+  if (hasCloudApiBaseUrl() && props.roomId) {
+    try {
+      const detail = await submitRoomCheckIn(props.roomId, cloudPayload)
+      mergeCloudRoomDetail(props.propertyId, props.blockId, props.roomId, detail)
+      uni.showToast({ title: '已办理入住', icon: 'success' })
+      emit('checked-in')
+      return
+    } catch {
+      // Keep the action locally and enqueue it below when the cloud request
+      // cannot be confirmed (offline, timeout, or a transient server error).
+    }
+  }
+
   const changed = applyLocalCheckIn({
     tenant,
     phone,
@@ -542,46 +715,16 @@ async function confirmCheckIn() {
     collectionAmount,
   })
   if (!changed) return
-  uni.showToast({ title: '已办理入住', icon: 'success' })
+  uni.showToast({ title: '网络暂不可用，入住已保存并将自动上传', icon: 'none' })
   emit('checked-in')
 
   if (canUseCloudBackup()) {
-    const attachmentIds = [...new Set([
-      ...attachments.value.idCard.map((file) => file?.id),
-      ...attachments.value.contract.map((file) => file?.id),
-      checkInReceiptFile.value?.id,
-      depositReceiptFile.value?.id,
-    ].filter(Boolean))]
     enqueueSyncTask({
       type: 'room.checkin',
       propertyId: props.propertyId,
       blockId: props.blockId,
       roomId: props.roomId,
-      payload: {
-      tenantName: tenant,
-      phone,
-      idCardNo: '',
-      rentAmount: rent,
-      depositAmount: deposit,
-      paymentCycleMonths: paymentCycle,
-      leaseStartDate: form.value.leaseStart,
-      leaseMonths,
-      waterPrice: null,
-      electricPrice: null,
-      gasPrice: null,
-      heatingPrice: null,
-      waterChargeMode: form.value.waterChargeMode === 'included' ? 'included' : 'separate',
-      electricChargeMode: form.value.electricChargeMode === 'included' ? 'included' : 'separate',
-      gasChargeMode: form.value.gasChargeMode === 'included' ? 'included' : 'separate',
-      heatingChargeMode: form.value.heatingChargeMode === 'included' ? 'included' : 'separate',
-      lastWaterReading: waterBase === null ? null : waterBase,
-      lastElectricReading: electricBase === null ? null : electricBase,
-      lastGasReading: null,
-      initialRentAmount: collectionAmount,
-      initialDepositCollectionAmount: depositChargeConfirmed.value ? Number(depositChargeAmount.value || 0) : 0,
-      initialPaidAt: new Date().toISOString(),
-      attachmentIds,
-      },
+      payload: cloudPayload,
     })
   }
 }
@@ -600,4 +743,5 @@ async function confirmCheckIn() {
 .utility-mode-button{min-width:124rpx;padding:12rpx 16rpx;border-radius:16rpx;border:1rpx solid rgba(226,232,240,.95);font-weight:600;line-height:1}.utility-mode-default{background:#fff;color:#475569}.utility-mode-active{background:#eff6ff;color:#2563eb;border-color:rgba(191,219,254,.95)}
 .checkin-primary-action{background:linear-gradient(135deg,#34d399,#4ade80);box-shadow:0 12rpx 24rpx rgba(52,211,153,.18)}.date-step-button{min-width:120rpx;height:64rpx;padding:0 18rpx;border-radius:18rpx;background:#fff;border:1rpx solid rgba(226,232,240,.95);font-size: 22rpx;font-weight:700;color:#334155}.date-chip{height:60rpx;border-radius:16rpx;background:#f8fafc;border:1rpx solid rgba(226,232,240,.95);font-size: 22rpx;font-weight:700;color:#475569}
 .checkin-charge-button{min-width:96rpx;padding:14rpx 18rpx;border-radius:12rpx;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;font-weight:700;line-height:1;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 12rpx 22rpx rgba(37,99,235,.18)}
+.checkin-room-photo-item{position:relative;width:88rpx;height:88rpx}.checkin-room-photo-delete{position:absolute;z-index:2;top:-8rpx;right:-8rpx;width:30rpx;height:30rpx;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.96);color:#64748b;font-size:26rpx;line-height:28rpx;font-weight:700;box-shadow:0 3rpx 8rpx rgba(15,23,42,.16)}
 </style>

@@ -202,14 +202,14 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import SyncNotice from '../../components/SyncNotice.vue'
 import BaseCenteredModal from '../../components/BaseCenteredModal.vue'
 import DateSelectionModal from '../../components/DateSelectionModal.vue'
 import { properties, setProperties } from '../../data/rentStore'
 import { getCachedBillEntriesSnapshot, refreshBillEntriesSnapshot } from '../../data/billSnapshots.js'
 import { fetchFullPropertiesSnapshot, getCachedPropertiesTree } from '../../api/properties'
-import { getPendingSyncSummary, markCloudSnapshotAsAuthoritative, processSyncQueue } from '../../data/syncQueue.js'
+import { getPendingSyncSummary, hasPendingSyncTasks, markCloudSnapshotAsAuthoritative, processSyncQueue } from '../../data/syncQueue.js'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { previewChosenImage, resolveOfflineImageSrc } from '../../utils/media'
@@ -237,6 +237,7 @@ const PAGE_SIZE = 20
 const cachedEntries = ref(getCachedBillEntriesSnapshot().entries)
 const billsRefreshing = ref(false)
 const pullRefreshing = ref(false)
+let cloudRefreshTimer = null
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
   const counts = syncSummary.value?.pendingTypeCounts || {}
@@ -262,25 +263,51 @@ const dateQuickOptions = [
 onLoad(() => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
   const cachedTree = getCachedPropertiesTree()
-  if (Array.isArray(cachedTree) && cachedTree.length) {
+  if (!hasPendingSyncTasks() && Array.isArray(cachedTree) && cachedTree.length) {
     setProperties(cachedTree)
   }
   cachedEntries.value = getCachedBillEntriesSnapshot().entries
   syncSummary.value = getPendingSyncSummary()
   void syncCloudProperties()
+  startCloudPolling()
 })
 
 onShow(() => {
   cachedEntries.value = getCachedBillEntriesSnapshot().entries
   syncSummary.value = getPendingSyncSummary()
   void syncCloudProperties()
+  startCloudPolling()
 })
 
+onHide(() => {
+  stopCloudPolling()
+})
+
+function startCloudPolling() {
+  if (!hasCloudApiBaseUrl() || cloudRefreshTimer) return
+  cloudRefreshTimer = setInterval(() => {
+    void syncCloudProperties()
+  }, 10000)
+}
+
+function stopCloudPolling() {
+  if (!cloudRefreshTimer) return
+  clearInterval(cloudRefreshTimer)
+  cloudRefreshTimer = null
+}
+
 async function syncCloudProperties() {
-  if (!hasCloudApiBaseUrl()) return
+  if (!hasCloudApiBaseUrl() || billsRefreshing.value) return
   billsRefreshing.value = true
   try {
+    if (hasPendingSyncTasks()) {
+      markCloudSnapshotAsAuthoritative()
+      await processSyncQueue({ source: 'auto', force: true })
+      syncSummary.value = getPendingSyncSummary()
+      if (hasPendingSyncTasks()) return
+    }
     const next = await fetchFullPropertiesSnapshot()
+    if (hasPendingSyncTasks()) return
     if (Array.isArray(next)) {
       if (next.length) markCloudSnapshotAsAuthoritative()
       setProperties(next)
@@ -403,8 +430,8 @@ function compareItems(a, b, key, order) {
   if (key === 'amount') {
     result = Number(a.amount || 0) - Number(b.amount || 0)
   } else {
-    const aTime = parseDateValue(a.payDate || a.dueDate)?.getTime() || 0
-    const bTime = parseDateValue(b.payDate || b.dueDate)?.getTime() || 0
+    const aTime = parseDateValue(a.operationAt || a.payDate || a.dueDate)?.getTime() || 0
+    const bTime = parseDateValue(b.operationAt || b.payDate || b.dueDate)?.getTime() || 0
     result = aTime - bTime
   }
   return order === 'desc' ? -result : result
@@ -565,6 +592,7 @@ function syncTaskTypeLabel(type) {
     'room.meterReading': '抄表',
     'room.checkout': '退租',
     'attachment.upload': '附件',
+    'attachment.delete': '删除图片',
   }[String(type || '')] || '同步'
 }
 

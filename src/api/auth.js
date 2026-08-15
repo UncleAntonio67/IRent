@@ -1,4 +1,4 @@
-import { apiRequest, clearAccessToken, recordPublicAccountLogin as requestPublicAccountLogin, setAccessToken } from './client'
+import { apiRequest, clearAccessToken, recordPublicAccountLogin as requestPublicAccountLogin, recordWeChatAccountLogin as requestWeChatAccountLogin, setAccessToken } from './client'
 
 export async function loginWithWeChatCode(payload) {
   const result = await apiRequest('/auth/wechat/login', {
@@ -19,4 +19,8 @@ export function clearCloudSession() {
 
 export function recordPublicAccountLogin() {
   return requestPublicAccountLogin()
+}
+
+export function recordWeChatAccountLogin() {
+  return requestWeChatAccountLogin()
 }

@@ -132,3 +132,23 @@ export async function submitRoomCheckout(roomId, payload) {
   setCachedRoomDetail(roomId, roomDetail)
   return roomDetail
 }
+
+export async function submitLatestCollectionUndo(roomId, payload) {
+  const result = await apiRequest(`/rooms/${roomId}/undo-latest-collection`, {
+    method: 'POST',
+    data: payload,
+  })
+  const roomDetail = mapServerRoomDetail(result.room || {})
+  setCachedRoomDetail(roomId, roomDetail)
+  return roomDetail
+}
+
+export async function submitLatestRoomOperationUndo(roomId, payload) {
+  const result = await apiRequest(`/rooms/${roomId}/undo-latest-operation`, {
+    method: 'POST',
+    data: payload,
+  })
+  const roomDetail = mapServerRoomDetail(result.room || {})
+  setCachedRoomDetail(roomId, roomDetail)
+  return roomDetail
+}

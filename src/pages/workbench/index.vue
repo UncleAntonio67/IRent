@@ -256,18 +256,18 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import SyncNotice from '../../components/SyncNotice.vue'
 import { UI, getMiniStatusColor } from '../../ui/ui'
 import { getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
 import { canManageTenantData, isLoggedIn } from '../../data/authStore'
-import { fetchFullPropertiesSnapshot, getCachedPropertiesTree, migrateLocalPropertiesSnapshot } from '../../api/properties'
+import { fetchFullPropertiesSnapshot, getCachedPropertiesTree, migrateLocalPropertiesSnapshot, submitPropertiesTreeSnapshot } from '../../api/properties'
 import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { canUseCloudBackup, hasCloudApiBaseUrl } from '../../config/cloud'
-import { clearPendingSyncTasks, enqueueSyncTask, getPendingSyncSummary, markCloudSnapshotAsAuthoritative, processSyncQueue } from '../../data/syncQueue.js'
+import { clearPendingSyncTasks, enqueueSyncTask, getPendingSyncSummary, hasPendingSyncTasks, markCloudSnapshotAsAuthoritative, processSyncQueue } from '../../data/syncQueue.js'
 import {
   applyQuickBuild,
   applyWorkbenchStructureChange,
@@ -299,6 +299,10 @@ const addModalFieldLabel = computed(() => ({
 })[addModal.value.type] || '填写内容')
 const workbenchRefreshing = ref(false)
 const pullRefreshing = ref(false)
+let cloudRefreshTimer = null
+// Incremented before a local/cloud mutation starts. A response from an older
+// background refresh must never restore a room that the user has just deleted.
+let cloudTreeRevision = 0
 const cloudBootstrapPrompted = ref(false)
 const cloudBootstrapRequired = ref(false)
 // Bump this epoch whenever a legacy offline queue format must be retired.
@@ -330,29 +334,100 @@ const filterOptions = [
 
 onLoad(() => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
+  recoverLegacyUndoneCollections()
   if (hasCloudApiBaseUrl()) {
     const cachedTree = getCachedPropertiesTree()
-    if (Array.isArray(cachedTree) && cachedTree.length) {
+    if (!hasPendingSyncTasks() && Array.isArray(cachedTree) && cachedTree.length) {
       setProperties(cachedTree)
     }
   }
   syncSummary.value = getPendingSyncSummary()
   warmVisibleRoomCache()
   void syncCloudProperties()
+  startCloudPolling()
 })
 
 onShow(() => {
+  recoverLegacyUndoneCollections()
   syncSummary.value = getPendingSyncSummary()
   void syncCloudProperties()
+  startCloudPolling()
 })
 
+onHide(() => {
+  stopCloudPolling()
+})
+
+function startCloudPolling() {
+  if (!hasCloudApiBaseUrl() || cloudRefreshTimer) return
+  // One shared account: periodically refresh only while the page is visible
+  // so a change made on the other device appears without manual refresh.
+  cloudRefreshTimer = setInterval(() => {
+    void syncCloudProperties()
+  }, 10000)
+}
+
+function stopCloudPolling() {
+  if (!cloudRefreshTimer) return
+  clearInterval(cloudRefreshTimer)
+  cloudRefreshTimer = null
+}
+
+function recoverLegacyUndoneCollections() {
+  const nextProperties = cloneProperties()
+  let changed = false
+  const fallbackBillType = (operation) => {
+    if (operation?.kind === 'rent_collection') return 'RENT'
+    const label = String(operation?.label || '')
+    if (label.includes('电')) return 'ELECTRIC'
+    if (label.includes('燃气')) return 'GAS'
+    if (label.includes('供暖')) return 'HEATING'
+    return 'WATER'
+  }
+  for (const property of nextProperties) {
+    for (const block of property.blocks || []) {
+      for (const floor of block.floors || []) {
+        for (const room of floor.rooms || []) {
+          for (const operation of room.operationLog || []) {
+            if (operation.status !== 'undone' || operation.undoSyncEnqueued) continue
+            if (!['rent_collection', 'utility_collection'].includes(operation.kind)) continue
+            enqueueSyncTask({
+              type: 'room.undoCollection',
+              propertyId: property.id,
+              blockId: block.id,
+              roomId: room.id,
+              payload: { billType: operation.billType || fallbackBillType(operation) },
+            })
+            operation.undoSyncEnqueued = true
+            changed = true
+          }
+        }
+      }
+    }
+  }
+  if (changed) setProperties(nextProperties)
+}
+
 async function syncCloudProperties() {
-  if (!hasCloudApiBaseUrl()) return
+  if (!hasCloudApiBaseUrl() || workbenchRefreshing.value) return
+  const requestRevision = cloudTreeRevision
   workbenchRefreshing.value = true
   try {
+    // In the single-user workflow local queued actions always take precedence.
+    // Establish connectivity, submit them first, and never replace the local
+    // tree with a stale cloud snapshot while any operation remains queued.
+    if (hasPendingSyncTasks()) {
+      markCloudSnapshotAsAuthoritative()
+      await processSyncQueue({ source: 'auto', force: true })
+      syncSummary.value = getPendingSyncSummary()
+      if (hasPendingSyncTasks()) return
+    }
     const localSnapshot = cloneProperties()
     let next = await fetchFullPropertiesSnapshot()
     cloudBootstrapRequired.value = !next.length && localSnapshot.length > 0
+    // A request may have started just before an offline check-in. Re-check
+    // after awaiting it so its stale snapshot cannot erase local intent.
+    if (requestRevision !== cloudTreeRevision || hasPendingSyncTasks()) return
     if (Array.isArray(next) && next.length) {
       markCloudSnapshotAsAuthoritative()
       cloudBootstrapRequired.value = false
@@ -365,7 +440,7 @@ async function syncCloudProperties() {
     // snapshot again instead of ever overwriting the established source.
     if (error?.code === 'CLOUD_DATA_EXISTS') {
       const next = await fetchFullPropertiesSnapshot()
-      if (next.length) {
+      if (requestRevision === cloudTreeRevision && !hasPendingSyncTasks() && next.length) {
         markCloudSnapshotAsAuthoritative()
         setProperties(next)
         void processSyncQueue({ source: 'auto', force: true })
@@ -387,6 +462,34 @@ async function handlePullRefresh() {
     pullRefreshing.value = false
     try { uni.stopPullDownRefresh() } catch {}
   }
+}
+
+async function persistStructureChange(nextProperties) {
+  // Online structure edits are confirmed by the server before this device is
+  // updated. The durable queue is only used when that request cannot be
+  // confirmed, so normal online deletes/additions are immediately shared.
+  const mutationRevision = ++cloudTreeRevision
+  if (hasCloudApiBaseUrl()) {
+    try {
+      const cloudTree = await submitPropertiesTreeSnapshot(nextProperties)
+      if (Array.isArray(cloudTree) && mutationRevision === cloudTreeRevision) {
+        markCloudSnapshotAsAuthoritative()
+        setProperties(cloudTree)
+        warmVisibleRoomCache()
+        return true
+      }
+    } catch {
+      // Preserve the user intent locally and retry it when connectivity is
+      // restored. Do not discard a room deletion or addition on timeout.
+    }
+  }
+
+  setProperties(nextProperties)
+  if (canUseCloudBackup()) {
+    enqueueSyncTask({ type: 'properties.treeSync', payload: { tree: nextProperties } })
+  }
+  uni.showToast({ title: '云端暂不可用，已保存并将自动上传', icon: 'none' })
+  return false
 }
 
 function countLocalRooms(tree) {
@@ -561,7 +664,7 @@ function closeQuickBuildModal() {
   quickBuildModal.value = createQuickBuildState()
 }
 
-function handleAddSubmit() {
+async function handleAddSubmit() {
   const nextProperties = cloneProperties()
   const result = applyWorkbenchStructureChange(nextProperties, activePropertyId.value, addModal.value, inputValue.value)
   if (result.error) {
@@ -569,14 +672,8 @@ function handleAddSubmit() {
     return
   }
 
-  setProperties(nextProperties)
-  if (canUseCloudBackup()) {
-    enqueueSyncTask({
-      type: 'properties.treeSync',
-      payload: { tree: nextProperties },
-    })
-    syncSummary.value = getPendingSyncSummary()
-  }
+  await persistStructureChange(nextProperties)
+  syncSummary.value = getPendingSyncSummary()
   if (result.nextPropertyId) {
     activePropertyId.value = result.nextPropertyId
   }
@@ -584,7 +681,7 @@ function handleAddSubmit() {
   uni.showToast({ title: '添加成功', icon: 'success' })
 }
 
-function submitQuickBuild() {
+async function submitQuickBuild() {
   if (!quickBuildModal.value.floorRowsReady) {
     prepareQuickBuildFloors()
     return
@@ -595,14 +692,8 @@ function submitQuickBuild() {
     uni.showToast({ title: result.error, icon: 'none' })
     return
   }
-  setProperties(nextProperties)
-  if (canUseCloudBackup()) {
-    enqueueSyncTask({
-      type: 'properties.treeSync',
-      payload: { tree: nextProperties },
-    })
-    syncSummary.value = getPendingSyncSummary()
-  }
+  await persistStructureChange(nextProperties)
+  syncSummary.value = getPendingSyncSummary()
   closeQuickBuildModal()
   uni.showToast({ title: '已快速构建楼栋', icon: 'success' })
 }
@@ -610,23 +701,17 @@ function submitQuickBuild() {
 function removeRoom(blockId, floor, roomId) {
   uni.showModal({
     title: '确认删除',
-    content: '删除后无法恢复，仅移除房间结构，不影响历史数据。继续吗？',
+    content: '房间将从当前房源和账务流水中移除；租客资料与历史收费会归档保留 3 个月，可在证件档案和报表导出中查看。继续吗？',
     confirmText: '删除',
     cancelText: '取消',
-    success: (res) => {
+    success: async (res) => {
       if (!res.confirm) return
       const nextProperties = cloneProperties()
       const removed = removeWorkbenchRoom(nextProperties, activePropertyId.value, blockId, floor, roomId)
       if (!removed) return
-      setProperties(nextProperties)
-      if (canUseCloudBackup()) {
-        enqueueSyncTask({
-          type: 'properties.treeSync',
-          payload: { tree: nextProperties },
-        })
-        syncSummary.value = getPendingSyncSummary()
-      }
-      uni.showToast({ title: '房间已删除', icon: 'none' })
+      const cloudConfirmed = await persistStructureChange(nextProperties)
+      syncSummary.value = getPendingSyncSummary()
+      if (cloudConfirmed) uni.showToast({ title: '房间已删除', icon: 'none' })
     },
   })
 }
@@ -637,20 +722,14 @@ function removeBlock(blockId) {
     content: '删除后该楼栋下的楼层和房间结构会一起移除。继续吗？',
     confirmText: '删除',
     cancelText: '取消',
-    success: (res) => {
+    success: async (res) => {
       if (!res.confirm) return
       const nextProperties = cloneProperties()
       const removed = removeWorkbenchBlock(nextProperties, activePropertyId.value, blockId)
       if (!removed) return
-      setProperties(nextProperties)
-      if (canUseCloudBackup()) {
-        enqueueSyncTask({
-          type: 'properties.treeSync',
-          payload: { tree: nextProperties },
-        })
-        syncSummary.value = getPendingSyncSummary()
-      }
-      uni.showToast({ title: '楼栋已删除', icon: 'none' })
+      const cloudConfirmed = await persistStructureChange(nextProperties)
+      syncSummary.value = getPendingSyncSummary()
+      if (cloudConfirmed) uni.showToast({ title: '楼栋已删除', icon: 'none' })
     },
   })
 }
@@ -665,21 +744,15 @@ function removeProperty(propertyId) {
     content: '删除后该院落下的全部楼栋和房间结构会一起移除。继续吗？',
     confirmText: '删除',
     cancelText: '取消',
-    success: (res) => {
+    success: async (res) => {
       if (!res.confirm) return
       const nextProperties = cloneProperties()
       const result = removeWorkbenchProperty(nextProperties, propertyId)
       if (!result.removed) return
-      setProperties(nextProperties)
+      const cloudConfirmed = await persistStructureChange(nextProperties)
       if (activePropertyId.value === propertyId) activePropertyId.value = result.nextPropertyId
-      if (canUseCloudBackup()) {
-        enqueueSyncTask({
-          type: 'properties.treeSync',
-          payload: { tree: nextProperties },
-        })
-        syncSummary.value = getPendingSyncSummary()
-      }
-      uni.showToast({ title: '院落已删除', icon: 'none' })
+      syncSummary.value = getPendingSyncSummary()
+      if (cloudConfirmed) uni.showToast({ title: '院落已删除', icon: 'none' })
     },
   })
 }
@@ -690,17 +763,14 @@ function removeFloor(blockId, floor) {
     content: '删除后该楼层下的所有房间会一起移除。继续吗？',
     confirmText: '删除',
     cancelText: '取消',
-    success: (res) => {
+    success: async (res) => {
       if (!res.confirm) return
       const nextProperties = cloneProperties()
       const removed = removeWorkbenchFloor(nextProperties, activePropertyId.value, blockId, floor)
       if (!removed) return
-      setProperties(nextProperties)
-      if (canUseCloudBackup()) {
-        enqueueSyncTask({ type: 'properties.treeSync', payload: { tree: nextProperties } })
-        syncSummary.value = getPendingSyncSummary()
-      }
-      uni.showToast({ title: '楼层已删除', icon: 'none' })
+      const cloudConfirmed = await persistStructureChange(nextProperties)
+      syncSummary.value = getPendingSyncSummary()
+      if (cloudConfirmed) uni.showToast({ title: '楼层已删除', icon: 'none' })
     },
   })
 }
@@ -714,6 +784,7 @@ function syncTaskTypeLabel(type) {
     'room.meterReading': '抄表',
     'room.checkout': '退租',
     'attachment.upload': '附件',
+    'attachment.delete': '删除图片',
   }[String(type || '')] || '同步'
 }
 

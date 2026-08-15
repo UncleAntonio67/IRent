@@ -130,6 +130,46 @@ test('collecting metered utilities settles generated bills without creating dupl
   assert.equal(computeCollectionSummary(room).utilities.byType.find((item) => item.type === BILL_TYPE.WATER).outstanding, 0)
 })
 
+test('utility summary accumulates metered receivables and collected amounts', () => {
+  const room = buildRoom()
+  let summary = computeCollectionSummary(room)
+  assert.equal(summary.utilities.expected, 0)
+  assert.equal(summary.utilities.paid, 0)
+
+  const meter = computeMeterCharge(room, { water: 124 })
+  createUtilitiesBillFromMeter(room, meter, { now: '2026-04-11 10:00' })
+  summary = computeCollectionSummary(room)
+  assert.equal(summary.utilities.expected, meter.waterCost)
+  assert.equal(summary.utilities.paid, 0)
+
+  assert.equal(recordDirectUtilityCollection(room, {
+    type: BILL_TYPE.WATER,
+    amount: meter.waterCost,
+    now: '2026-04-11 10:10',
+  }), true)
+  summary = computeCollectionSummary(room)
+  assert.equal(summary.utilities.expected, meter.waterCost)
+  assert.equal(summary.utilities.paid, meter.waterCost)
+  assert.equal(summary.utilities.outstandingAmount, 0)
+
+  const nextMeter = computeMeterCharge(room, { water: 126 })
+  createUtilitiesBillFromMeter(room, nextMeter, { now: '2026-05-11 10:00' })
+  summary = computeCollectionSummary(room)
+  assert.equal(summary.utilities.expected, meter.waterCost + nextMeter.waterCost)
+  assert.equal(summary.utilities.paid, meter.waterCost)
+  assert.equal(summary.utilities.outstandingAmount, nextMeter.waterCost)
+
+  assert.equal(recordDirectUtilityCollection(room, {
+    type: BILL_TYPE.WATER,
+    amount: nextMeter.waterCost,
+    now: '2026-05-11 10:10',
+  }), true)
+  summary = computeCollectionSummary(room)
+  assert.equal(summary.utilities.expected, meter.waterCost + nextMeter.waterCost)
+  assert.equal(summary.utilities.paid, meter.waterCost + nextMeter.waterCost)
+  assert.equal(summary.utilities.outstandingAmount, 0)
+})
+
 test('legacy duplicate metered utility records do not remain receivable', () => {
   const room = buildRoom({
     bills: [
@@ -276,6 +316,20 @@ test('room attachments migrate single files and enforce the configured image lim
     assert.ok(uploadRoomPhoto(room, { now: '2026-08-01 10:00', file: { name: `room-${index}.jpg` } }))
   }
   assert.equal(uploadRoomPhoto(room, { now: '2026-08-01 10:00', file: { name: 'room-overflow.jpg' } }), null)
+})
+
+test('room photo preserves confirmed attachment identity for later cloud deletion', () => {
+  const room = buildRoom({ roomPhotos: [] })
+  const photo = uploadRoomPhoto(room, {
+    now: '2026-08-01 10:00',
+    file: { id: 'cloud_attachment_123', clientOperationId: 'attachment_12345678', name: 'confirmed.jpg' },
+  })
+
+  assert.equal(photo.id, 'cloud_attachment_123')
+  assert.equal(photo.clientOperationId, 'attachment_12345678')
+  const normalized = normalizeRoom(room)
+  assert.equal(normalized.roomPhotos[0].id, 'cloud_attachment_123')
+  assert.equal(normalized.roomPhotos[0].clientOperationId, 'attachment_12345678')
 })
 
 test('undoLatestRoomOperation restores the room snapshot and retains an audit record', () => {

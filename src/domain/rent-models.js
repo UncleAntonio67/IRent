@@ -50,6 +50,7 @@ export function normalizeAttachmentFile(file, fallbackName) {
   if (!file) return null
   return {
     id: file.id || '',
+    clientOperationId: file.clientOperationId || '',
     name: file.name || fallbackName || 'unnamed_file',
     uploadedAt: file.uploadedAt || '',
     source: file.source || 'local',
@@ -73,6 +74,7 @@ export function normalizeRoomPhoto(photo, index = 0) {
   if (!photo) return null
   return {
     id: photo.id || generateId('photo'),
+    clientOperationId: photo.clientOperationId || '',
     name: photo.name || `room_photo_${index + 1}.jpg`,
     uploadedAt: photo.uploadedAt || '',
     source: photo.source || 'local',

@@ -12,7 +12,7 @@
         <view class="utility-type"><view class="utility-type-name">{{ item.label }}</view></view>
         <view class="term-money-stack"><view class="term-money-row"><text class="term-money-label">应</text><text>￥{{ item.expected }}</text></view><view class="term-money-row term-money-sub"><text class="term-money-label">收</text><text>￥{{ item.paid }}</text></view></view>
         <view class="term-state"><view class="term-status-lamp" :class="item.statusLampClass"></view></view>
-        <view class="utility-action"><view v-if="item.included" class="utility-included-text">已计入租金</view><button v-else class="utility-action-primary tap-scale" @click="emit('collect', item.type)">收费</button></view>
+        <view class="utility-action"><view v-if="item.included" class="utility-included-text">已计入租金</view><view v-else-if="item.settled" class="utility-included-text">已收</view><button v-else class="utility-action-primary tap-scale" @click="emit('collect', item.type)">收费</button></view>
       </view>
     </view>
   </CollapsibleSectionCard>
