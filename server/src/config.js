@@ -29,6 +29,9 @@ export const config = {
     // Daily tenant snapshots are kept locally with the Docker deployment.
     directory: process.env.BACKUP_DIR || '/app/backups',
     retentionDays: Math.max(1, Number(process.env.BACKUP_RETENTION_DAYS || 7)),
+    // Cap each tenant's retained snapshots. The newest snapshot is always
+    // retained so a temporary large attachment cannot remove all recovery data.
+    maxBytes: Math.max(64, Number(process.env.BACKUP_MAX_SIZE_MB || 2048)) * 1024 * 1024,
   },
   allowedOrigins: String(process.env.ALLOWED_ORIGINS || '*')
     .split(',')

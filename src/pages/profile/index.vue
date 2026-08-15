@@ -243,22 +243,39 @@
           <view v-else-if="subPage === 'dataRestore'" class="stack-3">
             <view class="surface-card" :class="UI.card">
               <view class="p-4 text-xs text-slate-500 leading-6">
-                每日自动保留一份云端完整快照，包含房源、入住、账务、证件、合同及服务器本地附件。仅保留最近 7 天；恢复会覆盖当前全部共享数据，并会先自动保存恢复前的状态。
+                每日中午 12:00、晚上 20:00 自动保留完整快照；每次业务操作结束 30 分钟后也会备份。快照包含房源、入住、账务、证件、合同及服务器本地附件，保留最近 7 天。
               </view>
             </view>
             <view class="surface-card" :class="UI.card">
               <view class="p-3 flex items-center justify-between gap-3 border-b border-slate-100">
+                <view>
+                  <view class="font-bold text-slate-800 text-sm">当前备份状态</view>
+                  <view v-if="latestCloudBackup" class="text-3xs text-emerald-600 mt-1">已备份 · {{ formatBackupTime(latestCloudBackup.createdAt) }}</view>
+                  <view v-else class="text-3xs text-amber-600 mt-1">未备份 · 请手动备份或等待自动备份</view>
+                </view>
+                <button class="px-3 py-2 rounded-xl btn-blue text-xs font-semibold" :loading="cloudBackupCreating" @click="createManualBackup">立即备份</button>
+              </view>
+              <view class="px-3 py-2 border-b border-slate-100">
+                <view v-for="slot in scheduledBackupStatus" :key="slot.reason" class="py-1 flex items-center justify-between gap-3 text-3xs">
+                  <text class="text-slate-500">{{ slot.label }}</text>
+                  <text :class="slot.backup ? 'text-emerald-600' : 'text-amber-600'">{{ slot.backup ? `已备份 · ${formatBackupTime(slot.backup.createdAt)}` : '未备份' }}</text>
+                </view>
+              </view>
+              <view class="p-3 flex items-center justify-between gap-3 border-b border-slate-100">
                 <view><view class="font-bold text-slate-800 text-sm">可恢复的数据备份</view><view class="text-3xs text-slate-400 mt-1">最近 7 天 · {{ cloudBackups.length }} 个快照</view></view>
-                <button class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold" @click="loadCloudBackups">刷新</button>
+                <view class="flex items-center gap-2">
+                  <button v-if="cloudBackups.length" class="px-2 py-2 rounded-xl text-amber-700 text-xs font-semibold" :loading="cloudBackupClearing" @click="confirmClearBackups">清空</button>
+                  <button class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold" @click="loadCloudBackups">刷新</button>
+                </view>
               </view>
               <view v-if="cloudBackupLoading" class="p-5 text-center text-sm text-slate-400">正在读取备份…</view>
               <view v-else-if="cloudBackups.length" class="divide-y divide-slate-100">
                 <view v-for="backup in cloudBackups" :key="backup.id" class="p-3 flex items-center justify-between gap-3">
-                  <view class="min-w-0"><view class="font-bold text-slate-800 text-sm">{{ formatBackupTime(backup.createdAt) }}</view><view class="text-3xs text-slate-400 mt-1 truncate">房源 {{ backup.summary?.properties || 0 }} · 房间 {{ backup.summary?.rooms || 0 }} · 流水 {{ backup.summary?.collections || 0 }} · 附件 {{ backup.summary?.attachments || 0 }}</view></view>
+                  <view class="min-w-0"><view class="font-bold text-slate-800 text-sm">{{ formatBackupTime(backup.createdAt) }}</view><view class="text-3xs text-emerald-600 mt-1">已备份 · {{ formatBackupReason(backup.reason) }}</view><view class="text-3xs text-slate-400 mt-1 truncate">房源 {{ backup.summary?.properties || 0 }} · 房间 {{ backup.summary?.rooms || 0 }} · 流水 {{ backup.summary?.collections || 0 }} · 附件 {{ backup.summary?.attachments || 0 }}</view></view>
                   <button class="shrink-0 px-3 py-2 rounded-xl bg-amber-50 text-amber-700 text-xs font-semibold" :loading="restoringBackupId === backup.id" @click="confirmRestoreBackup(backup)">恢复</button>
                 </view>
               </view>
-              <view v-else class="p-5 text-center text-sm text-slate-400">暂未生成备份，服务会自动创建每日快照。</view>
+              <view v-else class="p-5 text-center text-sm text-slate-400">未备份。可点击“立即备份”，或等待定时与操作后自动备份。</view>
             </view>
           </view>
 
@@ -406,7 +423,7 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { createCloudExportTask, fetchCloudExportTasks, getCachedCloudExportTasks } from '../../api/exports.js'
-import { fetchCloudBackups, restoreCloudBackup } from '../../api/backups.js'
+import { clearCloudBackups, createCloudBackup, fetchCloudBackups, getCachedCloudBackups, restoreCloudBackup } from '../../api/backups.js'
 import { fetchFullPropertiesSnapshot } from '../../api/properties.js'
 import { canUseCloudBackup, hasCloudApiBaseUrl, isCloudApiConfigured, withCloudBackupAccess } from '../../config/cloud'
 import {
@@ -444,6 +461,8 @@ const cloudExportTasks = ref([])
 const cloudExportLoading = ref(false)
 const cloudBackups = ref([])
 const cloudBackupLoading = ref(false)
+const cloudBackupCreating = ref(false)
+const cloudBackupClearing = ref(false)
 const restoringBackupId = ref('')
 const exportMode = ref('all')
 const selectedExportRoomId = ref('')
@@ -457,6 +476,17 @@ const utilityForm = ref({
 
 const reminderForm = ref(loadReminderSettings())
 const isCloudConfigured = computed(() => isCloudApiConfigured())
+const latestCloudBackup = computed(() => cloudBackups.value[0] || null)
+const scheduledBackupStatus = computed(() => {
+  const today = formatBackupDate(new Date())
+  return [
+    { label: '今日 12:00 定时备份', reason: 'scheduled_noon' },
+    { label: '今日 20:00 定时备份', reason: 'scheduled_evening' },
+  ].map((slot) => ({
+    ...slot,
+    backup: cloudBackups.value.find((item) => item.reason === slot.reason && formatBackupDate(item.createdAt) === today) || null,
+  }))
+})
 const profileName = computed(() => currentUser.value?.nickName || currentProfile.value?.nickName || '微信用户')
 const profileInitial = computed(() => currentUser.value ? '管' : '访')
 const tenantRoleLabel = computed(() => {
@@ -785,6 +815,21 @@ function formatBackupTime(value) {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')} ${`${date.getHours()}`.padStart(2, '0')}:${`${date.getMinutes()}`.padStart(2, '0')}`
 }
 
+function formatBackupDate(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`
+}
+
+function formatBackupReason(reason) {
+  return {
+    scheduled_noon: '定时备份（12:00）',
+    scheduled_evening: '定时备份（20:00）',
+    activity_quiet: '操作后静默备份',
+    manual: '手动备份',
+  }[String(reason || '')] || '完整备份'
+}
+
 async function loadCloudBackups() {
   if (!isCloudConfigured.value) return
   cloudBackupLoading.value = true
@@ -794,6 +839,45 @@ async function loadCloudBackups() {
     uni.showToast({ title: '读取备份失败，请稍后重试', icon: 'none' })
   } finally {
     cloudBackupLoading.value = false
+  }
+}
+
+async function createManualBackup() {
+  if (cloudBackupCreating.value) return
+  cloudBackupCreating.value = true
+  uni.showLoading({ title: '正在创建备份', mask: true })
+  try {
+    await withCloudBackupAccess(() => createCloudBackup())
+    await loadCloudBackups()
+    uni.showToast({ title: '备份已完成', icon: 'success' })
+  } catch {
+    uni.showToast({ title: '备份失败，请稍后重试', icon: 'none' })
+  } finally {
+    cloudBackupCreating.value = false
+    uni.hideLoading()
+  }
+}
+
+async function confirmClearBackups() {
+  if (cloudBackupClearing.value || cloudBackups.value.length === 0) return
+  const confirmed = await new Promise((resolve) => uni.showModal({
+    title: '清空历史备份',
+    content: '将永久删除当前全部备份快照，删除后不可恢复。',
+    confirmText: '确认清空',
+    confirmColor: '#d97706',
+    success: (result) => resolve(Boolean(result.confirm)),
+    fail: () => resolve(false),
+  }))
+  if (!confirmed) return
+  cloudBackupClearing.value = true
+  try {
+    await withCloudBackupAccess(() => clearCloudBackups())
+    cloudBackups.value = []
+    uni.showToast({ title: '历史备份已清空', icon: 'success' })
+  } catch {
+    uni.showToast({ title: '清空失败，请稍后重试', icon: 'none' })
+  } finally {
+    cloudBackupClearing.value = false
   }
 }
 
@@ -1054,12 +1138,14 @@ onLoad(() => {
   headerTopPadding.value = getPageHeaderTopPadding(44)
   selectedTenantId.value = users.value[0]?.id || ''
   cloudExportTasks.value = getCachedCloudExportTasks()
+  cloudBackups.value = getCachedCloudBackups()
   refreshSyncSummary()
 })
 
 onShow(() => {
   refreshSyncSummary()
   cloudExportTasks.value = getCachedCloudExportTasks()
+  if (!cloudBackups.value.length) cloudBackups.value = getCachedCloudBackups()
 })
 </script>
 

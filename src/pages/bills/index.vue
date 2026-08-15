@@ -209,7 +209,7 @@ import DateSelectionModal from '../../components/DateSelectionModal.vue'
 import { properties, setProperties } from '../../data/rentStore'
 import { getCachedBillEntriesSnapshot, refreshBillEntriesSnapshot } from '../../data/billSnapshots.js'
 import { fetchFullPropertiesSnapshot, getCachedPropertiesTree } from '../../api/properties'
-import { getPendingSyncSummary, processSyncQueue } from '../../data/syncQueue.js'
+import { getPendingSyncSummary, markCloudSnapshotAsAuthoritative, processSyncQueue } from '../../data/syncQueue.js'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { previewChosenImage, resolveOfflineImageSrc } from '../../utils/media'
@@ -282,6 +282,7 @@ async function syncCloudProperties() {
   try {
     const next = await fetchFullPropertiesSnapshot()
     if (Array.isArray(next)) {
+      if (next.length) markCloudSnapshotAsAuthoritative()
       setProperties(next)
     }
   } catch {} finally {

@@ -1,4 +1,5 @@
 import express from 'express'
+import multer from 'multer'
 import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth.js'
 import { requireTenant, requireTenantRole } from '../../lib/tenant.js'
@@ -37,6 +38,7 @@ const localUploadSchema = presignSchema.extend({
 })
 
 export const attachmentRouter = express.Router()
+const binaryUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: 1 } })
 
 attachmentRouter.use(requireAuth)
 
@@ -78,6 +80,29 @@ attachmentRouter.post('/local-upload', async (req, res, next) => {
     const tenant = requireTenant(req.auth)
     const { contentBase64, ...file } = parsed.data
     const uploaded = await saveLocalAttachment({ tenantId: tenant.id, ...file, base64: contentBase64 })
+    res.json({ ok: true, ...uploaded })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Streams the native temporary file without the Base64/JSON expansion used by
+// the compatibility endpoint above.
+attachmentRouter.post('/local-upload-binary', binaryUpload.single('file'), async (req, res, next) => {
+  const parsed = presignSchema.safeParse({
+    type: req.body?.type,
+    fileName: req.body?.fileName || req.file?.originalname || 'attachment',
+    mimeType: req.body?.mimeType || req.file?.mimetype || 'application/octet-stream',
+    fileSize: Number(req.file?.size || 0),
+  })
+  if (!parsed.success || !req.file?.buffer?.length) {
+    res.status(400).json({ ok: false, code: 'INVALID_ATTACHMENT_FILE', message: 'Invalid attachment file' })
+    return
+  }
+  try {
+    requireTenantRole(req.auth, ['OWNER', 'MANAGER'])
+    const tenant = requireTenant(req.auth)
+    const uploaded = await saveLocalAttachment({ tenantId: tenant.id, ...parsed.data, buffer: req.file.buffer })
     res.json({ ok: true, ...uploaded })
   } catch (error) {
     next(error)

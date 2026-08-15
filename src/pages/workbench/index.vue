@@ -261,13 +261,13 @@ import SyncNotice from '../../components/SyncNotice.vue'
 import { UI, getMiniStatusColor } from '../../ui/ui'
 import { getDefaultRoomNo, getFloorDisplayName } from '../../domain/rent-models.js'
 import { properties, cloneProperties, setProperties } from '../../data/rentStore'
-import { buildTenantStorageKey, canManageTenantData, isLoggedIn } from '../../data/authStore'
+import { canManageTenantData, isLoggedIn } from '../../data/authStore'
 import { fetchFullPropertiesSnapshot, getCachedPropertiesTree, migrateLocalPropertiesSnapshot } from '../../api/properties'
 import { prefetchRoomDetails } from '../../api/rooms'
 import { safeNavigateTo } from '../../utils/navigation'
 import { getPageHeaderTopPadding } from '../../utils/layout'
 import { canUseCloudBackup, hasCloudApiBaseUrl } from '../../config/cloud'
-import { clearPendingSyncTasks, enqueueSyncTask, getPendingSyncSummary, processSyncQueue } from '../../data/syncQueue.js'
+import { clearPendingSyncTasks, enqueueSyncTask, getPendingSyncSummary, markCloudSnapshotAsAuthoritative, processSyncQueue } from '../../data/syncQueue.js'
 import {
   applyQuickBuild,
   applyWorkbenchStructureChange,
@@ -304,7 +304,6 @@ const cloudBootstrapRequired = ref(false)
 // Bump this epoch whenever a legacy offline queue format must be retired.
 // Devices that installed an earlier package can otherwise retain obsolete
 // attachment/checkout tasks forever even after the cloud becomes authoritative.
-const CLOUD_SOURCE_READY_KEY = 'cloud_source_ready_v2'
 const syncSummary = ref(getPendingSyncSummary())
 const syncPendingTypeText = computed(() => {
   const counts = syncSummary.value?.pendingTypeCounts || {}
@@ -355,7 +354,7 @@ async function syncCloudProperties() {
     let next = await fetchFullPropertiesSnapshot()
     cloudBootstrapRequired.value = !next.length && localSnapshot.length > 0
     if (Array.isArray(next) && next.length) {
-      markCloudSourceReadyAndClearLegacyQueue()
+      markCloudSnapshotAsAuthoritative()
       cloudBootstrapRequired.value = false
       setProperties(next)
       warmVisibleRoomCache()
@@ -365,7 +364,10 @@ async function syncCloudProperties() {
     // snapshot again instead of ever overwriting the established source.
     if (error?.code === 'CLOUD_DATA_EXISTS') {
       const next = await fetchFullPropertiesSnapshot()
-      if (next.length) setProperties(next)
+      if (next.length) {
+        markCloudSnapshotAsAuthoritative()
+        setProperties(next)
+      }
     }
   } finally {
     workbenchRefreshing.value = false
@@ -382,17 +384,6 @@ async function handlePullRefresh() {
   } finally {
     pullRefreshing.value = false
     try { uni.stopPullDownRefresh() } catch {}
-  }
-}
-
-function markCloudSourceReadyAndClearLegacyQueue() {
-  const storageKey = buildTenantStorageKey(CLOUD_SOURCE_READY_KEY)
-  try {
-    if (uni.getStorageSync(storageKey)) return
-    clearPendingSyncTasks()
-    uni.setStorageSync(storageKey, true)
-  } catch {
-    // If storage is unavailable, the cloud snapshot is still applied safely.
   }
 }
 
@@ -425,7 +416,7 @@ async function initializeCloudFromLocal() {
     workbenchRefreshing.value = true
     const next = await migrateLocalPropertiesSnapshot(localSnapshot)
     clearPendingSyncTasks()
-    try { uni.setStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY), true) } catch {}
+    markCloudSnapshotAsAuthoritative()
     cloudBootstrapRequired.value = false
     setProperties(next)
     warmVisibleRoomCache()

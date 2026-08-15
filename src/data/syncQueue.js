@@ -16,6 +16,7 @@ import { notifySyncStatusChanged } from './syncStatus.js'
 const SYNC_QUEUE_STORAGE_KEY = 'cloud_sync_queue_v1'
 const SYNC_META_STORAGE_KEY = 'cloud_sync_meta_v1'
 const SYNC_MODE_STORAGE_KEY = 'cloud_sync_mode_v1'
+const CLOUD_SOURCE_READY_KEY = 'cloud_source_ready_v3'
 const RETRY_DELAYS_MS = [5000, 15000, 30000, 60000, 180000]
 let processing = false
 let retryTimer = null
@@ -235,6 +236,24 @@ export function clearPendingSyncTasks() {
   })
 }
 
+export function isCloudSourceReady() {
+  try { return Boolean(uni.getStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY))) } catch { return false }
+}
+
+// The first confirmed cloud snapshot is authoritative. Any old device queue
+// is discarded once so it cannot replay stale mutations into shared data.
+export function markCloudSnapshotAsAuthoritative() {
+  try {
+    if (uni.getStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY))) return false
+    clearPendingSyncTasks()
+    uni.setStorageSync(buildTenantStorageKey(CLOUD_SOURCE_READY_KEY), true)
+    return true
+  } catch {
+    clearPendingSyncTasks()
+    return true
+  }
+}
+
 export function getPendingSyncSummary() {
   const tasks = loadQueue()
   const meta = loadMeta()
@@ -291,7 +310,7 @@ export function enqueueSyncTask({ type, propertyId, blockId, roomId, payload }) 
 }
 
 export async function processSyncQueue(options = {}) {
-  if (processing || !canUseCloudBackup()) return
+  if (processing || !canUseCloudBackup() || !isCloudSourceReady()) return
   const source = options?.source === 'manual' ? 'manual' : 'auto'
   if (source === 'auto' && getSyncMode() === 'manual') return
   processing = true
@@ -344,7 +363,7 @@ export async function processSyncQueue(options = {}) {
 }
 
 export function startSyncQueue() {
-  if (!hasPendingSyncTasks() || getSyncMode() === 'manual') return false
+  if (!hasPendingSyncTasks() || getSyncMode() === 'manual' || !isCloudSourceReady()) return false
   // A fresh app launch or network restoration is a useful recovery point:
   // retry a persisted operation immediately instead of making the user wait
   // for an old backoff timer from a previous session.

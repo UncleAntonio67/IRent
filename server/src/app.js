@@ -3,7 +3,12 @@ import express from 'express'
 import { mkdirSync } from 'node:fs'
 import { config } from './config.js'
 import { registerRoutes } from './routes/index.js'
-import { startBackupScheduler } from './services/backups.js'
+import { noteTenantBackupActivity, startBackupScheduler } from './services/backups.js'
+
+function isBusinessMutation(req) {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return false
+  return /^\/api\/(properties|rooms|attachments|tenants)(?:\/|$)/.test(req.path)
+}
 
 export function createApp() {
   const app = express()
@@ -35,6 +40,14 @@ export function createApp() {
       env: config.nodeEnv,
       timestamp: new Date().toISOString(),
     })
+  })
+
+  app.use((req, res, next) => {
+    res.on('finish', () => {
+      if (res.statusCode < 200 || res.statusCode >= 300 || !isBusinessMutation(req)) return
+      noteTenantBackupActivity(req.auth?.tenant?.id)
+    })
+    next()
   })
 
   registerRoutes(app)

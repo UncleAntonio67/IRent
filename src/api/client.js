@@ -192,3 +192,35 @@ export async function apiRequest(path, options = {}) {
   error.payload = data
   throw error
 }
+
+// Streams a mini-program temporary file as multipart bytes. This avoids the
+// Base64 expansion and JSON payload parsing used by the old local upload API.
+export async function uploadCloudFile(path, { filePath, name = 'file', formData = {}, timeout = 60000 } = {}) {
+  const baseUrl = getCloudApiBaseUrl()
+  if (!baseUrl || !isCloudBackupAccessEnabled()) {
+    const error = new Error('CLOUD_REQUEST_BLOCKED')
+    error.code = 'CLOUD_REQUEST_BLOCKED'
+    throw error
+  }
+  if (!filePath) throw new Error('FILE_PATH_REQUIRED')
+  if (!getAccessToken()) await ensureDevCloudSession()
+  const normalizedPath = path.startsWith('/api/') ? path : `/api${path.startsWith('/') ? path : `/${path}`}`
+  const result = await uni.uploadFile({
+    url: `${baseUrl}${normalizedPath}`,
+    filePath,
+    name,
+    formData,
+    header: getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {},
+    timeout,
+  })
+  const [uploadError, response] = Array.isArray(result) ? result : [null, result]
+  if (uploadError) throw new Error(uploadError.errMsg || 'FILE_UPLOAD_FAILED')
+  let data = {}
+  try { data = typeof response?.data === 'string' ? JSON.parse(response.data) : (response?.data || {}) } catch {}
+  if (Number(response?.statusCode || 0) < 200 || Number(response?.statusCode || 0) >= 300 || data?.ok === false) {
+    const error = new Error(data?.message || `FILE_UPLOAD_FAILED_${response?.statusCode || 0}`)
+    error.code = data?.code || 'FILE_UPLOAD_FAILED'
+    throw error
+  }
+  return data
+}

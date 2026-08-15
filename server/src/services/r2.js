@@ -139,16 +139,19 @@ export async function createPresignedUpload({
   }
 }
 
-export async function saveLocalAttachment({ tenantId, type, fileName, base64 }) {
+export async function saveLocalAttachment({ tenantId, type, fileName, base64, buffer }) {
   const storageKey = buildStorageKey({ tenantId, type, fileName })
-  const normalized = String(base64 || '').replace(/^data:[^;]+;base64,/, '')
-  if (!normalized) {
-    const error = new Error('Attachment content is required')
-    error.statusCode = 400
-    error.code = 'ATTACHMENT_CONTENT_REQUIRED'
-    throw error
+  let body = Buffer.isBuffer(buffer) ? buffer : null
+  if (!body) {
+    const normalized = String(base64 || '').replace(/^data:[^;]+;base64,/, '')
+    if (!normalized) {
+      const error = new Error('Attachment content is required')
+      error.statusCode = 400
+      error.code = 'ATTACHMENT_CONTENT_REQUIRED'
+      throw error
+    }
+    body = Buffer.from(normalized, 'base64')
   }
-  const body = Buffer.from(normalized, 'base64')
   if (!body.length) {
     const error = new Error('Attachment content is invalid')
     error.statusCode = 400
